@@ -89,8 +89,8 @@ export function Topbar({ user, onMenu }: { user: SessionUser; onMenu: () => void
       confirmLabel="Oui"
       onConfirm={() => {
         setConfirmLogout(false);
-        navigate("/", { replace: true });
         logout();
+        navigate("/", { replace: true });
       }}
     />
     </>

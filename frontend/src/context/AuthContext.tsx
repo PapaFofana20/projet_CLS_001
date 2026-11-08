@@ -143,13 +143,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(() => {
     authService.logout();
-    // On vide le cache sans re-télécharger : resetDatabase() relançait une
-    // hydratation complète JUSTE après la déconnexion (appels RLS refusés) ;
-    // le prochain currentSession() rechargera ce qui est nécessaire.
-    void clearCache();
+    // D'abord l'état React (déconnexion + navigation se peignent sans attendre),
+    // puis le vidage du cache, différé après le rendu : vider les 18 tables de
+    // façon synchrone dans le même geste bloquait le thread principal et
+    // provoquait un « lag » visible à chaque déconnexion.
     setJustLoggedOut(true);
     setUser(null);
     setHasSession(false);
+    // On vide le cache sans re-télécharger : resetDatabase() relançait une
+    // hydratation complète JUSTE après la déconnexion (appels RLS refusés) ;
+    // le prochain currentSession() rechargera ce qui est nécessaire.
+    window.setTimeout(() => {
+      void clearCache();
+    }, 0);
   }, []);
 
   const value = useMemo(

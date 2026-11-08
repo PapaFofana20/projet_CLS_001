@@ -148,8 +148,10 @@ function SidebarContent({ user, pending, expanded, onNavigate, onLogoClick }: { 
         confirmLabel="Oui"
         onConfirm={() => {
           setConfirmLogout(false);
-          navigate("/", { replace: true });
+          // Déconnexion locale d'abord, navigation ensuite : la page d'accueil
+          // se monte déjà déconnectée (pas de flash « Mon espace »).
           logout();
+          navigate("/", { replace: true });
         }}
       />
     </div>

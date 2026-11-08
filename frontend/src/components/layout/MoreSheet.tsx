@@ -136,8 +136,8 @@ export function MoreSheet({ open, onClose, user }: Props) {
         onConfirm={() => {
           setConfirmLogout(false);
           onClose();
-          navigate("/", { replace: true });
           logout();
+          navigate("/", { replace: true });
         }}
       />
     </div>,

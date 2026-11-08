@@ -86,8 +86,11 @@ export async function currentSession(): Promise<SessionUser | null> {
 }
 
 // Déconnecte la session Supabase Auth (les données restent en cache jusqu'au prochain clear).
+// scope "local" : on retire la session du stockage local sans attendre un aller-retour
+// réseau (qui peut prendre plusieurs secondes et bloquer le client Auth) — la
+// déconnexion doit être instantanée côté utilisateur.
 export function logout(): void {
-  void supabase.auth.signOut();
+  void supabase.auth.signOut({ scope: "local" });
 }
 
 /* ------------------------------------------------------------------ */
