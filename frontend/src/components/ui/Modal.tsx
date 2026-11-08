@@ -1,5 +1,11 @@
 // Fenêtre modale : verrouille le fond, se ferme avec Échap ou un clic dehors.
+// Portail sur document.body (comme FilterSheet / Select) : rendue dans le
+// flux, son `fixed inset-0` restait piégée dans les ancêtres à overflow-hidden
+// / will-change (colonne sidebar, tiroir mobile, @container…) et apparaissait
+// superposée au lieu de couvrir l'écran — visible notamment sur la
+// confirmation de déconnexion depuis la sidebar.
 import { useEffect, useRef, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { Button } from "./Button";
 import { Icon } from "./Icon";
 
@@ -35,7 +41,7 @@ export function Modal({ open, onClose, title, children, footer, size = "md" }: M
   }, [open, onClose]);
 
   if (!open) return null;
-  return (
+  return createPortal(
     <div className="no-print fixed inset-0 z-modal flex items-end justify-center p-0 sm:items-center sm:p-4" role="presentation">
       <div className="absolute inset-0 bg-forest/50 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
       <div
@@ -55,7 +61,8 @@ export function Modal({ open, onClose, title, children, footer, size = "md" }: M
         <div className="overflow-y-auto px-6 py-5">{children}</div>
         {footer && <div className="flex flex-wrap justify-end gap-3 border-t border-neutral-100 px-6 py-4">{footer}</div>}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
