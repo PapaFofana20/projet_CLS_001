@@ -18,7 +18,7 @@ export function PricingSection({ withHeader = true }: { withHeader?: boolean }) 
             <h2 id="pricing-title" className="mx-auto max-w-2xl text-3xl font-extrabold leading-tight tracking-tight sm:text-5xl">
               Un prix simple, <span className="font-serif font-semibold italic text-forest-500">par élève</span>
             </h2>
-            <p className="mx-auto mt-4 max-w-4xl text-neutral-600">Pas de frais d'installation ni d'engagement.<br className="hidden sm:block" /> Vous ne payez que pour les élèves inscrits dans votre école : votre tarif s'ajuste automatiquement à vos effectifs, mois après mois, avec toutes les fonctionnalités incluses dès le départ.</p>
+            <p className="mx-auto mt-4 max-w-4xl text-neutral-600">Pas de frais d'installation ni d'engagement.<br className="hidden sm:block" /> Vous ne payez que pour vos élèves inscrits, toutes les fonctionnalités incluses dès le départ.</p>
           </div>
         </Reveal>
       )}
