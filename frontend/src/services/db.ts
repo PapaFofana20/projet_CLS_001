@@ -250,6 +250,7 @@ function mapPayment(r: any): Payment {
     amount: r.amount,
     paidAmount: r.paid_amount ?? 0,
     status: r.status,
+    manualStatus: r.manual_status ?? null,
     method: r.method ?? undefined,
     paidAt: r.paid_at ?? undefined,
     reference: r.reference ?? undefined,
@@ -305,6 +306,8 @@ function mapAbsence(r: any): AbsenceRecord {
     type: r.absence_type,
     motif: r.motif ?? "",
     justified: r.justified ?? false,
+    subjectId: r.subject_id ?? null,
+    recordedBy: r.recorded_by ?? null,
     ...(r.sanction ? { sanction: r.sanction } : {}),
   };
 }

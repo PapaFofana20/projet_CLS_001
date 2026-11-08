@@ -40,6 +40,7 @@ const ClassesPage = lazy(() => import("@/pages/app/ClassesPage"));
 const StaffPage = lazy(() => import("@/pages/app/StaffPage"));
 const AssignmentsPage = lazy(() => import("@/pages/app/AssignmentsPage"));
 const NotesPage = lazy(() => import("@/pages/app/NotesPage"));
+const AttendancesPage = lazy(() => import("@/pages/app/AttendancesPage"));
 const BulletinsPage = lazy(() => import("@/pages/app/BulletinsPage"));
 const PaymentsPage = lazy(() => import("@/pages/app/PaymentsPage"));
 const SettingsPage = lazy(() => import("@/pages/app/SettingsPage"));
@@ -167,6 +168,7 @@ export default function App() {
                       <Route path="affectations" element={guard("affectations", <AssignmentsPage />)} />
                       <Route path="abonnement" element={guard("abonnement", <SubscriptionPage />)} />
                       <Route path="notes" element={guard("notes", <NotesPage />)} />
+                      <Route path="presences" element={guard("presences", <AttendancesPage />)} />
                       <Route path="bulletins" element={guard("bulletins", <BulletinsPage />)} />
                       <Route path="paiements" element={guard("paiements", <PaymentsPage />)} />
 

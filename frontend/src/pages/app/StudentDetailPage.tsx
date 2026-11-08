@@ -7,17 +7,20 @@ import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Icon } from "@/components/ui/Icon";
+import { Select } from "@/components/ui/Select";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Table, type Column } from "@/components/ui/Table";
 import { Tabs } from "@/components/ui/Tabs";
 import { useCurrentUser } from "@/context/AuthContext";
+import { useToast } from "@/context/ToastContext";
 import { CYCLE_LABELS, todayIso } from "@/data/school";
 import { useAsync } from "@/hooks/useAsync";
+import { setPaymentManualStatus } from "@/services/paymentService";
 import { getStudentDetail, type StudentDetail } from "@/services/studentService";
-import type { Payment, ReportLine } from "@/types";
+import type { ManualPaymentStatus, Payment, ReportLine } from "@/types";
 import { ageFrom, formatCurrency, formatDate, formatNumber } from "@/utils/format";
 import { averageTone } from "@/utils/grades";
-import { PAY_STATUS_LABELS, STUDENT_STATUS_LABELS } from "@/utils/payments";
+import { MANUAL_PAYMENT_LABELS, manualChoiceOf, PAY_STATUS_LABELS, STUDENT_STATUS_LABELS } from "@/utils/payments";
 
 const PAY_TONE = { paye: "success", partiel: "warning", en_retard: "danger", a_venir: "neutral" } as const;
 const STATUS_TONE = { a_jour: "success", partiel: "warning", impaye: "danger" } as const;
@@ -31,9 +34,26 @@ function Info({ label, value }: { label: string; value: string }) {
   );
 }
 
-function Detail({ d }: { d: StudentDetail }) {
+function Detail({ d, onPaymentsChanged }: { d: StudentDetail; onPaymentsChanged: () => void }) {
   const user = useCurrentUser();
+  const { toast } = useToast();
   const [tab, setTab] = useState("apercu");
+  const [savingId, setSavingId] = useState<string | null>(null);
+  const canEditPayments = user.role === "directeur" || user.role === "econome";
+
+  const changePaymentStatus = async (p: Payment, next: ManualPaymentStatus) => {
+    if (next === manualChoiceOf(p)) return;
+    setSavingId(p.id);
+    try {
+      const updated = await setPaymentManualStatus(user, p.id, next);
+      toast(`${p.label} : ${MANUAL_PAYMENT_LABELS[updated.manualStatus ?? next]}.`);
+      onPaymentsChanged();
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Changement impossible.", "error");
+    } finally {
+      setSavingId(null);
+    }
+  };
   const tabs = [
     { id: "apercu", label: "Aperçu", icon: "badge" },
     ...(d.report ? [{ id: "notes", label: "Notes", icon: "edit_note" }] : []),
@@ -56,7 +76,32 @@ function Detail({ d }: { d: StudentDetail }) {
     { key: "d", header: "Date limite", render: (p) => formatDate(p.dueDate) },
     { key: "a", header: "Montant", align: "right", render: (p) => formatCurrency(p.amount) },
     { key: "p", header: "Payé", align: "right", render: (p) => formatCurrency(p.paidAmount) },
-    { key: "s", header: "Statut", render: (p) => <Badge tone={PAY_TONE[p.status]}>{PAY_STATUS_LABELS[p.status]}</Badge> },
+    {
+      key: "s",
+      header: "Statut",
+      render: (p) => {
+        if (!canEditPayments) {
+          // Parents / élèves : lecture seule (en_retard affiché Impayé).
+          const label = p.manualStatus === "impaye" || p.status === "en_retard" ? "Impayé" : PAY_STATUS_LABELS[p.status];
+          const tone = p.manualStatus === "impaye" ? "danger" : PAY_TONE[p.status];
+          return <Badge tone={tone}>{label}</Badge>;
+        }
+        const choice = manualChoiceOf(p);
+        const options = Object.entries(MANUAL_PAYMENT_LABELS).map(([value, label]) => ({ value, label }));
+        if (choice === "partiel") options.push({ value: "partiel", label: "Partiel" });
+        return (
+          <Select
+            compact
+            aria-label={`Statut de ${p.label}`}
+            className="min-w-36"
+            value={choice}
+            disabled={savingId === p.id}
+            options={options}
+            onChange={(e) => void changePaymentStatus(p, e.target.value as ManualPaymentStatus)}
+          />
+        );
+      },
+    },
   ];
   const r = d.row;
   return (
@@ -106,9 +151,12 @@ function Detail({ d }: { d: StudentDetail }) {
         </Card>
       )}
       {tab === "paiements" && (
-        <Card padded={false} className="p-2">
-          <Table caption="Échéancier de paiement" columns={payCols} rows={d.payments} rowKey={(p) => p.id} />
-        </Card>
+        <>
+          {canEditPayments && <p className="text-sm text-neutral-600">Pour chaque mois, choisissez le statut : <strong>À venir</strong> par défaut, <strong>Payé</strong> quand la famille a réglé, <strong>Impayé</strong> quand elle n'a pas encore payé.</p>}
+          <Card padded={false} className="p-2">
+            <Table caption="Échéancier de paiement" columns={payCols} rows={d.payments} rowKey={(p) => p.id} />
+          </Card>
+        </>
       )}
       {tab === "famille" && (
         <div className="grid gap-4 lg:grid-cols-2">
@@ -179,7 +227,7 @@ export default function StudentDetailPage() {
     );
   return (
     <AsyncView state={state} skeleton={<Skeleton className="h-96 w-full" />}>
-      {(d) => <Detail d={d} />}
+      {(d) => <Detail d={d} onPaymentsChanged={state.reload} />}
     </AsyncView>
   );
 }

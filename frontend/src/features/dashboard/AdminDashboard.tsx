@@ -21,6 +21,7 @@ import { MatriculeCard } from "@/features/subscription/MatriculeCard";
 import { OnboardingChecklist } from "@/features/subscription/OnboardingChecklist";
 import { formatCurrency, formatNumber } from "@/utils/format";
 import { ClassBars, CycleDonut, CYCLE_COLORS, PaymentsChart } from "./charts";
+import { GreetingSection } from "./GreetingSection";
 import { LatestPayments } from "./LatestPayments";
 import { useState } from "react";
 
@@ -45,6 +46,7 @@ export function AdminDashboard({ finance = false }: { finance?: boolean }) {
           )
         }
       />
+      <GreetingSection />
       <AsyncView state={state}>{(s) => <Content s={s} finance={finance} />}</AsyncView>
     </>
   );

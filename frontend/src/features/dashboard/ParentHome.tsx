@@ -27,6 +27,7 @@ import { formatMatriculeInput, CHILD_CODE_LENGTH } from "@/utils/matricule";
 import { formatCurrency, formatNumber } from "@/utils/format";
 import { averageTone } from "@/utils/grades";
 import { STUDENT_STATUS_LABELS } from "@/utils/payments";
+import { GreetingSection } from "./GreetingSection";
 import type { Cycle } from "@/types";
 
 // Bareme des notes : sur 10 a l'elementaire, sur 20 ensuite.
@@ -46,7 +47,12 @@ export function ParentHome() {
   const [busy, setBusy] = useState(false);
 
   if (!loading && !error && children.length === 0)
-    return <EmptyState icon="child_care" title="Aucun élève rattaché à votre compte" text="Contactez l'école pour rattacher vos élèves à votre compte parent." action={<Button icon="add" onClick={() => setOpen(true)}>Ajouter un élève avec son code</Button>} />;
+    return (
+      <>
+        <GreetingSection />
+        <EmptyState icon="child_care" title="Aucun élève rattaché à votre compte" text="Contactez l'école pour rattacher vos élèves à votre compte parent." action={<Button icon="add" onClick={() => setOpen(true)}>Ajouter un élève avec son code</Button>} />
+      </>
+    );
 
   const addChild = async () => {
     if (code.length !== CHILD_CODE_LENGTH) return;
@@ -71,6 +77,7 @@ export function ParentHome() {
         subtitle={`${school.schoolName}${settings?.schoolYear ? ` · année scolaire ${settings.schoolYear}` : ""} · résultats et paiements de vos élèves.`}
         actions={<Button icon="add" onClick={() => setOpen(true)}>Ajouter un élève</Button>}
       />
+      <GreetingSection />
       {error && (
         <button type="button" onClick={reload} className="mb-4 underline">
           Réessayer

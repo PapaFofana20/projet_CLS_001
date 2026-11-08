@@ -19,6 +19,7 @@ import { getStudentDetail } from "@/services/studentService";
 import { formatCurrency, formatDate, formatNumber } from "@/utils/format";
 import { averageTone } from "@/utils/grades";
 import { PAY_STATUS_LABELS, remaining } from "@/utils/payments";
+import { GreetingSection } from "./GreetingSection";
 import type { Payment } from "@/types";
 
 /** Espace élève : école, notes et prochaines échéances. */
@@ -29,7 +30,13 @@ export function StudentHome() {
   const periodLabel = settings ? getPeriods(settings.periodType).find((p) => p.id === settings.currentPeriod)?.label : null;
   const state = useAsync(() => (user.studentId ? getStudentDetail(user, user.studentId) : Promise.resolve(null)), [user.studentId]);
 
-  if (!user.studentId) return <EmptyState icon="hourglass_top" title="Dossier en cours de validation" text="Votre école doit encore valider votre inscription. Vous recevrez un accès dès validation." />;
+  if (!user.studentId)
+    return (
+      <>
+        <GreetingSection />
+        <EmptyState icon="hourglass_top" title="Dossier en cours de validation" text="Votre école doit encore valider votre inscription. Vous recevrez un accès dès validation." />
+      </>
+    );
 
   return (
     <>
@@ -38,6 +45,7 @@ export function StudentHome() {
         subtitle={`${school.schoolName}${settings?.schoolYear ? ` · année scolaire ${settings.schoolYear}` : ""}`}
         actions={<LinkButton to="/app/bulletins" icon="description">Mon bulletin</LinkButton>}
       />
+      <GreetingSection />
       <AsyncView state={state} skeleton={<Skeleton className="h-72 w-full" />}>
         {(d) =>
           !d ? null : (

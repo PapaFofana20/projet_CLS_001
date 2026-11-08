@@ -16,10 +16,13 @@ import { useTeaching } from "@/context/TeachingContext";
 import { getPeriods } from "@/data/school";
 import { contextKey } from "@/hooks/useTeacherAssignments";
 import { useAsync } from "@/hooks/useAsync";
+import { listAbsences } from "@/services/absenceService";
 import { getTeacherOverview, type ContextOverview } from "@/services/gradeService";
 import { periodInfo } from "@/services/reportService";
+import { todayIso } from "@/data/school";
 import { formatNumber } from "@/utils/format";
 import { averageTone } from "@/utils/grades";
+import { GreetingSection } from "./GreetingSection";
 
 /** « Mes classes » (professeur) ou « Ma classe » (instituteur : toutes les matières, sans sélecteur de classe). */
 export function TeacherHome() {
@@ -31,6 +34,7 @@ export function TeacherHome() {
   const period = periodInfo(user.schoolId).current;
   const periodLabel = settings ? getPeriods(settings.periodType).find((p) => p.id === settings.currentPeriod)?.label : null;
   const state = useAsync(() => getTeacherOverview(user.schoolId, user.teacherId ?? "", period), [user.schoolId, user.teacherId]);
+  const absences = useAsync(() => listAbsences(user.schoolId), [user.schoolId]);
   const isInstit = user.role === "instituteur";
   const myClass = headClasses[0];
 
@@ -49,6 +53,7 @@ export function TeacherHome() {
             : `Vos affectations (classe · matière)${periodLabel ? ` — ${periodLabel}` : ""}${settings?.schoolYear ? ` ${settings.schoolYear}` : ""}.`
         }
       />
+      <GreetingSection />
       <AsyncView state={state} skeleton={<SkeletonCards count={3} className="lg:grid-cols-3" />}>
         {(items) =>
           items.length === 0 && !loading ? (
@@ -93,9 +98,28 @@ export function TeacherHome() {
                       </div>
                       <ProgressBar value={c.completion} tone={c.completion < 50 ? "warning" : "leaf"} />
                     </div>
-                    <Button className="mt-5" variant="dark" icon="edit_note" onClick={() => open(c)}>
-                      Saisir les notes
-                    </Button>
+                    <div className="mt-5 flex flex-wrap gap-2">
+                      <Button variant="dark" icon="edit_note" onClick={() => open(c)}>
+                        Saisir les notes
+                      </Button>
+                      <Button
+                        variant="outline"
+                        icon="event_available"
+                        onClick={() => navigate(`/app/presences?classId=${c.classId}&subjectId=${c.subjectId}`)}
+                      >
+                        Faire l'appel
+                      </Button>
+                    </div>
+                    {(() => {
+                      const todayRows = (absences.data ?? []).filter((a) => a.date === todayIso() && a.subjectId === c.subjectId);
+                      const absentToday = todayRows.filter((a) => a.type === "absence").length;
+                      const retardToday = todayRows.filter((a) => a.type === "retard").length;
+                      return absentToday + retardToday > 0 ? (
+                        <p className="mt-3 text-xs font-semibold text-neutral-600">
+                          Aujourd'hui : {absentToday} absent(s) · {retardToday} retard(s)
+                        </p>
+                      ) : null;
+                    })()}
                   </Card>
                 ))}
               </div>

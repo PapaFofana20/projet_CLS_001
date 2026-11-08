@@ -21,6 +21,7 @@ import { listStudentRows } from "@/services/studentService";
 import { useCurrentUser } from "@/context/AuthContext";
 import type { AbsenceRecord } from "@/types";
 import { formatDate } from "@/utils/format";
+import { GreetingSection } from "./GreetingSection";
 
 const TYPE_LABELS: Record<AbsenceRecord["type"], string> = { absence: "Absence", retard: "Retard", discipline: "Discipline" };
 const TYPE_TONES = { absence: "warning", retard: "info", discipline: "danger" } as const;
@@ -44,6 +45,7 @@ export function SurveillantDashboard() {
     { key: "date", header: "Date", render: (r) => formatDate(r.date) },
     { key: "student", header: "Élève", render: (r) => <span className="font-semibold">{r.studentName}</span> },
     { key: "class", header: "Classe", render: (r) => r.className },
+    { key: "subject", header: "Matière", render: (r) => r.subjectName ?? "Vie scolaire" },
     { key: "type", header: "Type", render: (r) => <Badge tone={TYPE_TONES[r.type]}>{TYPE_LABELS[r.type]}</Badge> },
     { key: "motif", header: "Motif", render: (r) => r.motif },
     { key: "status", header: "Statut", render: (r) => (r.type === "discipline" ? <Badge tone="neutral">{r.sanction}</Badge> : <Badge tone={r.justified ? "success" : "danger"}>{r.justified ? "Justifiée" : "Non justifiée"}</Badge>) },
@@ -69,6 +71,7 @@ export function SurveillantDashboard() {
   return (
     <>
       <PageHeader title="Vie scolaire" subtitle="Absences, retards et discipline — décembre 2026" actions={<Button icon="add" onClick={() => setOpen(true)}>Nouveau signalement</Button>} />
+      <GreetingSection />
       <AsyncView state={state}>
         {() => (
           <div className="space-y-4">

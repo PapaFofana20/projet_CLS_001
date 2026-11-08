@@ -1,5 +1,5 @@
 // Statuts des paiements, restes à payer et réduction fratrie.
-import type { Payment, PaymentStatus, PayMethod, StudentPayStatus } from "@/types";
+import type { ManualPaymentStatus, Payment, PaymentStatus, PayMethod, StudentPayStatus } from "@/types";
 import { todayIso } from "@/data/school";
 
 // Déduit le statut d'un paiement selon le montant versé et la date d'échéance.
@@ -22,6 +22,27 @@ export const PAY_STATUS_LABELS: Record<PaymentStatus, string> = {
   en_retard: "En retard",
   a_venir: "À venir",
 };
+
+/** Libellés du menu déroulant de la fiche élève : À venir (défaut) / Payé / Impayé. */
+export const MANUAL_PAYMENT_LABELS: Record<ManualPaymentStatus, string> = {
+  a_venir: "À venir",
+  paye: "Payé",
+  impaye: "Impayé",
+};
+
+/**
+ * Statut affiché dans le menu déroulant d'une échéance.
+ * Le choix manuel prime ; sinon on traduit le statut automatique :
+ * en_retard -> Impayé, a_venir -> À venir. Un partiel automatique est
+ * conservé tel quel (option supplémentaire) pour ne pas perdre l'info.
+ */
+export function manualChoiceOf(p: Payment): ManualPaymentStatus | "partiel" {
+  if (p.manualStatus) return p.manualStatus;
+  if (p.status === "paye") return "paye";
+  if (p.status === "en_retard") return "impaye";
+  if (p.status === "partiel") return "partiel";
+  return "a_venir";
+}
 
 export const STUDENT_STATUS_LABELS: Record<StudentPayStatus, string> = {
   a_jour: "À jour",

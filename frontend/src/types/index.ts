@@ -9,6 +9,8 @@ export type PeriodType = "semestre" | "trimestre";
 export type PayMethod = "wave" | "orange_money" | "free_money" | "especes";
 export type PaymentKind = "inscription" | "mensualite" | "tenue";
 export type PaymentStatus = "paye" | "partiel" | "en_retard" | "a_venir";
+/** Choix manuel (directeur / économe) sur la fiche élève, par échéance. `a_venir` est le défaut. */
+export type ManualPaymentStatus = "a_venir" | "paye" | "impaye";
 export type StudentPayStatus = "a_jour" | "partiel" | "impaye";
 /** Statuts d'abonnement d'une école. */
 export type SubscriptionStatus = "AUCUN" | "ACTIF" | "EXPIRE_BIENTOT" | "EXPIRE";
@@ -204,6 +206,8 @@ export interface Payment {
   amount: number;
   paidAmount: number;
   status: PaymentStatus;
+  /** Choix manuel posé par la direction / l'économe ; null = calcul automatique. */
+  manualStatus?: ManualPaymentStatus | null;
   method?: PayMethod;
   paidAt?: string;
   reference?: string;
@@ -218,6 +222,10 @@ export interface AbsenceRecord {
   motif: string;
   justified: boolean;
   sanction?: string;
+  /** Matière du cours où l'appel a été fait (null = signalement vie scolaire). */
+  subjectId?: string | null;
+  /** Compte qui a saisi l'absence / le retard. */
+  recordedBy?: string | null;
 }
 
 /* ------------------------------------------------------------------ */

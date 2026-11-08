@@ -1,4 +1,4 @@
-import type { Payment, SessionUser } from "@/types";
+import type { ManualPaymentStatus, Payment, SessionUser } from "@/types";
 import { ensure } from "./access";
 import { hydrate, paymentsOf, respond, studentsOf } from "./db";
 import { supabase } from "@/lib/supabase";
@@ -39,6 +39,27 @@ export function recordCashPayment(actor: SessionUser, paymentId: string, amount:
       if (error.message.includes("Échéance introuvable.")) throw new Error("Échéance introuvable.");
       if (error.message.includes("lecture seule")) throw new Error("Mode lecture seule : l'abonnement de votre école est expiré.");
       throw new Error("Impossible d'enregistrer l'encaissement. Réessayez.");
+    }
+    await hydrate("payments");
+    const p = paymentsOf(actor.schoolId).find((x) => x.id === paymentId);
+    ensure(!!p, "Échéance introuvable.");
+    return toRow(p as Payment);
+  })();
+}
+
+/** Choix manuel du statut d'une échéance (fiche élève) : À venir / Payé / Impayé. RPC serveur. */
+export function setPaymentManualStatus(actor: SessionUser, paymentId: string, manualStatus: ManualPaymentStatus): Promise<PaymentRow> {
+  return (async () => {
+    const { error } = await supabase.rpc("set_payment_manual_status", {
+      p_payment_id: paymentId,
+      p_manual_status: manualStatus,
+    });
+    if (error) {
+      if (error.message.includes("lecture seule")) throw new Error("Mode lecture seule : l'abonnement de votre école est expiré.");
+      if (error.message.includes("Échéance introuvable.")) throw new Error("Échéance introuvable.");
+      if (error.message.includes("Statut invalide.")) throw new Error("Statut invalide.");
+      if (error.message.includes("Seuls")) throw new Error("Seuls l'économe et la direction modifient le statut de paiement.");
+      throw new Error("Impossible de changer le statut. Réessayez.");
     }
     await hydrate("payments");
     const p = paymentsOf(actor.schoolId).find((x) => x.id === paymentId);

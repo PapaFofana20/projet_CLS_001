@@ -15,6 +15,7 @@ import { useAsync } from "@/hooks/useAsync";
 import { listTeacherRows } from "@/services/teacherService";
 import { listStudentRows, type StudentRow } from "@/services/studentService";
 import { getSchoolOverview } from "@/services/schoolService";
+import { GreetingSection } from "./GreetingSection";
 import type { ClassRoom, Cycle } from "@/types";
 import { formatDate, pluralize } from "@/utils/format";
 
@@ -49,6 +50,7 @@ export function SecretaireDashboard() {
         title="Tableau de bord"
         subtitle={`${schoolName}${settings?.schoolYear ? ` · année scolaire ${settings.schoolYear}` : ""} · espace secrétariat.`}
       />
+      <GreetingSection />
       <AsyncView state={state} skeleton={<Skeleton className="h-72 w-full" />}>
         {({ overview, students, teachers }) => (
           <Content students={students} classes={overview.classes} teacherCount={teachers.length} />

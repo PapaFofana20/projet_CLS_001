@@ -32,6 +32,7 @@ export const NAV_BY_ROLE: Record<Role, NavItem[]> = {
     { to: "/app/timetables", label: "Emploi du temps", icon: "calendar_month", section: "École" },
     subscription,
     { to: "/app/notes", label: "Notes", icon: "edit_note", section: "Scolarité" },
+    { to: "/app/presences", label: "Présences", icon: "event_available", section: "Scolarité" },
     { to: "/app/bulletins", label: "Bulletins", icon: "description", section: "Scolarité" },
     { to: "/app/paiements", label: "Paiements", icon: "payments", section: "Finances" },
     { to: "/app/parametres", label: "Paramètres", icon: "settings", section: "Outils" },
@@ -49,12 +50,14 @@ export const NAV_BY_ROLE: Record<Role, NavItem[]> = {
   ],
   surveillant: [
     dashboard("Vie scolaire", "shield_person"),
+    { to: "/app/presences", label: "Présences", icon: "event_available", section: "Menu" },
     { to: "/app/eleves", label: "Élèves", icon: "groups", section: "Menu" },
     profile,
   ],
   instituteur: [
     dashboard("Ma classe", "child_care"),
     { to: "/app/eleves", label: "Mes élèves", icon: "groups", section: "Menu" },
+    { to: "/app/presences", label: "Présences", icon: "event_available", section: "Scolarité" },
     { to: "/app/notes", label: "Notes", icon: "edit_note", section: "Scolarité" },
     { to: "/app/bulletins", label: "Bulletins", icon: "description", section: "Scolarité" },
     { to: "/app/timetables", label: "Emploi du temps", icon: "calendar_month", section: "Scolarité" },
@@ -62,6 +65,7 @@ export const NAV_BY_ROLE: Record<Role, NavItem[]> = {
   ],
   professeur: [
     dashboard("Mes classes", "co_present"),
+    { to: "/app/presences", label: "Présences", icon: "event_available", section: "Scolarité" },
     { to: "/app/notes", label: "Notes", icon: "edit_note", section: "Scolarité" },
     { to: "/app/eleves", label: "Mes élèves", icon: "groups", section: "Scolarité" },
     { to: "/app/bulletins", label: "Bulletins", icon: "description", section: "Scolarité", requiresHead: true },
@@ -102,6 +106,7 @@ export const ROUTE_ROLES = {
   timetables: ALL,
   timetable_creation: ["directeur"] as Role[],
   notes: ["directeur", "instituteur", "professeur", "eleve", "parent"] as Role[],
+  presences: ["directeur", "surveillant", "instituteur", "professeur"] as Role[],
   bulletins: ["directeur", "instituteur", "professeur", "eleve", "parent"] as Role[],
   paiements: ["directeur", "econome", "eleve", "parent"] as Role[],
   parametres: ALL,

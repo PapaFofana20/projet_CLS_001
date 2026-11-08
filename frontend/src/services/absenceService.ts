@@ -1,23 +1,30 @@
 import type { AbsenceRecord } from "@/types";
 import { supabase } from "@/lib/supabase";
 import { subscriptionInfoOf } from "./subscriptionService";
-import { absencesOf, classesOf, hydrate, studentsOf } from "./db";
+import { absencesOf, classesOf, hydrate, studentsOf, subjectsOf } from "./db";
 
 // Absences des élèves : lecture et ajout (table absences).
 
 export interface AbsenceRow extends AbsenceRecord {
   studentName: string;
   className: string;
+  subjectName: string | null;
 }
 
-// Récupère les absences d'une école, avec le nom de l'élève et de sa classe.
+// Récupère les absences d'une école, avec le nom de l'élève, sa classe et la matière du cours.
 export function listAbsences(schoolId: string): Promise<AbsenceRow[]> {
   return (async () => {
     await hydrate("absences");
     const classes = classesOf(schoolId);
+    const subjects = subjectsOf(schoolId);
     return absencesOf(schoolId).map((a) => {
       const s = studentsOf(schoolId).find((x) => x.id === a.studentId);
-      return { ...a, studentName: s ? `${s.firstName} ${s.lastName}` : "—", className: classes.find((c) => c.id === s?.classId)?.name ?? "—" };
+      return {
+        ...a,
+        studentName: s ? `${s.firstName} ${s.lastName}` : "—",
+        className: classes.find((c) => c.id === s?.classId)?.name ?? "—",
+        subjectName: a.subjectId ? (subjects.find((x) => x.id === a.subjectId)?.name ?? null) : null,
+      };
     });
   })();
 }
