@@ -10,6 +10,8 @@
 -- finish_parent_registration : p_child_code → p_student_matricule,
 --                              recherche par matricule au lieu de child_code
 -- ----------------------------------------------------------------------------
+drop function if exists public.finish_parent_registration(uuid, uuid, text, text, text, text, text);
+
 create or replace function public.finish_parent_registration(
   p_user_id uuid,
   p_school_id uuid,
@@ -85,6 +87,8 @@ grant execute on function public.finish_parent_registration(uuid, uuid, text, te
 -- ----------------------------------------------------------------------------
 -- link_child : p_child_code → p_student_matricule, recherche par matricule
 -- ----------------------------------------------------------------------------
+drop function if exists public.link_child(text);
+
 create or replace function public.link_child(p_student_matricule text)
 returns text
 language plpgsql volatile security definer set search_path = public as $$
