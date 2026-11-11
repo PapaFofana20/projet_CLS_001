@@ -217,6 +217,8 @@ export interface EnrolledStudentSignupInput {
   schoolId: string;
   /** Matricule unique de l'élève, généré à son inscription par la direction (ex. EC260001). */
   studentMatricule: string;
+  /** Date de naissance (AAAA-MM-JJ) : preuve d'identité en plus du matricule. */
+  birthDate: string;
   email: string;
   phone: string;
   password: string;
@@ -251,7 +253,7 @@ export async function registerEnrolledStudent(
 
 export interface ParentSignupInput {
   schoolId: string;
-  childCode: string;
+  studentMatricule: string;
   firstName: string;
   lastName: string;
   phone: string;
@@ -259,7 +261,7 @@ export interface ParentSignupInput {
   password: string;
 }
 
-/** Inscription d'un parent : le code enfant rattache le compte à un élève de CETTE école. */
+/** Inscription d'un parent : le matricule de l'élève rattache le compte à un élève de CETTE école. */
 export async function registerParent(
   input: ParentSignupInput,
 ): Promise<{ user: SessionUser; requestId: string; childName: string }> {
@@ -286,16 +288,16 @@ export async function registerParent(
   return { user: toSession(user), requestId: result.requestId, childName: result.childName };
 }
 
-/** Rattachement d'un enfant supplémentaire (autre code) depuis l'espace parent. */
-export async function linkChild(actor: SessionUser, childCode: string): Promise<Student> {
+/** Rattachement d'un enfant supplémentaire (autre matricule) depuis l'espace parent. */
+export async function linkChild(actor: SessionUser, studentMatricule: string): Promise<Student> {
   if (actor.role !== "parent" || !actor.parentId) throw new Error("Action réservée aux comptes parents.");
   const { error } = await supabase.rpc("link_child", {
-    p_child_code: childCode.trim().toUpperCase(),
+    p_student_matricule: studentMatricule.trim().toUpperCase(),
   });
   if (error) throw new Error(error.message);
   await hydrate("students");
-  const child = db.students.find((s) => s.childCode.toUpperCase() === childCode.trim().toUpperCase());
-  if (!child) throw new Error("Code élève introuvable dans votre école. Vérifiez le code reçu auprès de l'école.");
+  const child = db.students.find((s) => s.matricule.toUpperCase() === studentMatricule.trim().toUpperCase());
+  if (!child) throw new Error("Matricule élève introuvable dans votre école. Vérifiez le matricule reçu auprès de l'école.");
   return child;
 }
 
@@ -468,8 +470,12 @@ export async function requestPasswordReset(email: string): Promise<void> {
 export async function resetPassword(nextPassword: string): Promise<void> {
   const { error } = await supabase.auth.updateUser({ password: nextPassword });
   if (error) throw new Error("Impossible de réinitialiser le mot de passe. Le lien a peut-être expiré.");
+  // Le drapeau must_change_password est levé automatiquement par le trigger
+  // base clear_must_change_password_trg dès que le mot de passe change
+  // réellement (migration 00049) : la RPC ne sert plus qu'à journaliser.
+  // Son échec éventuel ne laisse donc pas de boucle infinie.
   const { error: flagError } = await supabase.rpc("complete_password_change");
-  void flagError;
+  if (flagError) console.warn("complete_password_change ignoré (flag déjà levé par trigger) :", flagError.message);
   await clearCache();
 }
 

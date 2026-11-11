@@ -23,7 +23,7 @@ import { CYCLE_LABELS, getPeriods } from "@/data/school";
 import { useAsync } from "@/hooks/useAsync";
 import { linkChild } from "@/services/authService";
 import { getStudentDetail } from "@/services/studentService";
-import { formatMatriculeInput, CHILD_CODE_LENGTH } from "@/utils/matricule";
+import { formatMatriculeInput } from "@/utils/matricule";
 import { formatCurrency, formatNumber } from "@/utils/format";
 import { averageTone } from "@/utils/grades";
 import { STUDENT_STATUS_LABELS } from "@/utils/payments";
@@ -43,25 +43,25 @@ export function ParentHome() {
   const detail = useAsync(() => (activeChild ? getStudentDetail(user, activeChild.id) : Promise.resolve(null)), [activeChild?.id]);
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
-  const [code, setCode] = useState("");
+  const [matricule, setMatricule] = useState("");
   const [busy, setBusy] = useState(false);
 
   if (!loading && !error && children.length === 0)
     return (
       <>
         <GreetingSection />
-        <EmptyState icon="child_care" title="Aucun élève rattaché à votre compte" text="Contactez l'école pour rattacher vos élèves à votre compte parent." action={<Button icon="add" onClick={() => setOpen(true)}>Ajouter un élève avec son code</Button>} />
+        <EmptyState icon="child_care" title="Aucun élève rattaché à votre compte" text="Contactez l'école pour rattacher vos élèves à votre compte parent." action={<Button icon="add" onClick={() => setOpen(true)}>Ajouter un élève avec son matricule</Button>} />
       </>
     );
 
   const addChild = async () => {
-    if (code.length !== CHILD_CODE_LENGTH) return;
+    if (matricule.trim().length < 4) return;
     setBusy(true);
     try {
-      const child = await linkChild(user, code);
+      const child = await linkChild(user, matricule);
       toast(`${child.firstName} ${child.lastName} est rattaché à votre compte.`);
       setOpen(false);
-      setCode("");
+      setMatricule("");
       reload();
     } catch (e) {
       toast(e instanceof Error ? e.message : "Rattachement impossible.", "error");
@@ -162,7 +162,7 @@ export function ParentHome() {
             <Button variant="outline" onClick={() => setOpen(false)}>
               Annuler
             </Button>
-            <Button variant="dark" loading={busy} disabled={code.length !== CHILD_CODE_LENGTH} onClick={() => void addChild()}>
+            <Button variant="dark" loading={busy} disabled={matricule.trim().length < 4} onClick={() => void addChild()}>
               Rattacher
             </Button>
           </>
@@ -171,18 +171,18 @@ export function ParentHome() {
         <div className="space-y-4">
           <p className="flex items-start gap-2 rounded-2xl bg-lime-soft p-4 text-sm font-medium text-forest">
             <Icon name="confirmation_number" className="text-[20px]" />
-            Saisissez le code élève communiqué par {school.schoolName}. Il comporte {CHILD_CODE_LENGTH} caractères.
+            Saisissez le matricule de l'élève communiqué par {school.schoolName}. Il comporte {CHILD_CODE_LENGTH} caractères.
           </p>
           <Input
-            label="Code élève"
+            label="Matricule de l'élève"
             required
             inputMode="text"
             autoCapitalize="characters"
             spellCheck={false}
-            placeholder="K4M2P7"
-            value={code}
-            onChange={(e) => setCode(formatMatriculeInput(e.target.value, CHILD_CODE_LENGTH))}
-            error={code && code.length !== CHILD_CODE_LENGTH ? `${CHILD_CODE_LENGTH} caractères attendus.` : null}
+            placeholder="EC260001"
+            value={matricule}
+            onChange={(e) => setMatricule(formatMatriculeInput(e.target.value, 20))}
+            error={matricule && matricule.trim().length < 4 ? "Matricule invalide." : null}
           />
         </div>
       </Modal>

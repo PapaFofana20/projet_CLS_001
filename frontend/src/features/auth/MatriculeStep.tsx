@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/Input";
 import { SchoolMark } from "@/components/ui/Brand";
 import type { School } from "@/types";
 import { verifyMatricule } from "@/services/schoolService";
-import { CHILD_CODE_LENGTH, formatMatriculeInput, isValidMatricule, MATRICULE_LENGTH } from "@/utils/matricule";
+import { formatMatriculeInput, isValidMatricule, MATRICULE_LENGTH } from "@/utils/matricule";
 
 type State = "idle" | "checking" | "found" | "error";
 
@@ -136,22 +136,22 @@ export function MatriculeStep({ initial = "", onFound, onBack }: Props) {
   );
 }
 
-/** Saisie du code élève à 6 caractères (étape 2 du parent). */
+/** Saisie du matricule de l'élève (étape 2 du parent). */
 export function ChildCodeInput({ value, onChange, error }: { value: string; onChange: (v: string) => void; error?: string | null }) {
   return (
     <Input
-      label="Code élève"
+      label="Matricule de l'élève"
       required
       icon="confirmation_number"
       inputMode="text"
       autoCapitalize="characters"
       spellCheck={false}
-      placeholder="K4M2P7"
+      placeholder="EC260001"
       value={value}
-      maxLength={CHILD_CODE_LENGTH + 2}
-      onChange={(e) => onChange(formatMatriculeInput(e.target.value, CHILD_CODE_LENGTH))}
+      maxLength={20}
+      onChange={(e) => onChange(formatMatriculeInput(e.target.value, 20))}
       error={error}
-      hint="Code à 6 caractères donné par l'école pour chaque élève."
+      hint="Matricule unique de l'enfant, donné par l'école (ex. EC260001)."
     />
   );
 }

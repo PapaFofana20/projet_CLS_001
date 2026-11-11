@@ -7,6 +7,7 @@
 
 import { passwordError, serviceClient } from "../lib/auth.js";
 import { badRequest, ok, route, serverError, RATE_LIMIT_RE, logError, withTimeout } from "../lib/http.js";
+import { readPlatformSettings } from "../lib/platformSettings.js";
 import { enforceRateLimit, clientIp } from "../lib/rateLimit.js";
 import { expectObject, optionalString, optionalUuid, requireEmail, requireSnPhone, requireString } from "../lib/validate.js";
 
@@ -17,6 +18,19 @@ export default route(async (req, res) => {
   try {
     await enforceRateLimit(svc, `register-parent:${clientIp(req) ?? "sans-adresse"}`, 10, 300);
 
+    // Réglages plateforme : maintenance / fermeture des inscriptions.
+    const platform = await readPlatformSettings(svc);
+    if (platform.settings.maintenanceMode) {
+      return badRequest(
+        res,
+        platform.settings.maintenanceMessage ||
+          "La plateforme est en maintenance. Les inscriptions rouvriront très prochainement.",
+      );
+    }
+    if (!platform.settings.registrationOpen) {
+      return badRequest(res, "Les inscriptions sont momentanément fermées. Contactez le support Classora.");
+    }
+
     const body = expectObject(req.body);
     const schoolId = optionalUuid(body, "schoolId", "L'école");
     const matricule = optionalString(body, "matricule", "Le matricule de l'école", 10)?.toUpperCase();
@@ -24,7 +38,7 @@ export default route(async (req, res) => {
     const lastName = requireString(body, "lastName", "Le nom", { min: 1, max: 60 });
     const email = requireEmail(body);
     const phone = requireSnPhone(body, "phone", "Le téléphone");
-    const childCode = requireString(body, "childCode", "Le code élève", { min: 6, max: 8 }).toUpperCase();
+    const studentMatricule = requireString(body, "studentMatricule", "Le matricule de l'élève", { min: 4, max: 20 }).toUpperCase();
     const password = requireString(body, "password", "Le mot de passe", { min: 8, max: 72, trim: false });
 
     let resolvedSchool = null;
@@ -37,15 +51,15 @@ export default route(async (req, res) => {
       const { data: sch } = await svc.from("schools").select("id").eq("matricule", matricule).maybeSingle();
       resolvedSchool = sch?.id ?? null;
       if (resolvedSchool) {
-        // Pré-validation d'un code élève de l'école (message identique au front).
+        // Pré-validation du matricule élève de l'école (message identique au front).
         const { data: child } = await svc
           .from("students")
           .select("id")
           .eq("school_id", resolvedSchool)
-          .eq("child_code", childCode)
+          .eq("matricule", studentMatricule)
           .maybeSingle();
         if (!child) {
-          return badRequest(res, "Code élève introuvable dans cette école. Vérifiez le code reçu auprès de l'école.");
+          return badRequest(res, "Matricule élève introuvable dans cette école. Vérifiez le matricule reçu auprès de l'école.");
         }
       }
     }
@@ -53,9 +67,10 @@ export default route(async (req, res) => {
 
     // Vérifier que l'école est writable (abonnement actif) — garde-fous
     // identique à registerStudent. Une école expirée ne doit pas pouvoir
-    // recevoir de nouvelles inscriptions parents.
-    const { data: writable } = await svc.rpc("school_is_writable", { p_school_id: resolvedSchool });
-    if (writable === false) {
+    // recevoir de nouvelles inscriptions parents. Fail-closed : toute
+    // erreur RPC ou réponse non-true bloque.
+    const { data: writable, error: writableError } = await svc.rpc("school_is_writable", { p_school_id: resolvedSchool });
+    if (writableError || writable !== true) {
       return badRequest(res, "L'abonnement de cette école n'est pas actif.");
     }
 
@@ -96,7 +111,7 @@ export default route(async (req, res) => {
           p_last_name: lastName,
           p_phone: phone,
           p_email: email,
-          p_child_code: childCode,
+          p_student_matricule: studentMatricule,
         }),
         15_000,
         "finish_parent_registration"
@@ -119,7 +134,7 @@ export default route(async (req, res) => {
     } catch (sqlError) {
       await svc.auth.admin.deleteUser(created.user.id);
       const message = sqlError instanceof Error ? sqlError.message : undefined;
-      if (message && /un compte existe déjà|code élève|école|inscriptions/i.test(message)) {
+      if (message && /un compte existe déjà|matricule élève|école|inscriptions/i.test(message)) {
         return badRequest(res, message);
       }
       logError("register-parent", sqlError);
