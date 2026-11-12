@@ -18,6 +18,7 @@ export interface StaffFormValue {
   phone: string;
   specialties: string[];
   password: string;
+  confirm: string;
 }
 
 interface Props {
@@ -31,7 +32,7 @@ interface Props {
   allowedRoles?: StaffRole[];
 }
 
-const EMPTY: StaffFormValue = { role: "professeur", firstName: "", lastName: "", email: "", phone: "", specialties: [], password: "" };
+const EMPTY: StaffFormValue = { role: "professeur", firstName: "", lastName: "", email: "", phone: "", specialties: [], password: "", confirm: "" };
 
 /** Formulaire de création / modification d'un accès du personnel (directeur uniquement). */
 export function StaffForm({ subjects, initial, onSubmit, submitLabel, busy, onCancel, allowedRoles = STAFF_ROLES }: Props) {
@@ -48,7 +49,8 @@ export function StaffForm({ subjects, initial, onSubmit, submitLabel, busy, onCa
     lastName: form.lastName.trim().length < 2 ? "Le nom est obligatoire." : null,
     email: !isValidEmail(form.email) ? "Saisissez une adresse e-mail valide." : null,
     phone: !isValidSnPhone(form.phone) ? "Format attendu : 77 123 45 67." : null,
-    password: passwordError(form.password),
+    password: passwordError(form.password, form.confirm),
+    confirm: form.confirm !== form.password ? "Les mots de passe ne correspondent pas." : null,
     specialties: form.role === "professeur" && form.specialties.length === 0 ? "Choisissez au moins une matière." : null,
   };
   const valid = Object.values(errors).every((e) => e === null);
@@ -75,6 +77,7 @@ export function StaffForm({ subjects, initial, onSubmit, submitLabel, busy, onCa
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <Input label="Mot de passe" type="password" required placeholder="••••••••" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} onBlur={() => touch("password")} error={show("password")} />
+        <Input label="Confirmer le mot de passe" type="password" required placeholder="••••••••" value={form.confirm} onChange={(e) => setForm({ ...form, confirm: e.target.value })} onBlur={() => touch("confirm")} error={show("confirm")} />
       </div>
       {form.role === "professeur" && (
         <fieldset>

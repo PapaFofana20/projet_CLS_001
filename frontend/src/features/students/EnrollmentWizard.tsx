@@ -50,6 +50,7 @@ export function EnrollmentWizard({ overview, parents, childrenByParent }: Props)
       ...(mode === "new" && v.pLast.trim().length < 2 ? { pLast: "Le nom du parent est obligatoire." } : {}),
       ...(mode === "new" && !isValidSnPhone(v.pPhone) ? { pPhone: "Numéro invalide (ex. 77 123 45 67)." } : {}),
       ...(mode === "new" && !isValidEmail(v.pEmail) ? { pEmail: "E-mail invalide." } : {}),
+      ...(mode === "new" && v.pAddress.trim() && v.pAddress.trim().length < 3 ? { pAddress: "L'adresse doit contenir au moins 3 caractères." } : {}),
       ...(!v.classId ? { classId: "Choisissez une classe." } : {}),
     }),
   );

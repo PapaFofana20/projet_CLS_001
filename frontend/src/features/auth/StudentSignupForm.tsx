@@ -27,7 +27,7 @@ export function StudentSignupForm({ school, onBack }: Props) {
   const { registerEnrolledStudent, logout } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const [form, setForm] = useState({ studentMatricule: "", email: "", phone: "", password: "", confirm: "" });
+  const [form, setForm] = useState({ studentMatricule: "", birthDate: "", email: "", phone: "", password: "", confirm: "" });
   const [terms, setTerms] = useState(false);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [busy, setBusy] = useState(false);
@@ -37,6 +37,16 @@ export function StudentSignupForm({ school, onBack }: Props) {
 
   const errors = {
     studentMatricule: form.studentMatricule.trim().length < 4 ? "Saisissez votre matricule d'élève (ex. EC260001)." : null,
+    birthDate: (() => {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(form.birthDate)) return "Saisissez votre date de naissance (elle prouve votre identité).";
+      const d = new Date(form.birthDate + "T00:00:00Z");
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (d > today) return "La date de naissance ne peut pas être dans le futur.";
+      const age = today.getFullYear() - d.getFullYear();
+      if (age < 3) return "L'élève doit avoir au moins 3 ans.";
+      return null;
+    })(),
     email: !isValidEmail(form.email) ? "Saisissez une adresse e-mail valide." : null,
     phone: !isValidSnPhone(form.phone) ? "Format attendu : 77 123 45 67." : null,
     password: passwordError(form.password, form.confirm),
@@ -57,6 +67,7 @@ export function StudentSignupForm({ school, onBack }: Props) {
       const { user } = await registerEnrolledStudent({
         schoolId: school.id,
         studentMatricule: form.studentMatricule.trim().toUpperCase(),
+        birthDate: form.birthDate,
         email: form.email,
         phone: form.phone,
         password: form.password,
@@ -96,6 +107,17 @@ export function StudentSignupForm({ school, onBack }: Props) {
           onChange={(e) => setForm((f) => ({ ...f, studentMatricule: cleanMatricule(e.target.value) }))}
           onBlur={() => touch("studentMatricule")}
           error={show("studentMatricule")}
+        />
+        <Input
+          label="Date de naissance"
+          type="date"
+          required
+          max={new Date().toISOString().slice(0, 10)}
+          hint="Elle doit correspondre à celle de votre fiche d'inscription : elle prouve que le compte vous appartient."
+          value={form.birthDate}
+          onChange={(e) => setForm((f) => ({ ...f, birthDate: e.target.value }))}
+          onBlur={() => touch("birthDate")}
+          error={show("birthDate")}
         />
         <Input label="Adresse e-mail" type="email" required autoComplete="email" placeholder="vous@exemple.sn" hint="Cette adresse servira à vous connecter." value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} onBlur={() => touch("email")} error={show("email")} />
         <Input label="Téléphone" type="tel" required placeholder="77 123 45 67" hint="Numéro sénégalais à 9 chiffres." value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} onBlur={() => touch("phone")} error={show("phone")} />
