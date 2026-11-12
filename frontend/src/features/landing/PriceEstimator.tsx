@@ -14,7 +14,7 @@ export function PriceEstimator() {
       <Reveal>
         <Card className="!p-8 sm:!p-10">
           <h2 id="estimator-title" className="text-2xl font-extrabold">
-            Estimez votre budget mensuel
+            Estimez votre budget mensuel.
           </h2>
           <p className="mt-1 text-sm text-neutral-600">Formule Premium à {formatCurrency(estimator.pricePerStudent)} par élève et par mois.</p>
           <label htmlFor="effectif" className="mt-6 flex items-center justify-between text-sm font-semibold">

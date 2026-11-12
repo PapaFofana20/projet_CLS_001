@@ -106,10 +106,10 @@ export const features: Feature[] = [
 ];
 
 export const steps = [
-  { id: 1, icon: "tune", title: "Configurez votre école", text: "Choisissez vos cycles, vos périodes (semestres ou trimestres), vos matières et vos tarifs par niveau." },
-  { id: 2, icon: "assignment_ind", title: "Affectez vos enseignants", text: "Un instituteur titulaire par classe à l'élémentaire, des professeurs par matière au moyen et au secondaire." },
-  { id: 3, icon: "edit_note", title: "Saisissez les notes", text: "Chaque enseignant ne voit que ses classes. Moyennes, rangs et bulletins sont générés automatiquement." },
-  { id: 4, icon: "savings", title: "Encaissez et communiquez", text: "Les parents paient par mobile money, reçoivent leurs reçus, depuis un seul compte, même avec plusieurs élèves." },
+  { id: 1, icon: "tune", title: "Configurez votre école.", text: "Choisissez vos cycles, vos périodes (semestres ou trimestres), vos matières et vos tarifs par niveau." },
+  { id: 2, icon: "assignment_ind", title: "Affectez vos enseignants.", text: "Un instituteur titulaire par classe à l'élémentaire, des professeurs par matière au moyen et au secondaire." },
+  { id: 3, icon: "edit_note", title: "Saisissez les notes.", text: "Chaque enseignant ne voit que ses classes. Moyennes, rangs et bulletins sont générés automatiquement." },
+  { id: 4, icon: "savings", title: "Encaissez et communiquez.", text: "Les parents paient par mobile money, reçoivent leurs reçus, depuis un seul compte, même avec plusieurs élèves." },
 ];
 
 export interface Plan {

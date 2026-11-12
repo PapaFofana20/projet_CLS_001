@@ -31,20 +31,20 @@ export interface PageHeroData {
 /** Contenus des 5 heroes de pages publiques secondaires. */
 export const pageHeroes: Record<"fonctionnalites" | "tarifs" | "ecoles" | "apropos" | "contact", PageHeroData> = {
   fonctionnalites: {
-    title: "Tout ce qu'il faut pour gérer votre *école*",
+    title: "Tout ce qu'il faut pour gérer votre *école*.",
     description: "Inscriptions, bulletins, paiements mobile money : un seul outil pour la direction, les enseignants et les parents.",
     primaryCta: { label: "Créer un compte", to: "/inscription" },
     secondaryCta: { label: "Voir les tarifs", to: "/tarifs" },
     image: { src: fonctionnalitesHeroImg, alt: "Enseignant travaillant sur un ordinateur portable dans une bibliothèque", objectPosition: "60% 30%", width: 2816, height: 1584 },
   },
   tarifs: {
-    title: "Un tarif clair, calculé par *élève*",
+    title: "Un tarif clair, calculé par *élève*.",
     description: "Choisissez la formule adaptée à l'effectif de votre école. Paiement par Wave, Orange Money ou Free Money.",
     primaryCta: { label: "Créer un compte", to: "/inscription" },
     image: { src: tarifsHeroImg, alt: "Femme souriante consultant son téléphone devant une salle de classe", objectPosition: "60% 30%", width: 2816, height: 1584 },
   },
   ecoles: {
-    title: "Une plateforme pensée pour les *écoles* privées du Sénégal",
+    title: "Une plateforme pensée pour les *écoles* privées du Sénégal.",
     description: "Découvrez comment les établissements privés organisent leurs classes, leurs notes et leurs paiements avec Classora.",
     primaryCta: { label: "Créer un compte", to: "/inscription" },
     image: { src: ecolesHeroImg, alt: "Enseignante souriante devant sa classe d'élèves en uniforme", objectPosition: "60% 30%", width: 2816, height: 1584 },

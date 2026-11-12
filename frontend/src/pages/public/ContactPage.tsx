@@ -42,7 +42,7 @@ export default function ContactPage() {
                 id="contact-support-title"
                 className="text-balance text-3xl font-extrabold tracking-tight sm:text-4xl md:text-5xl"
               >
-                Une équipe à votre <span className="text-forest-500">écoute</span>
+                Une équipe à votre <span className="text-forest-500">écoute</span>.
               </h2>
               <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-neutral-600 md:text-lg">
                 Une question sur Classora, la mise en place dans votre établissement ou les tarifs ?
@@ -63,7 +63,7 @@ export default function ContactPage() {
       <section className="mx-auto w-full max-w-[1280px] px-gutter pb-20" aria-labelledby="contact-more-title">
         <Reveal>
           <h2 id="contact-more-title" className="text-balance text-3xl font-extrabold tracking-tight sm:text-4xl md:text-5xl">
-            Avant de nous <span className="text-forest-500">écrire</span>
+            Avant de nous <span className="text-forest-500">écrire</span>.
           </h2>
           <p className="mt-3 max-w-2xl text-neutral-600">
             Vous vous demandez combien coûte Classora pour votre établissement, ou ce que la plateforme
@@ -100,12 +100,12 @@ export default function ContactPage() {
       </section>
       <section className="mx-auto grid w-full max-w-[1280px] gap-8 px-gutter pb-20 lg:grid-cols-[1.4fr_1fr]">
         <Reveal>
-          <h2 className="sr-only">Formulaire de contact</h2>
+          <h2 className="sr-only">Formulaire de contact.</h2>
           <ContactForm />
         </Reveal>
         <Reveal delay={120}>
           <div className="space-y-4">
-            <h2 className="sr-only">Coordonnées de Classora</h2>
+            <h2 className="sr-only">Coordonnées de Classora.</h2>
             {infos.map((i) => (
               <div key={i.label} className="flex items-center gap-4 rounded-3xl bg-lime-soft p-5">
                 <div>

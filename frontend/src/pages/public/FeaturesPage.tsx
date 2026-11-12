@@ -25,7 +25,7 @@ export default function FeaturesPage() {
         <Reveal>
           <div className="mx-auto mb-14 max-w-2xl text-center">
             <h2 id="roles-title" className="text-3xl font-extrabold tracking-tight sm:text-5xl">
-              Un espace <span className="text-forest-500">adapté</span> à chacun
+              Un espace <span className="text-forest-500">adapté</span> à chacun.
             </h2>
             <p className="mt-4 text-neutral-600">
               La direction, les enseignants, les élèves et les parents disposent chacun de leur propre espace, avec les outils et les
@@ -49,7 +49,7 @@ export default function FeaturesPage() {
                 <div>
                   <h4 className="mb-4 text-xl font-extrabold tracking-tight sm:text-2xl">
                     {r.id === "directeur" ? "Pour le " : "Pour les "}
-                    <span className="text-forest-500">{r.role}</span>
+                    <span className="text-forest-500">{r.role}</span>.
                   </h4>
                   <h3 className="text-3xl font-extrabold tracking-tight sm:text-4xl">{r.title}</h3>
                   <p className="mt-3 text-neutral-600">{r.description}</p>

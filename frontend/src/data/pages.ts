@@ -32,7 +32,7 @@ export const roleFeatures: RoleFeature[] = [
     id: "directeur",
     role: "Directeur",
     icon: "space_dashboard",
-    title: "Tout piloter depuis un seul tableau de bord",
+    title: "Tout piloter depuis un seul tableau de bord.",
     description:
       "Effectifs, recouvrement, classes, enseignants, affectations, emploi du temps et paramètres : la direction voit l'état de l'école en temps réel et agit sans changer d'outil.",
     image: dashboardImg,
@@ -48,7 +48,7 @@ export const roleFeatures: RoleFeature[] = [
     id: "professeurs",
     role: "Professeurs",
     icon: "school",
-    title: "Enseigner, noter et suivre ses classes",
+    title: "Enseigner, noter et suivre ses classes.",
     description:
       "Chaque enseignant retrouve uniquement ses classes et ses matières. Il saisit les notes et consulte ses affectations, sans jamais sortir de son périmètre.",
     image: enseignantsImg,
@@ -63,7 +63,7 @@ export const roleFeatures: RoleFeature[] = [
     id: "eleves",
     role: "Élèves",
     icon: "person",
-    title: "Un espace personnel pour suivre sa scolarité",
+    title: "Un espace personnel pour suivre sa scolarité.",
     description:
       "L'élève consulte ses notes, ses moyennes, son rang, ses absences et son emploi du temps publié. Il sait où il en est, à tout moment, depuis son téléphone.",
     image: eleveImg,
@@ -79,7 +79,7 @@ export const roleFeatures: RoleFeature[] = [
     id: "parents",
     role: "Parents",
     icon: "family_restroom",
-    title: "Suivre ses enfants, payer et rester informé",
+    title: "Suivre ses enfants, payer et rester informé.",
     description:
       "Un seul compte pour tous les enfants, quel que soit le cycle. Les parents suivent les notes et règlent les échéances par mobile money.",
     image: parentsImg,
@@ -98,22 +98,22 @@ export const subjectsContact = ["Demande de démonstration", "Tarifs et devis", 
 export const timeline = [
   { 
     year: "2023", 
-    title: "Le constat : l'école gérée sur papier", 
+    title: "Le constat : l'école gérée sur papier.",
     text: "Dans une école privée de Dakar, la direction jongle chaque jour avec des cahiers de notes, des reçus manuscrits et des bulletins refaits à la main. Un fonctionnement qui mobilise l'équipe sur l'administratif au détriment du suivi pédagogique. C'est de ce terrain qu'est née l'idée : il faut un outil qui parle le langage des écoles sénégalaises." 
   },
   { 
     year: "2024", 
-    title: "Imaginer une gestion adaptée à nos réalités", 
+    title: "Imaginer une gestion adaptée à nos réalités.",
     text: "Un instituteur titulaire à l'élémentaire, plusieurs professeurs au moyen et au secondaire, des coefficients par série, un suivi de scolarité en temps réel : Classora se construit autour de ces réalités, pas à côté. Les premiers modèles de bulletins automatiques sont conçus avec des enseignants sénégalais pour coller au programme national." 
   },
   { 
     year: "2025", 
-    title: "Le paiement mobile money, levier pour les familles", 
+    title: "Le paiement mobile money, levier pour les familles.",
     text: "Wave, Orange Money et Free Money sont intégrés nativement. Les parents règlent les échéances depuis leur téléphone, l'école suit les encaissements en temps réel, l'économe gagne des heures chaque semaine. La gestion financière sort du papier." 
   },
   { 
     year: "2026", 
-    title: "18 écoles, 2 000 élèves : l'étape symbolique", 
+    title: "18 écoles, 2 000 élèves : l'étape symbolique.",
     text: "Pour l'année scolaire 2026-2027, 18 établissements privés ont fait le choix de Classora. Ce n'est pas une fin en soi, mais la preuve qu'un outil pensé pour le terrain sénégalais trouve sa place. La suite s'écrit chaque jour : alléger l'administratif pour que les équipes se concentrent sur l'essentiel — les élèves." 
   },
 ];

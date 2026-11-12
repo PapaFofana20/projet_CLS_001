@@ -60,7 +60,7 @@ export default function AboutPage() {
       <section className="mx-auto w-full max-w-[1280px] px-gutter py-20" aria-labelledby="values-title">
         <Reveal>
           <h2 id="values-title" className="max-w-2xl text-3xl font-extrabold tracking-tight sm:text-5xl">
-            Ce qui nous <span className="text-forest-500">guide</span>
+            Ce qui nous <span className="text-forest-500">guide</span>.
           </h2>
         </Reveal>
         <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
