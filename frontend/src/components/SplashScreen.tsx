@@ -51,6 +51,8 @@ export function SplashScreen({
           localStorage.setItem(storageKey, "true");
         }
         setShow(false);
+        // Remonte en haut de page avant d'afficher le contenu (évite d'atterrir sur le footer)
+        window.scrollTo({ top: 0, left: 0, behavior: "instant" });
         onComplete();
       }, TOTAL_DURATION),
     ];
