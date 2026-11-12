@@ -127,7 +127,7 @@ export function AuthLayout({ title, subtitle, children, visualTitle, visualText,
                     </>
                   )}
                 </h2>
-                <p className="mt-4 max-w-md text-white/80">{visualText ?? "Inscriptions, bulletins et échéanciers de scolarité, dans un seul espace."}</p>
+                <p className="mt-4 max-w-md text-white/80">{visualText ?? "Notes, bulletins, paiements mobile money, emplois du temps et communication avec les familles, dans un seul espace."}</p>
               </div>
             </div>
           </aside>
