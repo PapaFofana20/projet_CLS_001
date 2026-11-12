@@ -15,7 +15,7 @@ export function StepsBento() {
       <Reveal>
         <div className="mb-10 text-center">
           <h2 id="steps-title" className="mx-auto max-w-2xl text-3xl font-extrabold leading-tight tracking-tight sm:text-5xl">
-            Opérationnel en 4 étapes
+            Opérationnel en <span className="text-forest-500">4 étapes</span>
           </h2>
         </div>
       </Reveal>

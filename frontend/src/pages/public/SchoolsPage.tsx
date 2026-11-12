@@ -33,7 +33,7 @@ export default function SchoolsPage() {
             />
             <div className="relative">
               <h2 id="schools-partners-title" className="text-balance text-3xl font-extrabold tracking-tight sm:text-4xl md:text-5xl">
-                Des établissements qui avancent <br className="hidden lg:inline" /> avec <img src="/images/logo-dark.png" alt="Classora" width={240} height={46} className="inline-block h-[0.85em] w-auto align-[-0.1em]" />
+                Des <span className="text-forest-500">établissements</span> qui avancent <br className="hidden lg:inline" /> avec <img src="/images/logo-dark.png" alt="Classora" width={240} height={46} className="inline-block h-[0.85em] w-auto align-[-0.1em]" />
               </h2>
               <div className="mx-auto mt-8 max-w-3xl space-y-4 text-lg leading-relaxed text-neutral-700 sm:mt-10">
                 <p>

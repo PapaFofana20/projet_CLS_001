@@ -123,7 +123,7 @@ export function AuthLayout({ title, subtitle, children, visualTitle, visualText,
                 <h2 className="text-4xl font-extrabold leading-tight tracking-tight">
                   {visualTitle ?? (
                     <>
-                      Toute votre école, connectée.
+                      Toute votre école, <span className="text-lime">connectée</span>.
                     </>
                   )}
                 </h2>

@@ -42,7 +42,7 @@ export default function ContactPage() {
                 id="contact-support-title"
                 className="text-balance text-3xl font-extrabold tracking-tight sm:text-4xl md:text-5xl"
               >
-                Une équipe à votre écoute
+                Une équipe à votre <span className="text-forest-500">écoute</span>
               </h2>
               <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-neutral-600 md:text-lg">
                 Une question sur Classora, la mise en place dans votre établissement ou les tarifs ?
@@ -63,7 +63,7 @@ export default function ContactPage() {
       <section className="mx-auto w-full max-w-[1280px] px-gutter pb-20" aria-labelledby="contact-more-title">
         <Reveal>
           <h2 id="contact-more-title" className="text-balance text-3xl font-extrabold tracking-tight sm:text-4xl md:text-5xl">
-            Avant de nous écrire
+            Avant de nous <span className="text-forest-500">écrire</span>
           </h2>
           <p className="mt-3 max-w-2xl text-neutral-600">
             Vous vous demandez combien coûte Classora pour votre établissement, ou ce que la plateforme

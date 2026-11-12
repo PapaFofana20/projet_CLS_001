@@ -11,7 +11,7 @@ export function TestimonialsSection() {
       <Reveal>
         <div className="mb-12 text-center">
           <h2 id="testi-title" className="mx-auto max-w-2xl text-3xl font-extrabold leading-tight tracking-tight sm:text-5xl">
-            Ils ont simplifié leur quotidien
+            Ils ont <span className="text-forest-500">simplifié</span> leur quotidien
           </h2>
         </div>
       </Reveal>

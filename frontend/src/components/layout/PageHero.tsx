@@ -4,7 +4,7 @@ import { Container } from "@/components/layout/Container";
 import { cn } from "@/utils/cn";
 
 export interface PageHeroProps {
-  /** Titre du hero, affiché d'une seule police (Cabinet Grotesk). */
+  /** Titre du hero ; un mot encadré par des astérisques est rendu en vert fluo (couleur uniquement, police inchangée). */
   title: string;
   description: string;
   eyebrow?: string;
@@ -21,6 +21,19 @@ export interface PageHeroProps {
  * place n'est réservée pour la navbar, qui est fixe et le chevauche visuellement.
  * Le contenu du hero commence à `var(--nav-clearance)` pour ne jamais passer dessous.
  */
+/** Découpe le titre : `*mot*` → mot en vert fluo (couleur seule, police inchangée). */
+function renderTitle(title: string) {
+  return title.split("*").map((part, i) =>
+    i % 2 === 1 ? (
+      <span key={i} className="text-lime">
+        {part}
+      </span>
+    ) : (
+      <span key={i}>{part}</span>
+    ),
+  );
+}
+
 export function PageHero({ title, description, eyebrow, meta, primaryCta, secondaryCta, image }: PageHeroProps) {
   const height = "min-h-[720px] sm:min-h-[640px] lg:min-h-[540px]";
 
@@ -48,7 +61,7 @@ export function PageHero({ title, description, eyebrow, meta, primaryCta, second
           <div className={cn("animate-hero-fade relative z-10 flex flex-col justify-end px-6 pb-6 pt-nav-clearance md:px-10 md:pb-10", height)}>
             <div className="max-w-2xl">
               {eyebrow && <p className="mb-3 text-xs font-bold uppercase tracking-[0.2em] text-lime">{eyebrow}</p>}
-              <h1 className="text-balance text-[clamp(2rem,_1.3rem+2.6vw,_3.25rem)] font-extrabold leading-[1.1] text-white">{title}</h1>
+              <h1 className="text-balance text-[clamp(2rem,_1.3rem+2.6vw,_3.25rem)] font-extrabold leading-[1.1] text-white">{renderTitle(title)}</h1>
               <p className="mt-4 max-w-xl text-base leading-relaxed text-white/85 md:text-lg">{description}</p>
               {meta && <p className="mt-3 text-sm text-white/65">{meta}</p>}
               {(primaryCta || secondaryCta) && (

@@ -13,7 +13,7 @@ export function FeaturesCarousel() {
       <Container>
         <Reveal>
           <h2 id="features-title" className="max-w-2xl text-3xl font-extrabold leading-tight tracking-tight sm:text-5xl">
-            Tout ce qu'il faut pour piloter votre école
+            Tout ce qu'il faut pour <span className="text-forest-500">piloter</span> votre école
           </h2>
           <div className="mt-10 -mx-gutter overflow-hidden sm:mx-auto sm:max-w-4xl">
             <img
