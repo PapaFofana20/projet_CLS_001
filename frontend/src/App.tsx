@@ -1,5 +1,5 @@
 // Racine de l'application : fournisseurs de contexte et toutes les routes.
-import { lazy, type ReactElement, useState } from "react";
+import { lazy, type ReactElement, useState, useEffect } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { PublicLayout } from "@/components/layout/PublicLayout";
@@ -82,6 +82,15 @@ const guard = (roles: keyof typeof ROUTE_ROLES, element: ReactElement) => <RoleR
 /** Wrapper pour la page d'accueil : splash screen à CHAQUE visite (forceShow) */
 function HomePageWithSplash() {
   const [splashDone, setSplashDone] = useState(false);
+
+  // Force scroll en haut + désactive la restauration du navigateur DÈS LE MONTAGE
+  // (avant même le 1er render du splash) — empêche le flash du footer au refresh.
+  useEffect(() => {
+    if ("scrollRestoration" in history) {
+      history.scrollRestoration = "manual";
+    }
+    window.scrollTo(0, 0);
+  }, []);
 
   return (
     <>
