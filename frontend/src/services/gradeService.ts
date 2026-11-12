@@ -1,12 +1,63 @@
 import type { ClassRoom, Grade, SessionUser, Student, Subject } from "@/types";
 import { canEditGrades, canReadSubject } from "@/utils/permissions";
 import { gradeCompletion, subjectAverage, round2 } from "@/utils/grades";
+import { getPeriods } from "@/data/school";
 import { supabase } from "@/lib/supabase";
 import { ensure, ensureWritable, teacherOf } from "./access";
-import { assignmentsOf, classSubjectsOf, classesOf, gradesOf, hydrate, respond, studentsOf, subjectsOf } from "./db";
+import { assignmentsOf, classSubjectsOf, classesOf, gradesOf, hydrate, respond, settingsOf, studentsOf, subjectsOf } from "./db";
 import { subscriptionInfoOf } from "./subscriptionService";
 
 // Notes des élèves (table grades) : lecture du relevé et saisie devoir/composition.
+
+export interface StudentGradeHistory {
+  subjectId: string;
+  subjectName: string;
+  coefficient: number;
+  periods: {
+    periodId: string;
+    periodLabel: string;
+    devoir1: number | null;
+    devoir2: number | null;
+    composition: number | null;
+    average: number | null;
+  }[];
+}
+
+// Récupère l'historique complet des notes d'un élève pour toutes ses matières et toutes les périodes.
+export function getStudentGradeHistory(actor: SessionUser, studentId: string): Promise<StudentGradeHistory[]> {
+  return respond(() => {
+    const student = studentsOf(actor.schoolId).find((s) => s.id === studentId);
+    ensure(!!student, "Élève introuvable.");
+    const classRoom = classesOf(actor.schoolId).find((c) => c.id === student!.classId);
+    ensure(!!classRoom, "Classe introuvable.");
+    const settings = settingsOf(actor.schoolId);
+    const periods = getPeriods(settings.periodType);
+
+    const classSubjects = classSubjectsOf(actor.schoolId).filter((cs) => cs.classId === classRoom!.id);
+    const grades = gradesOf(actor.schoolId).filter((g) => g.studentId === studentId);
+
+    return classSubjects.map((cs) => {
+      const subject = subjectsOf(actor.schoolId).find((s) => s.id === cs.subjectId);
+      return {
+        subjectId: cs.subjectId,
+        subjectName: subject?.name ?? cs.subjectId,
+        coefficient: cs.coefficient,
+        periods: periods.map((p) => {
+          const g = grades.find((x) => x.subjectId === cs.subjectId && x.period === p.id);
+          const avg = g ? subjectAverage(g, classRoom!.cycle) : null;
+          return {
+            periodId: p.id,
+            periodLabel: p.label,
+            devoir1: g?.devoir1 ?? null,
+            devoir2: g?.devoir2 ?? null,
+            composition: g?.composition ?? null,
+            average: avg,
+          };
+        }),
+      };
+    });
+  });
+}
 
 export interface GradeSheet {
   classRoom: ClassRoom;

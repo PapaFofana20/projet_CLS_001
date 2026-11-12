@@ -16,9 +16,11 @@ import { useSchool } from "@/context/SchoolContext";
 import { getPeriods } from "@/data/school";
 import { useAsync } from "@/hooks/useAsync";
 import { getStudentDetail } from "@/services/studentService";
+import { getStudentGradeHistory } from "@/services/gradeService";
 import { formatCurrency, formatDate, formatNumber } from "@/utils/format";
 import { averageTone } from "@/utils/grades";
 import { PAY_STATUS_LABELS, remaining } from "@/utils/payments";
+import { GradeEvolutionCharts } from "./charts";
 import { GreetingSection } from "./GreetingSection";
 import type { Payment } from "@/types";
 
@@ -29,6 +31,7 @@ export function StudentHome() {
   const settings = school.settings;
   const periodLabel = settings ? getPeriods(settings.periodType).find((p) => p.id === settings.currentPeriod)?.label : null;
   const state = useAsync(() => (user.studentId ? getStudentDetail(user, user.studentId) : Promise.resolve(null)), [user.studentId]);
+  const history = useAsync(() => (user.studentId ? getStudentGradeHistory(user, user.studentId) : Promise.resolve([])), [user.studentId]);
 
   if (!user.studentId)
     return (
@@ -104,6 +107,10 @@ export function StudentHome() {
                   </p>
                 </Card>
               </div>
+              {/* Évolution des notes */}
+              <AsyncView state={history} skeleton={<Skeleton className="h-64 w-full" />}>
+                {(h) => <GradeEvolutionCharts history={h ?? []} cycle={d.classRoom.cycle} />}
+              </AsyncView>
             </div>
           )
         }

@@ -23,10 +23,12 @@ import { CYCLE_LABELS, getPeriods } from "@/data/school";
 import { useAsync } from "@/hooks/useAsync";
 import { linkChild } from "@/services/authService";
 import { getStudentDetail } from "@/services/studentService";
-import { formatMatriculeInput } from "@/utils/matricule";
+import { getStudentGradeHistory } from "@/services/gradeService";
+import { CHILD_CODE_LENGTH, formatMatriculeInput } from "@/utils/matricule";
 import { formatCurrency, formatNumber } from "@/utils/format";
 import { averageTone } from "@/utils/grades";
 import { STUDENT_STATUS_LABELS } from "@/utils/payments";
+import { GradeEvolutionCharts } from "./charts";
 import { GreetingSection } from "./GreetingSection";
 import type { Cycle } from "@/types";
 
@@ -41,6 +43,7 @@ export function ParentHome() {
   const periodLabel = settings ? getPeriods(settings.periodType).find((p) => p.id === settings.currentPeriod)?.label : null;
   const { children, activeChild, setActiveChildId, loading, error, reload } = useChild();
   const detail = useAsync(() => (activeChild ? getStudentDetail(user, activeChild.id) : Promise.resolve(null)), [activeChild?.id]);
+  const history = useAsync(() => (activeChild ? getStudentGradeHistory(user, activeChild.id) : Promise.resolve([])), [activeChild?.id]);
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [matricule, setMatricule] = useState("");
@@ -147,6 +150,10 @@ export function ParentHome() {
                   </div>
                 </Card>
               </div>
+              {/* Évolution des notes */}
+              <AsyncView state={history} skeleton={<Skeleton className="h-64 w-full" />}>
+                {(h) => <GradeEvolutionCharts history={h ?? []} cycle={d.classRoom.cycle} />}
+              </AsyncView>
             </div>
           )
         }

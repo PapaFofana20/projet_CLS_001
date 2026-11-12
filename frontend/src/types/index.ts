@@ -187,6 +187,20 @@ export interface Grade {
   composition: number | null;
 }
 
+export interface StudentGradeHistory {
+  subjectId: string;
+  subjectName: string;
+  coefficient: number;
+  periods: {
+    periodId: string;
+    periodLabel: string;
+    devoir1: number | null;
+    devoir2: number | null;
+    composition: number | null;
+    average: number | null;
+  }[];
+}
+
 export interface ReportMeta {
   schoolId: string;
   studentId: string;
