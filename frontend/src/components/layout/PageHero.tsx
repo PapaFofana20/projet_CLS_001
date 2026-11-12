@@ -62,7 +62,7 @@ export function PageHero({ title, description, eyebrow, meta, primaryCta, second
             <div className="max-w-2xl">
               {eyebrow && <p className="mb-3 text-xs font-bold uppercase tracking-[0.2em] text-lime">{eyebrow}</p>}
               <h1 className="text-balance text-[clamp(2rem,_1.3rem+2.6vw,_3.25rem)] font-extrabold leading-[1.1] text-white">{renderTitle(title)}</h1>
-              <p className="mt-4 max-w-xl text-base leading-relaxed text-white/85 md:text-lg">{description}</p>
+              <p className="mt-4 max-w-xl text-left text-base leading-relaxed text-white/85 line-clamp-2 md:text-lg">{description}</p>
               {meta && <p className="mt-3 text-sm text-white/65">{meta}</p>}
               {(primaryCta || secondaryCta) && (
                 <div className="mt-7 flex flex-col gap-3 sm:flex-row">
