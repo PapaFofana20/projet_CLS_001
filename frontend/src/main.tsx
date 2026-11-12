@@ -55,6 +55,13 @@ class ErrorBoundary extends React.Component<
   }
 }
 
+// Désactive la restauration du scroll par le navigateur AVANT le premier rendu :
+// au rechargement de l'accueil, il pouvait restaurer une position en bas de page
+// (footer) derrière le splash. Fait ici car un useEffect s'exécute trop tard.
+if ("scrollRestoration" in window.history) {
+  window.history.scrollRestoration = "manual";
+}
+
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <ErrorBoundary>

@@ -1,5 +1,5 @@
 // Racine de l'application : fournisseurs de contexte et toutes les routes.
-import { lazy, type ReactElement, useState, useEffect } from "react";
+import { lazy, type ReactElement } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { PublicLayout } from "@/components/layout/PublicLayout";
@@ -79,27 +79,19 @@ function AdminAuthWrapper() {
 
 const guard = (roles: keyof typeof ROUTE_ROLES, element: ReactElement) => <RoleRoute roles={ROUTE_ROLES[roles]}>{element}</RoleRoute>;
 
-/** Wrapper pour la page d'accueil : splash screen à CHAQUE visite (forceShow) */
+/**
+ * Wrapper pour la page d'accueil : splash screen à CHAQUE visite (forceShow).
+ *
+ * Le splash est monté AVEC la page, en surcouche. Il ne conditionne plus le
+ * rendu de HomePage : l'ancien `{splashDone && <HomePage />}` laissait un
+ * <main> vide pendant le fondu de sortie, ce qui faisait apparaître le footer
+ * avant le hero.
+ */
 function HomePageWithSplash() {
-  const [splashDone, setSplashDone] = useState(false);
-
-  // Force scroll en haut + désactive la restauration du navigateur DÈS LE MONTAGE
-  // (avant même le 1er render du splash) — empêche le flash du footer au refresh.
-  useEffect(() => {
-    if ("scrollRestoration" in history) {
-      history.scrollRestoration = "manual";
-    }
-    window.scrollTo(0, 0);
-  }, []);
-
   return (
     <>
-      <SplashScreen
-        onComplete={() => setSplashDone(true)}
-        forceShow={true}
-        storageKey="classora-home-splash"
-      />
-      {splashDone && <HomePage />}
+      <SplashScreen forceShow />
+      <HomePage />
     </>
   );
 }

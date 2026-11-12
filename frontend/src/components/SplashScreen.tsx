@@ -1,88 +1,126 @@
 import { useEffect, useState } from "react";
 
 interface SplashScreenProps {
-  onComplete: () => void;
-  /** Si true, ignore le localStorage et affiche à chaque montage (défaut: false) */
+  /**
+   * Affiche le splash à chaque montage, même si l'utilisateur l'a déjà vu.
+   * Sans cette option, l'affichage est mémorisé dans localStorage.
+   */
   forceShow?: boolean;
-  /** Clé de stockage pour éviter les répétitions (défaut: "classora-splash-seen") */
+  /** Clé localStorage utilisée quand forceShow = false. */
   storageKey?: string;
+  /** Durée de l'apparition du logo (ms). */
+  enterDuration?: number;
+  /** Durée de maintien du logo (ms). */
+  holdDuration?: number;
+  /** Durée du fondu de sortie (ms). */
+  exitDuration?: number;
+}
+
+/** Durées par défaut : 2,5 s au total (assez pour lire le logo, sans bloquer la page). */
+const DEFAULT_ENTER_DURATION = 600;
+const DEFAULT_HOLD_DURATION = 1200;
+const DEFAULT_EXIT_DURATION = 700;
+
+/** Lecture défensive : localStorage peut être indisponible (navigation privée, quotas…). */
+function hasSeenSplash(storageKey: string): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return window.localStorage.getItem(storageKey) === "true";
+  } catch {
+    return false;
+  }
 }
 
 /**
  * Splash Screen — configurable.
  * - Fond vert forêt (#0F3D1E)
  * - Logo Classora officiel (logo-lime.png) centré, responsive (320px max, 80vw sur mobile)
- * - Animation 3 phases : enter (1.5s) → hold (3s) → exit (1.5s) = 6s total
- * - Transition fluide vers l'app
+ * - Animation 3 phases : enter → hold → exit
+ * - Le splash est une SURCOUCHE : le contenu de la page est monté immédiatement
+ *   en dessous. Il n'attend jamais la fin du splash pour être rendu, ce qui évite
+ *   d'afficher une page vide (et donc le footer) pendant le fondu de sortie.
  * - Par défaut : une seule fois via localStorage
  * - Avec forceShow=true : à chaque montage (ex: page d'accueil à chaque visite)
  */
 export function SplashScreen({
-  onComplete,
   forceShow = false,
   storageKey = "classora-splash-seen",
+  enterDuration = DEFAULT_ENTER_DURATION,
+  holdDuration = DEFAULT_HOLD_DURATION,
+  exitDuration = DEFAULT_EXIT_DURATION,
 }: SplashScreenProps) {
-  const [show, setShow] = useState(true);
+  // Initialisation paresseuse : si le splash a déjà été vu, il n'est jamais
+  // rendu, même une frame (l'ancien useEffect laissait apparaître un flash).
+  const [visible, setVisible] = useState(() => forceShow || !hasSeenSplash(storageKey));
   const [phase, setPhase] = useState<"enter" | "hold" | "exit">("enter");
 
-  // Durées des phases (en ms) — total 6s pour un tempo confortable
-  const ENTER_DURATION = 1500;
-  const HOLD_DURATION = 3000;
-  const EXIT_DURATION = 1500;
-  const TOTAL_DURATION = ENTER_DURATION + HOLD_DURATION + EXIT_DURATION; // 6000ms
+  const totalDuration = enterDuration + holdDuration + exitDuration;
 
   useEffect(() => {
-    // Si forceShow, on ignore le stockage et on affiche à chaque fois
-    if (!forceShow) {
-      const hasSeenSplash = localStorage.getItem(storageKey);
-      if (hasSeenSplash) {
-        setShow(false);
-        onComplete();
-        return;
-      }
+    if (!visible) return;
+
+    // Le splash est fixe : on bloque le défilement derrière pour éviter
+    // d'atterrir au milieu de la page (souvent le footer) à la fin.
+    // On compense la largeur de la barre de défilement retirée, sinon le
+    // contenu se décale de ~15 px à l'instant où le splash disparaît.
+    const bodyOverflow = document.body.style.overflow;
+    const bodyPaddingRight = document.body.style.paddingRight;
+    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+    document.body.style.overflow = "hidden";
+    if (scrollbarWidth > 0) {
+      document.body.style.paddingRight = `${scrollbarWidth}px`;
     }
 
-    // Séquence : enter (1.5s) → hold (3.0s) → exit (1.5s) = 6s total
+    // Neutralise une éventuelle position de scroll restaurée par le navigateur
+    // avant l'affichage du contenu.
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" as ScrollBehavior });
+
     const timers = [
-      setTimeout(() => setPhase("hold"), ENTER_DURATION),
-      setTimeout(() => setPhase("exit"), ENTER_DURATION + HOLD_DURATION),
-      setTimeout(() => {
+      window.setTimeout(() => setPhase("hold"), enterDuration),
+      window.setTimeout(() => setPhase("exit"), enterDuration + holdDuration),
+      window.setTimeout(() => {
         if (!forceShow) {
-          localStorage.setItem(storageKey, "true");
+          try {
+            window.localStorage.setItem(storageKey, "true");
+          } catch {
+            // Stockage indisponible : le splash se réaffichera, sans casser la page.
+          }
         }
-        setShow(false);
-        // Remonte en haut de page avant d'afficher le contenu (évite d'atterrir sur le footer)
-        window.scrollTo({ top: 0, left: 0, behavior: "instant" });
-        onComplete();
-      }, TOTAL_DURATION),
+        setVisible(false);
+      }, totalDuration),
     ];
 
-    return () => timers.forEach(clearTimeout);
-  }, [onComplete, forceShow, storageKey]);
+    return () => {
+      timers.forEach(window.clearTimeout);
+      document.body.style.overflow = bodyOverflow;
+      document.body.style.paddingRight = bodyPaddingRight;
+    };
+  }, [visible, forceShow, storageKey, enterDuration, holdDuration, totalDuration]);
 
-  if (!show) return null;
+  if (!visible) return null;
 
-  const transitionDuration = `${ENTER_DURATION}ms`;
+  const logoTransition = `transform ${phase === "exit" ? exitDuration : enterDuration}ms cubic-bezier(0.22, 1, 0.36, 1)`;
+
+  const logoWrapperStyle = {
+    transform: phase === "enter" ? "scale(0.97)" : phase === "exit" ? "scale(1.03)" : "scale(1)",
+    transformOrigin: "center",
+    transition: logoTransition,
+  } as React.CSSProperties;
 
   const logoStyle = {
+    display: "block",
     width: "320px",
     height: "auto",
     maxWidth: "80vw",
-    transformOrigin: "center",
     filter: "drop-shadow(0 0 60px rgba(198, 240, 104, 0.4))",
-    transition: `all ${transitionDuration} cubic-bezier(0.22, 1, 0.36, 1)`,
-  } as React.CSSProperties;
-
-  const containerStyle = {
-    opacity: phase === "enter" ? 1 : phase === "exit" ? 0 : 1,
-    transform:
-      phase === "enter" ? "scale(0.98)" : phase === "exit" ? "scale(1.05)" : "scale(1)",
-    transition: `opacity ${transitionDuration} cubic-bezier(0.22, 1, 0.36, 1), transform ${transitionDuration} cubic-bezier(0.22, 1, 0.36, 1)`,
   } as React.CSSProperties;
 
   return (
     <div
       id="splash-screen"
+      role="status"
+      aria-live="polite"
+      aria-label="Chargement de Classora"
       style={{
         position: "fixed",
         inset: 0,
@@ -90,19 +128,21 @@ export function SplashScreen({
         background: "#0F3D1E",
         display: "grid",
         placeItems: "center",
-        opacity: phase === "enter" ? 1 : phase === "exit" ? 0 : 1,
-        transition: `opacity ${transitionDuration} cubic-bezier(0.22, 1, 0.36, 1)`,
+        opacity: phase === "exit" ? 0 : 1,
+        transition: `opacity ${exitDuration}ms cubic-bezier(0.22, 1, 0.36, 1)`,
       }}
-      aria-hidden="true"
-      role="img"
-      aria-label="Classora — Chargement"
     >
-      <div style={containerStyle}>
+      <span className="sr-only">Chargement de Classora…</span>
+      {/* Le logo est décoratif : le libellé accessible est porté par role="status". */}
+      <div style={logoWrapperStyle} aria-hidden="true">
         <img
           src="/images/logo-lime.png"
-          alt="CLASSORA"
+          alt=""
+          width={1121}
+          height={240}
+          fetchPriority="high"
+          decoding="async"
           style={logoStyle}
-          aria-hidden="true"
         />
       </div>
     </div>
