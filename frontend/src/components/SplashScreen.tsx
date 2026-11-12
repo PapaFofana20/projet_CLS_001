@@ -109,9 +109,9 @@ export function SplashScreen({
 
   const logoStyle = {
     display: "block",
-    width: "320px",
+    // Mobile : logo réduit (68vw) ; desktop : 320px maximum.
+    width: "clamp(180px, 68vw, 320px)",
     height: "auto",
-    maxWidth: "80vw",
     filter: "drop-shadow(0 0 60px rgba(198, 240, 104, 0.4))",
   } as React.CSSProperties;
 
