@@ -233,7 +233,7 @@ export default function DirectorSubscriptionPage() {
                   </span>
                   <div>
                     <Badge tone="success">Abonnement actif</Badge>
-                    <h2 className="mt-2 text-2xl font-extrabold text-ink">Votre école est prête</h2>
+                    <h2 className="mt-2 text-2xl font-extrabold text-ink">Votre école est prête.</h2>
                     <p className="mt-1 max-w-full sm:max-w-xl text-sm text-neutral-600">
                       Votre matricule est disponible ci-dessous. Il permet aux familles de retrouver votre école et de créer leur compte.
                     </p>
@@ -270,7 +270,7 @@ export default function DirectorSubscriptionPage() {
         ) : requestState.error ? (
           <Card className="mt-8 text-center">
             <Icon name="error" className="text-[32px] text-danger" />
-            <h2 className="mt-2 text-lg font-bold text-ink">Impossible de charger votre demande</h2>
+            <h2 className="mt-2 text-lg font-bold text-ink">Impossible de charger votre demande.</h2>
             <p className="mt-1 text-sm text-neutral-600">{requestState.error}</p>
             <Button className="mt-4" variant="outline" icon="refresh" onClick={requestState.reload}>
               Réessayer
@@ -283,7 +283,7 @@ export default function DirectorSubscriptionPage() {
                 <Icon name="schedule" fill className="text-[32px]" />
               </span>
               <Badge tone="warning" className="mt-4">En attente d'activation</Badge>
-              <h2 className="mt-3 text-2xl font-extrabold text-ink">Votre demande a bien été envoyée</h2>
+              <h2 className="mt-3 text-2xl font-extrabold text-ink">Votre demande a bien été envoyée.</h2>
               <p className="mx-auto mt-2 max-w-full sm:max-w-xl text-sm text-neutral-600">
                 Le support Classora confirme le paiement puis active votre abonnement. Vous n'avez rien d'autre à faire : cette page se met à jour automatiquement.
               </p>

@@ -39,7 +39,7 @@ export function ForgotForm() {
         <span className="mx-auto grid size-14 place-items-center rounded-full bg-forest text-lime">
           <Icon name="mark_email_read" fill className="text-[28px]" />
         </span>
-        <h2 className="mt-4 text-xl font-bold">Vérifiez votre boîte mail</h2>
+        <h2 className="mt-4 text-xl font-bold">Vérifiez votre boîte mail.</h2>
         <p className="mt-2 text-sm text-neutral-700">
           Si un compte existe pour <strong>{form.values.email}</strong>, vous recevrez un lien pour choisir un nouveau mot de passe.
         </p>

@@ -33,7 +33,7 @@ class ErrorBoundary extends React.Component<
             <div className="mb-4 grid size-16 place-items-center rounded-full bg-red-50 text-red-600">
               <span aria-hidden="true">⚠️</span>
             </div>
-            <h2 className="text-lg font-bold text-ink mb-2">Une erreur est survenue</h2>
+            <h2 className="text-lg font-bold text-ink mb-2">Une erreur est survenue.</h2>
             <p className="text-sm text-neutral-600 mb-4">
               Un problème inattendu est survenu. Rechargez la page ; si le problème persiste, contactez le support{" "}
               en précisant l'heure de l'erreur.

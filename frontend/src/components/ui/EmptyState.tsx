@@ -36,7 +36,7 @@ export function ErrorState({ message = "Une erreur est survenue lors du chargeme
       <span className="mb-4 grid size-16 place-items-center rounded-full bg-red-100 text-danger">
         <Icon name="cloud_off" className="text-[32px]" />
       </span>
-      <h3 className="text-lg font-bold text-ink">Oups, quelque chose s'est mal passé</h3>
+      <h3 className="text-lg font-bold text-ink">Oups, quelque chose s'est mal passé.</h3>
       <p className="mt-1 max-w-md text-sm text-neutral-500">{message}</p>
       {onRetry && (
         <Button className="mt-5" icon="refresh" onClick={onRetry}>
