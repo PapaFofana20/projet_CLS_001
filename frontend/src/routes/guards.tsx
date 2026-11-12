@@ -95,25 +95,13 @@ export function MustChangePasswordGuard() {
 }
 
 /**
- * Verrou d'abonnement : PAS encore actif. Les moyens de paiement ne sont
- * pas configurés — l'accès est ouvert à tous les plans (Découverte comme
- * Premium) dès la création du compte, sans demande de paiement. La base
- * elle-même autorise le travail sans abonnement (school_is_writable :
- * « AUCUN » = l'école prépare sa structure en attendant).
- *
- * Pour réactiver le verrou quand le paiement sera branché : passer cette
- * constante à `true` — les écrans de blocage (RenewScreen,
- * ContactSchoolScreen, SubscriptionRequiredScreen) se remontent alors
- * automatiquement.
- */
-const PAIEMENTS_CONFIGURES = false;
-
-/**
- * Verrouille le tableau de bord selon l'abonnement de l'école :
- * • aucun abonnement (directeur) → abonnement + profil uniquement, aperçu flouté ailleurs ;
- * • échéance proche → bandeau d'alerte, accès conservé ;
- * • expirée depuis moins de 7 jours → lecture seule ;
- * • expirée depuis plus de 7 jours → « Contactez votre école » (directeur : « Renouvelez »).
+ * Verrou d'abonnement ACTIF (audit strict 08/11/2026 : il était désactivé,
+ * ce qui rendait tout le système d'abonnement inerte — une école expirée
+ * accédait à tout). La base exige un abonnement actif pour écrire
+ * (school_is_writable, migration 00021) : la garde UI est alignée.
+ * Les écrans de blocage (RenewScreen, ContactSchoolScreen,
+ * SubscriptionRequiredScreen) se remontent automatiquement.
+ * Le guard est TOUJOURS actif — le backend (RLS) est la source de vérité.
  */
 export function SubscriptionGuard() {
   const { pathname } = useLocation();
@@ -127,7 +115,6 @@ export function SubscriptionGuard() {
     window.location.replace("/connexion");
   });
 
-  if (!PAIEMENTS_CONFIGURES) return <Outlet />;
   if (isAlwaysAllowed(pathname)) return <Outlet />;
   // Tant que l'abonnement n'est pas chargé, on laisse la page afficher ses skeletons.
   if (school.loading) return <Outlet />;

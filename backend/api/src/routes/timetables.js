@@ -69,6 +69,10 @@ export default route(async (req, res) => {
 
   const id = req.params.id;
 
+  // Les chemins /slots/* sont gérés par les handlers dédiés plus bas :
+  // jamais interceptés par les handlers d'élément (GET/PATCH/DELETE :id).
+  const isSlotPath = req.path.includes("/slots");
+
   /* ---------------------------------------------------------------- */
   /* COLLECTION : /api/timetables                                      */
   /* ---------------------------------------------------------------- */
@@ -132,7 +136,7 @@ export default route(async (req, res) => {
   /* ---------------------------------------------------------------- */
   if (!UUID_RE.test(id)) return notFound(res);
 
-  if (req.method === "GET") {
+  if (req.method === "GET" && !isSlotPath) {
     const { data, error } = await svc
       .from("timetables")
       .select("*")
@@ -143,7 +147,7 @@ export default route(async (req, res) => {
     return ok(res, { timetable: data });
   }
 
-  if (req.method === "PATCH") {
+  if (req.method === "PATCH" && !isSlotPath) {
     if (!(await schoolIsWritable(svc, caller.schoolId))) {
       return forbidden(res, "Mode lecture seule : l'abonnement de votre école est expiré.");
     }
@@ -170,7 +174,7 @@ export default route(async (req, res) => {
     return ok(res, { timetable: data });
   }
 
-  if (req.method === "DELETE") {
+  if (req.method === "DELETE" && !isSlotPath) {
     if (!(await schoolIsWritable(svc, caller.schoolId))) {
       return forbidden(res, "Mode lecture seule : l'abonnement de votre école est expiré.");
     }
@@ -189,7 +193,7 @@ export default route(async (req, res) => {
   /* ---------------------------------------------------------------- */
   /* PUBLICATION : POST /api/timetables/:id/publish                    */
   /* ---------------------------------------------------------------- */
-  if (req.method === "POST" && (req.route?.path?.endsWith("/publish") || req.path.includes("/publish"))) {
+  if (req.method === "POST" && req.path === `/api/timetables/${id}/publish`) {
     if (!(await schoolIsWritable(svc, caller.schoolId))) {
       return forbidden(res, "Mode lecture seule : l'abonnement de votre école est expiré.");
     }
@@ -202,6 +206,48 @@ export default route(async (req, res) => {
       .single();
     if (error || !data) return notFound(res);
     return ok(res, { timetable: data });
+  }
+
+  /* ---------------------------------------------------------------- */
+  /* DÉPUBLICATION : POST /api/timetables/:id/unpublish                 */
+  /* ---------------------------------------------------------------- */
+  if (req.method === "POST" && req.path === `/api/timetables/${id}/unpublish`) {
+    if (!(await schoolIsWritable(svc, caller.schoolId))) {
+      return forbidden(res, "Mode lecture seule : l'abonnement de votre école est expiré.");
+    }
+    const { data, error } = await svc
+      .from("timetables")
+      .update({ status: "draft", published_at: null })
+      .eq("id", id)
+      .eq("school_id", caller.schoolId)
+      .select()
+      .single();
+    if (error || !data) return notFound(res);
+    return ok(res, { timetable: data });
+  }
+
+  /* ---------------------------------------------------------------- */
+  /* COURS : GET /api/timetables/:id/slots                              */
+  /* ---------------------------------------------------------------- */
+  if (req.method === "GET" && (req.route?.path?.endsWith("/slots") || req.path.includes("/slots"))) {
+    const { data: tt } = await svc
+      .from("timetables")
+      .select("id")
+      .eq("id", id)
+      .eq("school_id", caller.schoolId)
+      .maybeSingle();
+    if (!tt) return notFound(res, "Emploi du temps introuvable dans votre école.");
+    const { data, error } = await svc
+      .from("timetable_courses")
+      .select("*")
+      .eq("timetable_id", id)
+      .order("day")
+      .order("start_time");
+    if (error) {
+      logError("timetables:GET slots", error);
+      return serverError(res);
+    }
+    return ok(res, { courses: data });
   }
 
   /* ---------------------------------------------------------------- */
@@ -223,6 +269,9 @@ export default route(async (req, res) => {
     if (!DAYS.has(day)) return badRequest(res, "Jour invalide (lundi à samedi).");
     if (!TIME_RE.test(startTime) || !TIME_RE.test(endTime)) {
       return badRequest(res, "Format d'heure attendu : 08:00.");
+    }
+    if (endTime <= startTime) {
+      return badRequest(res, "L'heure de fin doit être postérieure à l'heure de début.");
     }
 
     // L'emploi du temps et ses référentiels doivent appartenir à l'école.
@@ -250,6 +299,22 @@ export default route(async (req, res) => {
       .maybeSingle();
     if (!teacher) return notFound(res, "Enseignant introuvable dans votre école.");
 
+    // Chevauchement : même emploi du temps, même jour, même enseignant —
+    // un enseignant ne peut pas avoir deux cours au même créneau.
+    const { data: overlap } = await svc
+      .from("timetable_courses")
+      .select("id")
+      .eq("timetable_id", id)
+      .eq("teacher_id", teacherId)
+      .eq("day", day)
+      .lt("start_time", endTime)
+      .gt("end_time", startTime)
+      .limit(1)
+      .maybeSingle();
+    if (overlap) {
+      return badRequest(res, "Cet enseignant a déjà un cours qui chevauche ce créneau le même jour.");
+    }
+
     const { data, error } = await svc
       .from("timetable_courses")
       .insert({
@@ -269,6 +334,109 @@ export default route(async (req, res) => {
       return serverError(res);
     }
     return ok(res, { course: data }, 201);
+  }
+
+  /* ---------------------------------------------------------------- */
+  /* COURS : PATCH / DELETE /api/timetables/:id/slots/:slotId           */
+  /* ---------------------------------------------------------------- */
+  const slotId = req.params.slotId;
+  if ((req.method === "PATCH" || req.method === "DELETE") && slotId && UUID_RE.test(slotId)) {
+    if (!(await schoolIsWritable(svc, caller.schoolId))) {
+      return forbidden(res, "Mode lecture seule : l'abonnement de votre école est expiré.");
+    }
+    // Le cours doit appartenir à un emploi du temps de l'école de l'appelant.
+    const { data: course } = await svc
+      .from("timetable_courses")
+      .select("id, timetable_id")
+      .eq("id", slotId)
+      .eq("timetable_id", id)
+      .maybeSingle();
+    if (!course) return notFound(res, "Cours introuvable dans votre école.");
+    const { data: tt } = await svc
+      .from("timetables")
+      .select("id")
+      .eq("id", id)
+      .eq("school_id", caller.schoolId)
+      .maybeSingle();
+    if (!tt) return notFound(res, "Emploi du temps introuvable dans votre école.");
+
+    if (req.method === "DELETE") {
+      const { error } = await svc.from("timetable_courses").delete().eq("id", slotId);
+      if (error) {
+        logError("timetables:DELETE slot", error);
+        return serverError(res);
+      }
+      return ok(res, { deleted: true });
+    }
+
+    const body = expectObject(req.body);
+    const subjectId = requireUuid(body, "subjectId", "La matière");
+    const teacherId = requireUuid(body, "teacherId", "L'enseignant");
+    const day = requireString(body, "day", "Le jour", { min: 2, max: 12 }).toLowerCase();
+    const startTime = requireString(body, "startTime", "L'heure de début", { min: 4, max: 8 });
+    const endTime = requireString(body, "endTime", "L'heure de fin", { min: 4, max: 8 });
+    const room = optionalString(body, "room", "La salle", 40);
+    const description = optionalString(body, "description", "La description", 400);
+
+    if (!DAYS.has(day)) return badRequest(res, "Jour invalide (lundi à samedi).");
+    if (!TIME_RE.test(startTime) || !TIME_RE.test(endTime)) {
+      return badRequest(res, "Format d'heure attendu : 08:00.");
+    }
+    if (endTime <= startTime) {
+      return badRequest(res, "L'heure de fin doit être postérieure à l'heure de début.");
+    }
+
+    const { data: subject } = await svc
+      .from("subjects")
+      .select("id")
+      .eq("id", subjectId)
+      .eq("school_id", caller.schoolId)
+      .maybeSingle();
+    if (!subject) return notFound(res, "Matière introuvable dans votre école.");
+
+    const { data: teacher } = await svc
+      .from("teachers")
+      .select("id")
+      .eq("id", teacherId)
+      .eq("school_id", caller.schoolId)
+      .maybeSingle();
+    if (!teacher) return notFound(res, "Enseignant introuvable dans votre école.");
+
+    // Chevauchement (hors le cours lui-même).
+    const { data: overlap } = await svc
+      .from("timetable_courses")
+      .select("id")
+      .eq("timetable_id", id)
+      .eq("teacher_id", teacherId)
+      .eq("day", day)
+      .lt("start_time", endTime)
+      .gt("end_time", startTime)
+      .neq("id", slotId)
+      .limit(1)
+      .maybeSingle();
+    if (overlap) {
+      return badRequest(res, "Cet enseignant a déjà un cours qui chevauche ce créneau le même jour.");
+    }
+
+    const { data, error } = await svc
+      .from("timetable_courses")
+      .update({
+        subject_id: subjectId,
+        teacher_id: teacherId,
+        day,
+        start_time: startTime,
+        end_time: endTime,
+        room: room ?? null,
+        description: description ?? null,
+      })
+      .eq("id", slotId)
+      .select()
+      .single();
+    if (error || !data) {
+      logError("timetables:PATCH slot", error);
+      return serverError(res);
+    }
+    return ok(res, { course: data });
   }
 
   return notFound(res);

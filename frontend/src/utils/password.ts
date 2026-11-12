@@ -23,24 +23,6 @@ export interface StrengthResult {
   satisfied: (typeof PASSWORD_RULES)[number]["id"][];
 }
 
-const READABLE = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
-const LOWER = "abcdefghijkmnopqrstuvwxyz";
-const UPPER = "ABCDEFGHJKLMNPQRSTUVWXYZ";
-const DIGITS = "23456789";
-
-/** Tirage uniforme sans biais modulo (échantillonnage avec rejet). */
-function randomBelow(limit: number): number {
-  const limit32 = 0x100000000;
-  const range = Math.floor(limit32 / limit) * limit;
-  const buf = new Uint32Array(1);
-  let b: number;
-  do {
-    crypto.getRandomValues(buf);
-    b = buf[0];
-  } while (b >= range);
-  return b % limit;
-}
-
 // Calcule la force d'un mot de passe et indique les règles déjà satisfaites.
 export function passwordStrength(value: string): StrengthResult {
   const satisfied = PASSWORD_RULES.filter((r) => r.test(value)).map((r) => r.id);
@@ -62,12 +44,9 @@ export function passwordError(value: string, confirm?: string): string | null {
 /**
  * Mot de passe temporaire de 12 caractères, lisible et prononçable par téléphone.
  * Garantit au moins une minuscule, une majuscule et un chiffre.
+ * GÉNÉRÉ CÔTÉ BACKEND UNIQUEMENT (backend/api/src/lib/auth.js) — voir finish_staff_registration.
+ * Cette fonction est conservée pour référence/documentation seulement.
  */
-export function generateTempPassword(): string {
-  const chars = Array.from({ length: 12 }, () => READABLE[randomBelow(READABLE.length)]);
-  chars[0] = LOWER[randomBelow(LOWER.length)];
-  chars[1] = UPPER[randomBelow(UPPER.length)];
-  chars[2] = DIGITS[randomBelow(DIGITS.length)];
-  chars[3] = LOWER[randomBelow(LOWER.length)];
-  return chars.join("");
+export function generateTempPassword(): never {
+  throw new Error("generateTempPassword doit être appelé côté backend (API create-staff-account).");
 }
