@@ -1,5 +1,5 @@
 // Racine de l'application : fournisseurs de contexte et toutes les routes.
-import { lazy, type ReactElement } from "react";
+import { lazy, type ReactElement, useState } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { PublicLayout } from "@/components/layout/PublicLayout";
@@ -13,6 +13,7 @@ import { ToastProvider } from "@/context/ToastContext";
 import { MustChangePasswordGuard, ProtectedRoute, PublicOnlyRoute, RoleRoute, ScrollToTop, SubscriptionGuard } from "@/routes/guards";
 import { AdminProtectedRoute, adminGuard } from "@/routes/adminGuards";
 import { ROUTE_ROLES } from "@/routes/navigation";
+import { SplashScreen } from "@/components/SplashScreen";
 import HomePage from "@/pages/public/HomePage";
 
 const FeaturesPage = lazy(() => import("@/pages/public/FeaturesPage"));
@@ -78,7 +79,19 @@ function AdminAuthWrapper() {
 
 const guard = (roles: keyof typeof ROUTE_ROLES, element: ReactElement) => <RoleRoute roles={ROUTE_ROLES[roles]}>{element}</RoleRoute>;
 
-export default function App() {
+/** Wrapper principal avec splash screen (première visite uniquement) */
+function AppWithSplash() {
+  const [splashDone, setSplashDone] = useState(false);
+
+  return (
+    <>
+      <SplashScreen onComplete={() => setSplashDone(true)} />
+      {splashDone && <AppRoutes />}
+    </>
+  );
+}
+
+function AppRoutes() {
   return (
     <BrowserRouter>
       <ToastProvider>
@@ -190,4 +203,8 @@ export default function App() {
       </ToastProvider>
     </BrowserRouter>
   );
+}
+
+export default function App() {
+  return <AppWithSplash />;
 }
