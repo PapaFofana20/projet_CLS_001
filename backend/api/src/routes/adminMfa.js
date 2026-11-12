@@ -21,7 +21,10 @@ import {
   serviceClient,
 } from "../lib/authAdmin.js";
 import { generateTOTPSecret, buildOTPAuthURI, verifyTOTPCode } from "../lib/totp.js";
-import { createPreAuthSession, consumePreAuthSession } from "../lib/mfa-sessions.js";
+import { createPreAuthSession, consumePreAuthSession, peekPreAuthSession } from "../lib/mfa-sessions.js";
+import { encryptTOTPSecret, decryptTOTPSecret } from "../lib/secretCrypto.js";
+
+const PRE_AUTH_TTL_MS = 5 * 60_000; // durée de vie d'une session MFA vérifiée (alignée sur le pré-auth)
 import {
   badRequest,
   forbidden,
@@ -79,7 +82,7 @@ async function handleSetup(svc, req, res) {
 
   const { error } = await svc
     .from("admin_agents")
-    .update({ totp_secret: secret })
+    .update({ totp_secret: encryptTOTPSecret(secret) })
     .eq("id", agent.id);
   if (error) {
     logError("admin-mfa-setup", error);
@@ -155,7 +158,7 @@ async function handleVerify(svc, req, res) {
 
   await enforceRateLimit(svc, `admin-mfa-verify:ip:${req.ip ?? "sans-adresse"}`, 10, 300);
 
-  const agentId = consumePreAuthSession(preAuthToken);
+  const agentId = peekPreAuthSession(preAuthToken);
   if (!agentId) {
     return unauthorized(res, "Jeton pré-authentifié invalide ou expiré.");
   }
@@ -171,13 +174,17 @@ async function handleVerify(svc, req, res) {
   if (agent.status !== "ACTIF") {
     return forbidden(res, "Ce compte administratif n'est pas actif.");
   }
-  if (agent.totpEnabled !== true || !agent.totpSecret) {
+  if (agent.totp_enabled !== true || !agent.totp_secret) {
     return badRequest(res, "Le MFA n'est pas activé pour ce compte.");
   }
 
-  if (!verifyTOTPCode(agent.totpSecret, token)) {
+  if (!verifyTOTPCode(decryptTOTPSecret(agent.totp_secret), token)) {
     return badRequest(res, "Code TOTP invalide.");
   }
+
+  // Code valide : le jeton pré-auth n'est consommé qu'ici (un échec TOTP
+  // ne force pas un re-login complet).
+  consumePreAuthSession(preAuthToken);
 
   const { error: insertError } = await markMFASessionVerified(svc, agentId);
   if (insertError) {

@@ -2,10 +2,10 @@
  * Inscription publique d'un DIRECTEUR (3 étapes atomiques) :
  *  1. création du compte Auth (échec rapide si l'e-mail est déjà pris) ;
  *  2. une seule RPC security definer transactionnelle : école, paramètres,
- *     frais par niveau, matières par défaut, profil ACTIF + abonnement de la
- *     formule choisie activé immédiatement pour un an (migration 00035 : pas
- *     encore de passerelle de paiement, TOUTES les formules sont accordées
- *     365 jours sans encaissement, la limite d'élèves restant appliquée) ;
+ *     frais par niveau, matières par défaut, profil ACTIF + abonnement :
+ *     année de découverte offerte UNIQUEMENT si la formule est gratuite
+ *     (prix 0) ; sinon abonnement expiré à la création (migration 00051),
+ *     activation requise via la demande d'activation du support.
  *  3. nettoyage du compte Auth si l'étape 2 échoue (pas d'état fantôme).
  * Pas de matricule manuel : l'écran suivant est le tableau de bord.
  */

@@ -138,7 +138,9 @@ app.all("/delete-staff-account", deleteStaffAccount);
 app.all("/api/timetables", timetables);
 app.all("/api/timetables/:id", timetables);
 app.all("/api/timetables/:id/publish", timetables);
+app.all("/api/timetables/:id/unpublish", timetables);
 app.all("/api/timetables/:id/slots", timetables);
+app.all("/api/timetables/:id/slots/:slotId", timetables);
 
 // Routes administratives Classora (protégées, service_role côté serveur).
 // Une configuration absente provoquerait un 500 opaque : on répond un 503

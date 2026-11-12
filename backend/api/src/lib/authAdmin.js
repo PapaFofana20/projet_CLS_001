@@ -7,6 +7,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { SUPABASE_URL, SERVICE_KEY } from "../config.js";
 import { unauthorized, forbidden } from "./http.js";
+import { decryptTOTPSecret } from "./secretCrypto.js";
 
 /** Client service_role pour les routes admin (même principe que lib/auth.js). Entrée : options. Sortie : client Supabase. */
 export function serviceClient(options = {}) {
@@ -38,7 +39,7 @@ export async function getCallerAdminAgent(svc, req) {
 
   const { data: agent, error } = await svc
     .from("admin_agents")
-    .select("id, matricule, role, status, first_name, last_name, email, phone, auth_user_id")
+    .select("id, matricule, role, status, first_name, last_name, email, phone, auth_user_id, totp_secret, totp_enabled, totp_enabled_at, created_at")
     .eq("auth_user_id", user.id)
     .maybeSingle();
 
@@ -67,6 +68,9 @@ export async function getCallerAdminAgent(svc, req) {
       email: agent.email,
       phone: agent.phone,
       authUserId: agent.auth_user_id,
+      totpSecret: agent.totp_secret ? decryptTOTPSecret(agent.totp_secret) : null,
+      totpEnabled: agent.totp_enabled === true,
+      totpEnabledAt: agent.totp_enabled_at ?? null,
       createdAt: agent.created_at,
     },
   };

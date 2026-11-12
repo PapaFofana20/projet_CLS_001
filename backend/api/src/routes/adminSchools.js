@@ -42,9 +42,12 @@ export default route(async (req, res) => {
       const rawPageSize = parseInt(req.query.pageSize ?? "20", 10);
       const page = Number.isInteger(rawPage) ? Math.max(1, rawPage) : 1;
       const pageSize = Number.isInteger(rawPageSize) ? Math.min(100, Math.max(1, rawPageSize)) : 20;
+      // Échappement LIKE + PostgREST : \, %, _ mais aussi , ( ) . — dans un
+      // filtre ilike PostgREST, « , » et « ) » peuvent casser/interpréter
+      // la syntaxe du filtre (injection de filtre).
       const search = (req.query.search ?? "").toString().trim()
         .replace(/\\/g, "\\\\")   // échapper le backslash EN PREMIER (B8)
-        .replace(/[%_]/g, (c) => `\\${c}`);
+        .replace(/[%_(),.]/g, (c) => `\\${c}`);
       const rawStatus = req.query.status ? String(req.query.status) : null;
       if (rawStatus !== null && !["ACTIF", "SUSPENDUE", "TOUTES"].includes(rawStatus)) {
         return badRequest(res, "Statut de filtre invalide.");
@@ -172,6 +175,7 @@ export default route(async (req, res) => {
       if (caller.role !== "superadmin") {
         return forbidden(res, "Seul le superadministrateur peut modifier le statut d'un établissement.");
       }
+      await enforceRateLimit(svc, `admin-schools-status:${caller.id}`, 30, 300);
 
       const body = expectObject(req.body);
       const schoolId = requireUuid(body, "schoolId", "L'identifiant de l'établissement");

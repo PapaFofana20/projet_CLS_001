@@ -19,12 +19,12 @@ const METHODS = new Set(["wave", "orange_money", "free_money", "especes"]);
 const STATUSES = new Set(["all", "ACTIF", "EXPIRE", "AUCUN", "BIENTOT", "SUSPENDUE"]);
 const MAX_AMOUNT = 10_000_000;
 
-/** Nettoie le terme de recherche avant filtrage en mémoire. */
+/** Nettoie le terme de recherche avant filtrage en mémoire.
+ * Aucun échappement LIKE n'est nécessaire ici : le filtrage utilise
+ * String.includes() (pas de requête SQL ilike). On ne remplace surtout
+ * PAS '%' par un espace, sinon une recherche comme "100%" ne trouve rien. */
 function sanitizeSearch(value) {
-  return String(value ?? "")
-    .trim()
-    .slice(0, 60)
-    .replace(/[,()\\%]/g, " ");
+  return String(value ?? "").trim().slice(0, 60);
 }
 
 /** Prix mensuel d'une formule, 0 si absent (évite les NaN dans les totaux). */
@@ -94,7 +94,9 @@ export default route(async (req, res) => {
         });
         if (error) {
           logError("admin-subscriptions", error);
-          return badRequest(res, error.message || "Impossible d'activer cet abonnement.");
+          // Message générique au client : le message SQL brut (schéma,
+          // contraintes) ne doit jamais fuiter — il est journalisé ci-dessus.
+          return badRequest(res, "Impossible d'activer cet abonnement. Vérifiez les données saisies.");
         }
 
         await auditAdmin(svc, {

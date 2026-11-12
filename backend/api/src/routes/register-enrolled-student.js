@@ -10,8 +10,9 @@
 
 import { passwordError, serviceClient } from "../lib/auth.js";
 import { badRequest, ok, route, serverError, RATE_LIMIT_RE, logError } from "../lib/http.js";
+import { readPlatformSettings } from "../lib/platformSettings.js";
 import { enforceRateLimit, clientIp } from "../lib/rateLimit.js";
-import { expectObject, optionalString, optionalUuid, requireEmail, requireSnPhone, requireString } from "../lib/validate.js";
+import { expectObject, optionalIsoDate, optionalString, optionalUuid, requireEmail, requireSnPhone, requireString } from "../lib/validate.js";
 
 // Handler principal : POST /register-enrolled-student — compte d'un élève déjà inscrit.
 export default route(async (req, res) => {
@@ -20,10 +21,25 @@ export default route(async (req, res) => {
   try {
     await enforceRateLimit(svc, `register-enrolled-student:${clientIp(req) ?? "sans-adresse"}`, 10, 300);
 
+    // Réglages plateforme : maintenance / fermeture des inscriptions.
+    const platform = await readPlatformSettings(svc);
+    if (platform.settings.maintenanceMode) {
+      return badRequest(
+        res,
+        platform.settings.maintenanceMessage ||
+          "La plateforme est en maintenance. Les inscriptions rouvriront très prochainement.",
+      );
+    }
+    if (!platform.settings.registrationOpen) {
+      return badRequest(res, "Les inscriptions sont momentanément fermées. Contactez le support Classora.");
+    }
+
     const body = expectObject(req.body);
     const schoolId = optionalUuid(body, "schoolId", "L'école");
     const matricule = optionalString(body, "matricule", "Le matricule de l'école", 10)?.toUpperCase();
     const studentMatricule = requireString(body, "studentMatricule", "Le matricule de l'élève", { min: 4, max: 20 });
+    const birthDate = optionalIsoDate(body, "birthDate", "La date de naissance");
+    if (!birthDate) return badRequest(res, "La date de naissance est requise pour créer ce compte.");
     const email = requireEmail(body);
     const phone = requireSnPhone(body, "phone", "Le téléphone");
     const password = requireString(body, "password", "Le mot de passe", { min: 8, max: 128, trim: false });
@@ -41,6 +57,12 @@ export default route(async (req, res) => {
       resolvedSchool = data?.id ?? null;
     }
     if (!resolvedSchool) return badRequest(res, "École introuvable.");
+
+    // Garde d'abonnement fail-closed (la RPC est aussi vérifiée côté SQL).
+    const { data: writable, error: writableError } = await svc.rpc("school_is_writable", { p_school_id: resolvedSchool });
+    if (writableError || writable !== true) {
+      return badRequest(res, "L'abonnement de cette école n'est pas actif.");
+    }
 
     const { data: created, error: createError } = await svc.auth.admin.createUser({
       email,
@@ -61,6 +83,7 @@ export default route(async (req, res) => {
         p_user_id: created.user.id,
         p_school_id: resolvedSchool,
         p_student_matricule: studentMatricule.trim().toUpperCase(),
+        p_birth_date: birthDate,
         p_email: email,
         p_phone: phone,
       });
@@ -82,7 +105,7 @@ export default route(async (req, res) => {
       // Le compte Auth ne doit pas survivre sans fiche élève.
       await svc.auth.admin.deleteUser(created.user.id);
       const message = sqlError instanceof Error ? sqlError.message : undefined;
-      if (message && /matricule|compte|école/i.test(message)) {
+      if (message && /matricule|compte|école|identité|abonnement|naissance/i.test(message)) {
         return badRequest(res, message);
       }
       logError("register-enrolled-student", sqlError);

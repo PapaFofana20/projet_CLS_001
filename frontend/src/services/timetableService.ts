@@ -1,10 +1,17 @@
 import { SCHOOL_YEAR } from "@/data/school";
 import { supabase } from "@/lib/supabase";
+import { callFunction } from "@/lib/functions";
 
 /**
  * Le schéma réellement déployé sur Supabase utilise `timetables` + `timetable_courses`
- * (et non `timetable_slots`). Toutes les requêtes du module passent par ce service.
- * Gère les emplois du temps d'une classe (brouillon ou publié).
+ * (et non `timetable_slots`).
+ *
+ * LECTURES : via Supabase/PostgREST (protégées par la RLS — les policies
+ * SELECT sont scopées par école).
+ * ÉCRITURES : via l'API backend sécurisée (/api/timetables — JWT vérifié,
+ * rôle direction, school_id du profil, rate-limit, validations métier
+ * dont l'anti-chevauchement). Ne jamais réintroduire d'écriture directe
+ * ici : elle contournerait ces gardes.
  */
 
 export interface TimetableClassRef {
@@ -207,110 +214,84 @@ export async function ensurePlaceholderTeacher(schoolId: string): Promise<string
   return (data as { id: string }).id;
 }
 
-// Crée un emploi du temps en brouillon pour une classe.
+// Crée un emploi du temps en brouillon pour une classe (API sécurisée).
 export async function createTimetable(input: CreateTimetableInput, schoolId: string, actorId: string): Promise<string> {
-  const { data, error } = await supabase
-    .from("timetables")
-    .insert({
-      school_id: schoolId,
-      class_id: input.classId,
-      name: input.name,
-      school_year: input.schoolYear?.trim() || SCHOOL_YEAR,
-      status: "draft",
-      created_by: actorId,
-    })
-    .select("id")
-    .single();
-
-  if (error) throw error;
-  return (data as { id: string }).id;
+  void schoolId;
+  void actorId; // school_id et created_by viennent du profil côté serveur.
+  const result = await callFunction<{ timetable: { id: string } }>("api/timetables", {
+    classId: input.classId,
+    name: input.name,
+    schoolYear: input.schoolYear?.trim() || SCHOOL_YEAR,
+  });
+  return result.timetable.id;
 }
 
-// Publie un emploi du temps (visible par la classe).
+// Publie un emploi du temps (visible par la classe) — API sécurisée.
 export async function publishTimetable(timetableId: string, schoolId: string): Promise<void> {
-  // Defense-in-depth : school_id explicitement scroppé (pas du query, on ne
-  // met jamais le school_id venant d'un utilisateur, même si la RLS 00037
-  // interdit d'en tirer autre chose). Contrôle RLS côté base.
-  const { error } = await supabase
-    .from("timetables")
-    .update({ status: "published", published_at: new Date().toISOString() })
-    .eq("id", timetableId)
-    .eq("school_id", schoolId);
-
-  if (error) throw error;
+  void schoolId;
+  await callFunction(`api/timetables/${timetableId}/publish`, {});
 }
 
-// Repasse un emploi du temps en brouillon (le dépublie).
+// Repasse un emploi du temps en brouillon (le dépublie) — API sécurisée.
 export async function unpublishTimetable(timetableId: string, schoolId: string): Promise<void> {
-  const { error } = await supabase
-    .from("timetables")
-    .update({ status: "draft", published_at: null })
-    .eq("id", timetableId)
-    .eq("school_id", schoolId);
-
-  if (error) throw error;
+  void schoolId;
+  await callFunction(`api/timetables/${timetableId}/unpublish`, {});
 }
 
-/** Convertit "HH:MM" en "HH:MM:00" (format attendu par Postgres pour les colonnes time). */
-function normalizeTime(value: string): string {
-  return value.length === 5 ? `${value}:00` : value;
-}
-
-// Ajoute un cours (matière, enseignant, jour, horaires) à un emploi du temps.
+// Ajoute un cours (matière, enseignant, jour, horaires) à un emploi du temps — API sécurisée.
 export async function createCourse(timetableId: string, schoolId: string, input: CourseInput): Promise<void> {
   void schoolId;
-  // school_id explicite scroppé : on ne permet pas à un utilisateur de brancher
-  // un EDT hors de son école (defense-in-depth côté client) — la RLS 00037
-  // precedent aussi subject_id/teacher_id same-school.
-  const { error } = await supabase.from("timetable_courses").insert({
-    timetable_id: timetableId,
-    subject_id: input.subjectId,
-    teacher_id: input.teacherId,
+  await callFunction(`api/timetables/${timetableId}/slots`, {
+    subjectId: input.subjectId,
+    teacherId: input.teacherId,
     day: input.day,
-    start_time: normalizeTime(input.startTime),
-    end_time: normalizeTime(input.endTime),
+    startTime: input.startTime,
+    endTime: input.endTime,
     room: input.room?.trim() || null,
     description: input.description?.trim() || null,
   });
-
-  if (error) throw error;
 }
 
-// Modifie un cours existant (table timetable_courses).
+// Modifie un cours existant (table timetable_courses) — API sécurisée.
 export async function updateCourse(courseId: string, schoolId: string, input: CourseInput): Promise<void> {
   void schoolId;
-  const { error } = await supabase
+  // La route exige l'id de l'emploi du temps parent : on le retrouve via la
+  // lecture RLS puis on passe par l'API (qui re-vérifie l'appartenance).
+  const { data, error } = await supabase
     .from("timetable_courses")
-    .update({
-      subject_id: input.subjectId,
-      teacher_id: input.teacherId,
-      day: input.day,
-      start_time: normalizeTime(input.startTime),
-      end_time: normalizeTime(input.endTime),
-      room: input.room?.trim() || null,
-      description: input.description?.trim() || null,
-    })
-    .eq("id", courseId); // timetable_courses n'a pas de school_id ; la RLS 00037 vérifie l'école via timetables.
-
+    .select("timetable_id")
+    .eq("id", courseId)
+    .maybeSingle();
   if (error) throw error;
+  const timetableId = (data as { timetable_id: string } | null)?.timetable_id;
+  if (!timetableId) throw new Error("Cours introuvable.");
+  await callFunction(`api/timetables/${timetableId}/slots/${courseId}`, {
+    subjectId: input.subjectId,
+    teacherId: input.teacherId,
+    day: input.day,
+    startTime: input.startTime,
+    endTime: input.endTime,
+    room: input.room?.trim() || null,
+    description: input.description?.trim() || null,
+  }, "PATCH");
 }
 
-// Supprime un cours d'un emploi du temps.
+// Supprime un cours d'un emploi du temps — API sécurisée.
 export async function deleteCourse(courseId: string, schoolId: string): Promise<void> {
   void schoolId;
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("timetable_courses")
-    .delete()
-    .eq("id", courseId);
+    .select("timetable_id")
+    .eq("id", courseId)
+    .maybeSingle();
   if (error) throw error;
+  const timetableId = (data as { timetable_id: string } | null)?.timetable_id;
+  if (!timetableId) throw new Error("Cours introuvable.");
+  await callFunction(`api/timetables/${timetableId}/slots/${courseId}`, undefined, "DELETE");
 }
 
-// Supprime définitivement un emploi du temps (et ses cours, par cascade côté base).
+// Supprime définitivement un emploi du temps (et ses cours, par cascade côté base) — API sécurisée.
 export async function deleteTimetable(timetableId: string, schoolId: string): Promise<void> {
-  const { error } = await supabase
-    .from("timetables")
-    .delete()
-    .eq("id", timetableId)
-    .eq("school_id", schoolId); // Defense-in-depth : scroppé.
-  if (error) throw error;
+  void schoolId;
+  await callFunction(`api/timetables/${timetableId}`, undefined, "DELETE");
 }

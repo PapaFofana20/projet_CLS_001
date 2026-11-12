@@ -46,6 +46,15 @@ function recordFailure(identifier) {
   entry.failures += 1;
   entry.lastFailureAt = Date.now();
   LOGIN_FAILURES.set(identifier, entry);
+  // Borne mémoire : un attaquant ne doit pas pouvoir remplir la Map avec
+  // des identifiants aléatoires (DoS mémoire). Au-delà de 10 000 entrées,
+  // purge des entrées expirées.
+  if (LOGIN_FAILURES.size > 10_000) {
+    const now = Date.now();
+    for (const [k, v] of LOGIN_FAILURES.entries()) {
+      if (now - v.lastFailureAt > LOCKOUT_WINDOW_MS) LOGIN_FAILURES.delete(k);
+    }
+  }
 }
 
 /** Efface le compteur d'échecs après une connexion réussie. */
@@ -91,7 +100,7 @@ export default route(async (req, res) => {
     }
 
     // L'identifiant doit correspondre à un agent administratif connu.
-    let query = svc.from("admin_agents").select("id, matricule, role, status, email, auth_user_id");
+    let query = svc.from("admin_agents").select("id, matricule, role, status, email, auth_user_id, totp_enabled");
     query = isMatricule ? query.eq("matricule", value) : query.eq("email", value);
     const { data: agent, error } = await query.maybeSingle();
     if (error || !agent) {
@@ -143,7 +152,7 @@ export default route(async (req, res) => {
 
     // Si le MFA est activé, on ne retourne pas encore l'email : il faut
     // d'abord valider le second facteur via POST /admin/mfa/verify.
-    if (agent.totpEnabled === true) {
+    if (agent.totp_enabled === true) {
       const preAuthToken = createPreAuthSession(agent.id);
       await auditAdmin(svc, {
         actorId: agent.auth_user_id,

@@ -33,19 +33,25 @@ export default function AdminSchoolDetailPage() {
   const { agent } = useAdminAuth();
   const isSuperAdmin = agent?.role === "superadmin";
 
+  // Hooks TOUJOURS appelés, dans le même ordre, quel que soit le param :
+  // useAsync avec un no-op quand l'id est absent (jamais de retour anticipé
+  // avant les hooks — rules-of-hooks).
+  const schoolId = schoolIdParam ?? "";
+  const state = useAsync(
+    () => (schoolId ? getAdminSchoolDetail(schoolId) : Promise.resolve(null)),
+    [schoolId],
+  );
+
   if (!schoolIdParam) {
-    // useAsync doit rester appelé (même avec un no-op) pour préserver l'ordre
-    // stable des hooks entre les rendus (rules-of-hooks).
-    useAsync(() => Promise.resolve(null), []);
     return <div>École introuvable.</div>;
   }
-  const schoolId = schoolIdParam;
-  const state = useAsync(() => getAdminSchoolDetail(schoolId), [schoolId]);
 
   return (
     <>
       <AsyncView state={state}>
-        {(detail) => <Content detail={detail} isSuperAdmin={isSuperAdmin} />}
+        {/* detail ne peut pas être null ici : schoolIdParam est présent
+            (sinon retour anticipé plus haut). */}
+        {(detail) => <Content detail={detail!} isSuperAdmin={isSuperAdmin} />}
       </AsyncView>
     </>
   );

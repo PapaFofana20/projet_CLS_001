@@ -303,8 +303,10 @@ export function createClass(schoolId: string, input: NewClassInput): Promise<Cla
 export function deleteClass(schoolId: string, classId: string): Promise<void> {
   return (async () => {
     if (studentsOf(schoolId).some((s) => s.classId === classId)) throw new Error("Impossible de supprimer une classe qui contient des élèves.");
-    await supabase.from("teaching_assignments").delete().eq("school_id", schoolId).eq("class_id", classId);
-    await supabase.from("class_subjects").delete().eq("school_id", schoolId).eq("class_id", classId);
+    const { error: assignmentsError } = await supabase.from("teaching_assignments").delete().eq("school_id", schoolId).eq("class_id", classId);
+    if (assignmentsError) throw new Error("Impossible de nettoyer les affectations de la classe. Réessayez.");
+    const { error: subjectsError } = await supabase.from("class_subjects").delete().eq("school_id", schoolId).eq("class_id", classId);
+    if (subjectsError) throw new Error("Impossible de nettoyer les matières de la classe. Réessayez.");
     const { error } = await supabase.from("class_rooms").delete().eq("id", classId).eq("school_id", schoolId);
     if (error) throw new Error(/guard|élèves/.test(error.message) ? "Impossible de supprimer une classe qui contient des élèves." : /read-only|row-level/i.test(error.message) ? "Mode lecture seule : l'abonnement de votre école est expiré. Les modifications sont désactivées." : error.message);
     await Promise.all([hydrate("classes"), hydrate("classSubjects"), hydrate("assignments")]);

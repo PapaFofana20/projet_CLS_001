@@ -16,12 +16,16 @@ let cache = null;
 export default route(async (req, res) => {
   if (req.method !== "GET") return ok(res, { error: "Méthode non autorisée." }, 405);
 
+  const svc = serviceClient();
+  // Rate limiting AVANT le cache : un cache-hit ne doit pas contourner la
+  // borne (sinon l'endpoint public est illimité en cache).
+  await enforceRateLimit(svc, `platform-status:${clientIp(req) ?? "sans-adresse"}`, 60, 300);
+
   // Cache mémoire (TTL 30 s) : /platform-status est public et non borné — sans
   // cache, chaque requête scriptee coûte 1 lecture SQL (amplification DoS).
   const now = Date.now();
   if (cache && now - cache.at < CACHE_TTL_MS) {
     res.setHeader("Cache-Control", "public, max-age=30");
-    res.setHeader("X-Cache", "HIT");
     return ok(res, cache.body);
   }
   const respond = (body) => {
@@ -31,14 +35,14 @@ export default route(async (req, res) => {
   };
 
   try {
-    const svc = serviceClient();
-    // Rate limiting léger par IP sur l'endpoint public (M-01 de l'audit).
-    await enforceRateLimit(svc, `platform-status:${clientIp(req) ?? "sans-adresse"}`, 60, 300);
     const { settings, migrationApplied } = await readPlatformSettings(svc);
     return respond({ ...publicPlatformStatus(settings), migrationApplied });
   } catch (e) {
-    // La page publique ne doit jamais tomber à cause de la configuration.
+    // Fail-closed SANS cache : on ne met JAMAIS en cache les valeurs par
+    // défaut (elles prétendraient « inscriptions ouvertes » pendant une
+    // vraie maintenance) — la prochaine requête réessaie la lecture réelle.
     console.warn("[platform-status] repli sur les valeurs par défaut :", e?.message ?? e);
-    return respond({ ...publicPlatformStatus(DEFAULT_PLATFORM_SETTINGS), migrationApplied: false });
+    res.setHeader("Cache-Control", "no-store");
+    return ok(res, { ...publicPlatformStatus(DEFAULT_PLATFORM_SETTINGS), migrationApplied: false });
   }
 });

@@ -34,6 +34,20 @@ export function consumePreAuthSession(token) {
   return entry.agentId;
 }
 
+/**
+ * Lit une session pré-authentifiée SANS la consommer (pour vérifier le code
+ * TOTP avant de détruire le jeton : un code erroné ne doit pas forcer un
+ * re-login complet). Retourne l'agentId ou null.
+ */
+export function peekPreAuthSession(token) {
+  const entry = PRE_AUTH_SESSIONS.get(token);
+  if (!entry || entry.expiresAt < Date.now()) {
+    PRE_AUTH_SESSIONS.delete(token);
+    return null;
+  }
+  return entry.agentId;
+}
+
 /** Nombre de sessions actives (utile pour le monitoring / santé). */
 export function preAuthSessionCount() {
   return PRE_AUTH_SESSIONS.size;

@@ -6,6 +6,7 @@
 
 import { passwordError, serviceClient } from "../lib/auth.js";
 import { badRequest, ok, route, serverError, RATE_LIMIT_RE, logError, withTimeout } from "../lib/http.js";
+import { readPlatformSettings } from "../lib/platformSettings.js";
 import { enforceRateLimit, clientIp } from "../lib/rateLimit.js";
 import { expectObject, optionalIsoDate, optionalString, optionalUuid, requireEmail, requireSnPhone, requireString } from "../lib/validate.js";
 
@@ -15,6 +16,19 @@ export default route(async (req, res) => {
   const svc = serviceClient();
   try {
     await enforceRateLimit(svc, `register-student:${clientIp(req) ?? "sans-adresse"}`, 10, 300);
+
+    // Réglages plateforme : maintenance / fermeture des inscriptions.
+    const platform = await readPlatformSettings(svc);
+    if (platform.settings.maintenanceMode) {
+      return badRequest(
+        res,
+        platform.settings.maintenanceMessage ||
+          "La plateforme est en maintenance. Les inscriptions rouvriront très prochainement.",
+      );
+    }
+    if (!platform.settings.registrationOpen) {
+      return badRequest(res, "Les inscriptions sont momentanément fermées. Contactez le support Classora.");
+    }
 
     const body = expectObject(req.body);
     const schoolId = optionalUuid(body, "schoolId", "L'école");
@@ -46,9 +60,10 @@ export default route(async (req, res) => {
     if (!resolvedSchool) return badRequest(res, "École introuvable.");
     if (!classId) return badRequest(res, "Sélectionnez une classe.");
 
-    // Vérifier que l'école est writable (abonnement actif)
-    const { data: writable } = await svc.rpc("school_is_writable", { p_school_id: resolvedSchool });
-    if (writable === false) return badRequest(res, "L'abonnement de cette école n'est pas actif.");
+    // Vérifier que l'école est writable (abonnement actif) — fail-closed :
+    // toute erreur RPC ou réponse non-true bloque l'inscription.
+    const { data: writable, error: writableError } = await svc.rpc("school_is_writable", { p_school_id: resolvedSchool });
+    if (writableError || writable !== true) return badRequest(res, "L'abonnement de cette école n'est pas actif.");
 
     // Vérifier le plafond de demandes EN_ATTENTE (max 100 par école)
     const { count, error: countError } = await svc

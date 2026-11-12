@@ -69,7 +69,7 @@ export default route(async (req, res) => {
 
     // Si le MFA est activé pour cet agent, exiger une session MFA vérifiée
     // (créée via POST /admin/mfa/verify après validation du second facteur).
-    if (agent.totpEnabled === true) {
+    if (agent.totp_enabled === true) {
       const { data: mfaSession } = await svc
         .from("admin_mfa_sessions")
         .select("id")

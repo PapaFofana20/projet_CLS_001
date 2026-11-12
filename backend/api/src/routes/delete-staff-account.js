@@ -9,7 +9,7 @@
  * Limité en débit par compte appelant.
  */
 
-import { audit, isStaffRole, requireDirecteur, serviceClient } from "../lib/auth.js";
+import { audit, isStaffRole, requireDirecteur, schoolIsWritable, serviceClient } from "../lib/auth.js";
 import { badRequest, forbidden, notFound, ok, route, serverError, RATE_LIMIT_RE, logError } from "../lib/http.js";
 import { enforceRateLimit } from "../lib/rateLimit.js";
 import { expectObject, requireUuid, ValidationError } from "../lib/validate.js";
@@ -24,6 +24,12 @@ export default route(async (req, res) => {
     const { caller } = dir;
 
     await enforceRateLimit(svc, `staff-mgmt:${caller.id}`, 30, 300);
+
+    // Garde d'abonnement (fail-closed, comme createStaffAccount/updateStaff) :
+    // une école expirée/suspendue ne peut pas supprimer de comptes.
+    if (!(await schoolIsWritable(svc, caller.schoolId))) {
+      return badRequest(res, "L'abonnement de votre école n'est pas actif. Renouvelez pour gérer les comptes du personnel.");
+    }
 
     const body = expectObject(req.body);
     const userId = requireUuid(body, "userId", "Le compte");

@@ -39,7 +39,7 @@ export function hasFeature(feature: FeatureKey, schoolId: string): boolean {
   if (!info.plan) return false;
   const currentPlanIndex = PLAN_ORDER.indexOf(info.plan.id as PlanId);
   const requiredPlanIndex = PLAN_ORDER.indexOf(FEATURE_REQUIREMENTS[feature]);
-  if (currentPlanIndex === -1) return true;
+  if (currentPlanIndex === -1) return false; // Fail-closed : plan inconnu/corrompu = aucune feature premium.
   return currentPlanIndex >= requiredPlanIndex;
 }
 

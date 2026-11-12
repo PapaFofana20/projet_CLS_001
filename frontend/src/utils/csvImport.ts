@@ -118,7 +118,12 @@ export function parseStudentsCsv(text: string): CsvParseResult {
     const lineErrors: string[] = [];
     if (firstName.length < 2) lineErrors.push("prénom manquant");
     if (lastName.length < 2) lineErrors.push("nom manquant");
-    const gender: "F" | "M" = genderRaw.startsWith("m") || genderRaw === "garcon" ? "M" : "F";
+    // Genre explicite : toute valeur non reconnue (ou absente) est une erreur,
+    // jamais un défaut silencieux vers « F » (données fausses en base).
+    let gender: "F" | "M" | null = null;
+    if (genderRaw === "m" || genderRaw === "masculin" || genderRaw === "garcon" || genderRaw === "male") gender = "M";
+    else if (genderRaw === "f" || genderRaw === "feminin" || genderRaw === "fille" || genderRaw === "female") gender = "F";
+    else lineErrors.push(`genre invalide ("${get(cells, "gender")}", attendez M ou F)`);
     const birthIso = parseBirthDate(birthRaw);
     if (!birthIso) lineErrors.push(`date de naissance invalide ("${birthRaw}", attendez JJ/MM/AAAA)`);
     if (!className) lineErrors.push("classe manquante");
@@ -135,7 +140,7 @@ export function parseStudentsCsv(text: string): CsvParseResult {
       errors.push(`Ligne ${lineNo} : ${lineErrors.join(", ")}.`);
       continue;
     }
-    rows.push({ line: lineNo, firstName, lastName, gender, birthDateIso: birthIso!, className, parentFirst, parentLast, parentPhone, parentEmail });
+    rows.push({ line: lineNo, firstName, lastName, gender: gender!, birthDateIso: birthIso!, className, parentFirst, parentLast, parentPhone, parentEmail });
   }
 
   if (rows.length === 0 && errors.length === 0) errors.push("Aucune ligne valide trouvée.");

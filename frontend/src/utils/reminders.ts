@@ -82,7 +82,14 @@ export function whatsappReminderLink(snPhone: string, message: string): string |
 
 /** Export CSV de la liste des impayés (pour appel terrain / suivi). */
 export function debtorsToCsv(rows: Array<{ studentName: string; className: string; parentName: string; parentPhone: string; count: number; total: number }>): string {
-  const esc = (v: string | number) => (/[;"\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : String(v));
+  // Protection formule : une cellule commençant par =, +, -, @ serait
+  // exécutée comme formule à l'ouverture dans Excel/LibreOffice (les noms
+  // viennent de saisies tiers). Préfixe apostrophe dans ce cas.
+  const esc = (v: string | number) => {
+    let text = String(v);
+    if (/^[=+\-@]/.test(text.trimStart())) text = `'${text}`;
+    return /[;"\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+  };
   const header = ["eleve", "classe", "parent", "telephone", "echeances", "total_du"];
   const lines = rows.map((r) => [r.studentName, r.className, r.parentName, r.parentPhone, r.count, r.total].map(esc).join(";"));
   return [header.join(";"), ...lines].join("\r\n");

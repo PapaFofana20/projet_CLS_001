@@ -26,5 +26,14 @@ export default function DashboardPage() {
       return <StudentHome />;
     case "parent":
       return <ParentHome />;
+    default:
+      return (
+        <div className="flex min-h-[40vh] flex-col items-center justify-center gap-3 p-8 text-center">
+          <p className="text-lg font-semibold">Rôle non reconnu</p>
+          <p className="text-sm text-neutral-500">
+            Votre compte n&apos;a pas de rôle reconnu. Déconnectez-vous puis reconnectez-vous, ou contactez le support.
+          </p>
+        </div>
+      );
   }
 }
