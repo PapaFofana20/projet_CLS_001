@@ -11,7 +11,7 @@ export default function NotFoundPage() {
   usePageMeta({ title: "Page introuvable", description: "La page demandée n'existe pas ou a été déplacée.", noindex: true });
   return (
     <Container className="flex min-h-[70vh] flex-col items-center justify-center py-20 text-center">
-      <p className="font-serif text-2xl font-semibold italic text-forest-500">Erreur 404</p>
+      <p className="text-2xl font-semibold text-forest-500">Erreur 404</p>
       <h1 className="mt-3 max-w-2xl text-4xl font-extrabold tracking-tight sm:text-5xl">
         Cette page n'existe pas ou a été déplacée
       </h1>

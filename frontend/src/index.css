@@ -3,7 +3,7 @@
 /* Design system Classora (équivalent du tailwind.config en Tailwind v4) */
 @theme {
   --font-sans: "Montserrat", ui-sans-serif, system-ui, sans-serif;
-  --font-serif: "Fraunces", Georgia, serif;
+  --font-display: "Clash Display", "Montserrat", ui-sans-serif, system-ui, sans-serif;
 
   --color-lime: #c6f068;
   --color-lime-soft: #eef9cf;
@@ -64,6 +64,19 @@
     0%, 100% { transform: translateY(0) translateX(0); }
     33% { transform: translateY(-8px) translateX(4px); }
     66% { transform: translateY(4px) translateX(-3px); }
+  }
+}
+
+/* ==========================================================================
+   TYPOGRAPHIE DES TITRES
+   Clash Display (chargée via Fontshare dans index.html) remplace Montserrat
+   sur tous les niveaux de titres. Le corps de texte reste Montserrat.
+   `@layer base` + `:where()` : les utilitaires (.font-sans…) gardent la
+   priorité et peuvent surcharger.
+   ========================================================================== */
+@layer base {
+  :where(h1, h2, h3, h4, h5, h6) {
+    font-family: var(--font-display);
   }
 }
 

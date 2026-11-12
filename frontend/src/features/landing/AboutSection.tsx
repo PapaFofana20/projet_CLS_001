@@ -16,7 +16,7 @@ export function AboutSection() {
             <div className="grid gap-8 lg:grid-cols-2 lg:gap-16">
               <div>
                 <h2 id="about-title" className="text-3xl font-extrabold leading-tight tracking-tight sm:text-5xl">
-                  Le numérique au service de <span className="font-serif font-semibold italic text-lime">nos écoles</span>
+                  Le numérique au service de nos écoles
                 </h2>
               </div>
               <div>

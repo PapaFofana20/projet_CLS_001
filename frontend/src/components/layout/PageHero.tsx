@@ -4,7 +4,7 @@ import { Container } from "@/components/layout/Container";
 import { cn } from "@/utils/cn";
 
 export interface PageHeroProps {
-  /** Titre ; un mot encadré par des astérisques est rendu en Fraunces italique lime. */
+  /** Titre du hero, affiché d'une seule police (Clash Display). */
   title: string;
   description: string;
   eyebrow?: string;
@@ -12,19 +12,6 @@ export interface PageHeroProps {
   primaryCta?: { label: string; to: string };
   secondaryCta?: { label: string; to: string };
   image: { src: string; alt: string; objectPosition?: string; width?: number; height?: number };
-}
-
-/** Découpe le titre : `*mot*` → Fraunces italique lime, sans cadre ni poignée. */
-function renderTitle(title: string) {
-  return title.split("*").map((part, i) =>
-    i % 2 === 1 ? (
-      <em key={i} className="font-serif font-semibold italic text-lime">
-        {part}
-      </em>
-    ) : (
-      <span key={i}>{part}</span>
-    ),
-  );
 }
 
 /**
@@ -61,7 +48,7 @@ export function PageHero({ title, description, eyebrow, meta, primaryCta, second
           <div className={cn("animate-hero-fade relative z-10 flex flex-col justify-end px-6 pb-6 pt-nav-clearance md:px-10 md:pb-10", height)}>
             <div className="max-w-2xl">
               {eyebrow && <p className="mb-3 text-xs font-bold uppercase tracking-[0.2em] text-lime">{eyebrow}</p>}
-              <h1 className="text-balance text-[clamp(2rem,_1.3rem+2.6vw,_3.25rem)] font-bold leading-[1.1] text-white">{renderTitle(title)}</h1>
+              <h1 className="text-balance text-[clamp(2rem,_1.3rem+2.6vw,_3.25rem)] font-bold leading-[1.1] text-white">{title}</h1>
               <p className="mt-4 max-w-xl text-base leading-relaxed text-white/85 md:text-lg">{description}</p>
               {meta && <p className="mt-3 text-sm text-white/65">{meta}</p>}
               {(primaryCta || secondaryCta) && (

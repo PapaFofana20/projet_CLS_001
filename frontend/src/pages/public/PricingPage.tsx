@@ -22,7 +22,7 @@ export default function PricingPage() {
         <Reveal>
           <div className="mx-auto max-w-2xl text-center">
             <h2 id="pricing-intro" className="text-3xl font-extrabold tracking-tight sm:text-5xl">
-              Des tarifs <span className="font-serif font-semibold italic text-forest-500">adaptés</span> à chaque école
+              Des tarifs adaptés à chaque école
             </h2>
             <p className="mt-4 text-neutral-600">
               Choisissez le plan qui correspond à la taille de votre établissement. Chaque formule inclut l'inscription, la gestion des notes, les bulletins automatiques et le suivi des paiements — sans frais cachés.

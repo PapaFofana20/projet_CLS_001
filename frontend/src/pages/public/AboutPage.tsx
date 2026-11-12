@@ -31,7 +31,7 @@ export default function AboutPage() {
             />
             <div className="relative">
               <h2 id="mission-title" className="text-4xl font-extrabold tracking-tight sm:text-5xl lg:text-6xl max-w-3xl mx-auto text-center">
-                <img src="/images/logo-dark.png" alt="Classora" width={240} height={46} className="inline-block h-[0.85em] w-auto align-[-0.1em]" /> : pensé pour <span className="font-serif font-semibold italic text-forest-500">les réalités de nos écoles</span>
+                <img src="/images/logo-dark.png" alt="Classora" width={240} height={46} className="inline-block h-[0.85em] w-auto align-[-0.1em]" /> : pensé pour les réalités de nos écoles
               </h2>
               <div className="mt-8 max-w-3xl mx-auto space-y-4 text-lg leading-relaxed text-neutral-700 text-center sm:mt-10 md:mt-12">
                 <p>
@@ -60,7 +60,7 @@ export default function AboutPage() {
       <section className="mx-auto w-full max-w-[1280px] px-gutter py-20" aria-labelledby="values-title">
         <Reveal>
           <h2 id="values-title" className="max-w-2xl text-3xl font-extrabold tracking-tight sm:text-5xl">
-            Ce qui nous <span className="font-serif font-semibold italic text-forest-500">guide</span>
+            Ce qui nous guide
           </h2>
         </Reveal>
         <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

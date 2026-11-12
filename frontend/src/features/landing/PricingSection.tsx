@@ -16,7 +16,7 @@ export function PricingSection({ withHeader = true }: { withHeader?: boolean }) 
         <Reveal>
           <div className="mb-12 text-center">
             <h2 id="pricing-title" className="mx-auto max-w-2xl text-3xl font-extrabold leading-tight tracking-tight sm:text-5xl">
-              Un prix simple, <span className="font-serif font-semibold italic text-forest-500">par élève</span>
+              Un prix simple, par élève
             </h2>
             <p className="mx-auto mt-4 max-w-4xl text-neutral-600">Pas de frais d'installation ni d'engagement.<br className="hidden sm:block" /> Vous ne payez que pour vos élèves inscrits, toutes les fonctionnalités incluses dès le départ.</p>
           </div>
