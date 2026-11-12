@@ -9,7 +9,7 @@ import { ProgressBar } from "@/components/ui/Brand";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Icon } from "@/components/ui/Icon";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { SkeletonCards } from "@/components/ui/Skeleton";
+import { Skeleton, SkeletonCards } from "@/components/ui/Skeleton";
 import { useCurrentUser } from "@/context/AuthContext";
 import { useSchool } from "@/context/SchoolContext";
 import { useTeaching } from "@/context/TeachingContext";
@@ -17,11 +17,12 @@ import { getPeriods } from "@/data/school";
 import { contextKey } from "@/hooks/useTeacherAssignments";
 import { useAsync } from "@/hooks/useAsync";
 import { listAbsences } from "@/services/absenceService";
-import { getTeacherOverview, type ContextOverview } from "@/services/gradeService";
+import { getTeacherOverview, getTeacherGradeHistory, type ContextOverview } from "@/services/gradeService";
 import { periodInfo } from "@/services/reportService";
 import { todayIso } from "@/data/school";
 import { formatNumber } from "@/utils/format";
 import { averageTone } from "@/utils/grades";
+import { TeacherGradeEvolutionCharts } from "./charts";
 import { GreetingSection } from "./GreetingSection";
 
 /** « Mes classes » (professeur) ou « Ma classe » (instituteur : toutes les matières, sans sélecteur de classe). */
@@ -35,6 +36,7 @@ export function TeacherHome() {
   const periodLabel = settings ? getPeriods(settings.periodType).find((p) => p.id === settings.currentPeriod)?.label : null;
   const state = useAsync(() => getTeacherOverview(user.schoolId, user.teacherId ?? "", period), [user.schoolId, user.teacherId]);
   const absences = useAsync(() => listAbsences(user.schoolId), [user.schoolId]);
+  const history = useAsync(() => getTeacherGradeHistory(user), [user.schoolId, user.teacherId]);
   const isInstit = user.role === "instituteur";
   const myClass = headClasses[0];
 
@@ -123,6 +125,11 @@ export function TeacherHome() {
                   </Card>
                 ))}
               </div>
+
+              {/* Évolution des moyennes de classe */}
+              <AsyncView state={history} skeleton={<Skeleton className="h-64 w-full" />}>
+                {(h) => <TeacherGradeEvolutionCharts histories={h ?? []} />}
+              </AsyncView>
             </div>
           )
         }

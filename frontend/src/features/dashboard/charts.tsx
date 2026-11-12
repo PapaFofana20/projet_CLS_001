@@ -3,7 +3,7 @@
 import { Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { CYCLE_LABELS } from "@/data/school";
 import type { AdminStats } from "@/services/statsService";
-import type { Cycle, StudentGradeHistory } from "@/types";
+import type { Cycle, StudentGradeHistory, ClassSubjectGradeHistory } from "@/types";
 import { formatCurrency, formatNumber } from "@/utils/format";
 
 export const CYCLE_COLORS: Record<Cycle, string> = { elementaire: "#12a150", moyen: "#0f3d1e", secondaire: "#c6f068" };
@@ -11,13 +11,16 @@ const axis = { fontSize: 12, fill: "#6b7280" };
 /** Les graphiques ne se recalculent qu'une fois la transition de sidebar terminée (250 ms). */
 export const CHART_DEBOUNCE = 250;
 
-// Couleurs pour les types d'évaluations
+// Couleurs pour les types d'évaluations (réutilisées partout pour cohérence)
 export const GRADE_COLORS = {
   devoir1: "#3b82f6",   // bleu
   devoir2: "#8b5cf6",   // violet
   composition: "#12a150", // vert
   average: "#f59e0b",   // ambre
 } as const;
+
+// Couleur pour la moyenne de classe (enseignants)
+export const CLASS_AVERAGE_COLOR = "#12a150"; // vert forêt - cohérent avec la charte
 
 // Barres mensuels : montants attendus et montants encaisses.
 export function PaymentsChart({ data }: { data: AdminStats["paymentsByMonth"] }) {
@@ -247,6 +250,158 @@ export function GradeEvolutionCharts({ history, cycle }: GradeEvolutionChartsPro
                 average: p.average,
               }))}
               cycle={cycle}
+              maxGrade={scale}
+            />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ------------------------------------------------------------------
+// Graphiques d'évolution pour enseignants (moyennes de classe)
+// ------------------------------------------------------------------
+
+interface ClassPeriodPoint {
+  period: string;
+  periodLabel: string;
+  average: number | null;
+  completion: number;
+  studentCount: number;
+}
+
+interface ClassSubjectEvolutionProps {
+  className: string;
+  subjectName: string;
+  data: ClassPeriodPoint[];
+  maxGrade?: number;
+}
+
+/**
+ * Graphique en courbe montrant l'évolution de la MOYENNE DE CLASSE pour une classe × matière.
+ * Réutilise la même charte graphique (couleurs, style) que les graphiques élève/parent.
+ */
+export function ClassSubjectEvolution({ className, subjectName, data, maxGrade = 20 }: ClassSubjectEvolutionProps) {
+  const hasData = data.some((d) => d.average !== null);
+  if (!hasData) return null;
+
+  const filteredData = data.filter((d) => d.average !== null);
+  if (filteredData.length === 0) return null;
+
+  const yMax = maxGrade === 10 ? 10 : 20;
+
+  return (
+    <div className="h-64" role="img" aria-label={`Évolution de la moyenne de ${subjectName} - ${className}`}>
+      <ResponsiveContainer width="100%" height="100%" debounce={CHART_DEBOUNCE}>
+        <LineChart data={filteredData} margin={{ top: 8, right: 8, left: -8, bottom: 0 }}>
+          <CartesianGrid vertical={false} stroke="#eee" />
+          <XAxis dataKey="periodLabel" tick={axis} axisLine={false} tickLine={false} />
+          <YAxis
+            tick={axis}
+            axisLine={false}
+            tickLine={false}
+            domain={[0, yMax]}
+            tickFormatter={(v) => (v === yMax ? `${v}/20` : v)}
+          />
+          <Tooltip
+            formatter={(v) => (typeof v === "number" ? formatNumber(v) : String(v ?? "—"))}
+            cursor={{ fill: "rgba(198,240,104,0.2)" }}
+            contentStyle={{ borderRadius: 16, border: "none", boxShadow: "0 10px 40px -14px rgba(15,61,30,.3)" }}
+            labelFormatter={(label) => (typeof label === "string" ? label : String(label))}
+          />
+          <Legend iconType="circle" wrapperStyle={{ fontSize: 11 }} />
+          {/* Moyenne de classe - ligne principale */}
+          <Line
+            type="monotone"
+            dataKey="average"
+            name="Moyenne de classe"
+            stroke={CLASS_AVERAGE_COLOR}
+            strokeWidth={3}
+            dot={{ fill: CLASS_AVERAGE_COLOR, strokeWidth: 2, r: 5 }}
+            activeDot={{ r: 7, strokeWidth: 2 }}
+            connectNulls={false}
+          />
+          {/* Taux de complétion - ligne secondaire en pointillés */}
+          <Line
+            type="monotone"
+            dataKey="completion"
+            name="Taux de saisie (%)"
+            stroke="#6b7280"
+            strokeWidth={2}
+            strokeDasharray="5 5"
+            dot={{ fill: "#6b7280", strokeWidth: 2, r: 4 }}
+            activeDot={{ r: 6, strokeWidth: 2 }}
+            connectNulls={false}
+            yAxisId="right"
+          />
+          <YAxis
+            yAxisId="right"
+            orientation="right"
+            tick={axis}
+            axisLine={false}
+            tickLine={false}
+            domain={[0, 100]}
+            tickFormatter={(v) => `${v}%`}
+            width={40}
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+interface TeacherGradeEvolutionChartsProps {
+  histories: ClassSubjectGradeHistory[];
+}
+
+/**
+ * Conteneur affichant un graphique par classe × matière pour un enseignant.
+ * Réutilise la même structure visuelle que GradeEvolutionCharts.
+ */
+export function TeacherGradeEvolutionCharts({ histories }: TeacherGradeEvolutionChartsProps) {
+  // Filtrer les classes/matières qui ont au moins une moyenne sur une période
+  const withData = histories.filter((h) => h.periods.some((p) => p.average !== null));
+
+  if (withData.length === 0) {
+    return (
+      <div className="text-center py-12 text-neutral-500">
+        <svg className="mx-auto h-12 w-12 text-neutral-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+        <p className="mt-3 font-medium">Aucune moyenne de classe disponible</p>
+        <p className="text-sm mt-1">Les graphiques apparaîtront ici dès que des notes seront saisies pour vos classes.</p>
+      </div>
+    );
+  }
+
+  // Déterminer l'échelle (toutes les classes ont le même cycle ?)
+  const cycles = new Set(withData.map((h) => h.cycle));
+  const isElementaire = cycles.size === 1 && cycles.has("elementaire");
+  const scale = isElementaire ? 10 : 20;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-2 text-sm text-neutral-500 flex-wrap">
+        <span className="inline-flex items-center gap-1"><span className="w-3 h-3 rounded-full" style={{ background: CLASS_AVERAGE_COLOR }} /> Moyenne de classe</span>
+        <span className="inline-flex items-center gap-1"><span className="w-3 h-3 rounded-full border-2 border-dashed" style={{ borderColor: "#6b7280" }} /> Taux de saisie</span>
+        <span className="ml-auto text-xs text-neutral-400">Échelle : / {scale}</span>
+      </div>
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {withData.map((h) => (
+          <div key={`${h.classId}-${h.subjectId}`} className="bg-white rounded-2xl border border-neutral-100 p-4 shadow-card">
+            <div className="mb-3">
+              <h3 className="font-semibold text-neutral-900 truncate" title={h.subjectName}>{h.subjectName}</h3>
+              <p className="text-xs text-neutral-500 truncate" title={h.className}>{h.className}</p>
+            </div>
+            <ClassSubjectEvolution
+              className={h.className}
+              subjectName={h.subjectName}
+              data={h.periods.map((p) => ({
+                period: p.periodId,
+                periodLabel: p.periodLabel,
+                average: p.average,
+                completion: p.completion,
+                studentCount: p.studentCount,
+              }))}
               maxGrade={scale}
             />
           </div>

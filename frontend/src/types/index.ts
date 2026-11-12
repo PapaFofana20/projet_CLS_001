@@ -201,6 +201,22 @@ export interface StudentGradeHistory {
   }[];
 }
 
+export interface ClassSubjectGradeHistory {
+  classId: string;
+  className: string;
+  subjectId: string;
+  subjectName: string;
+  cycle: Cycle;
+  coefficient: number;
+  periods: {
+    periodId: string;
+    periodLabel: string;
+    average: number | null;
+    studentCount: number;
+    completion: number;
+  }[];
+}
+
 export interface ReportMeta {
   schoolId: string;
   studentId: string;

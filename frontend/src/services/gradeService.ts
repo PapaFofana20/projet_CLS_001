@@ -151,6 +151,124 @@ export interface ContextOverview {
   average: number | null;
 }
 
+// ------------------------------------------------------------------
+// Historique des moyennes de classe par matière (pour enseignants)
+// ------------------------------------------------------------------
+
+export interface ClassSubjectGradeHistory {
+  classId: string;
+  className: string;
+  subjectId: string;
+  subjectName: string;
+  cycle: ClassRoom["cycle"];
+  coefficient: number;
+  periods: {
+    periodId: string;
+    periodLabel: string;
+    average: number | null;
+    studentCount: number;
+    completion: number;
+  }[];
+}
+
+/** Récupère l'évolution des moyennes de classe pour une classe × matière sur toutes les périodes. */
+export function getClassSubjectGradeHistory(actor: SessionUser, classId: string, subjectId: string): Promise<ClassSubjectGradeHistory | null> {
+  return respond(() => {
+    const classRoom = classesOf(actor.schoolId).find((c) => c.id === classId);
+    const subject = subjectsOf(actor.schoolId).find((s) => s.id === subjectId);
+    if (!classRoom || !subject) return null;
+
+    const teacher = teacherOf(actor);
+    ensure(actor.role === "directeur" || canReadSubject(teacher, classRoom, subjectId, assignmentsOf(actor.schoolId)), "Accès non autorisé.");
+
+    const settings = settingsOf(actor.schoolId);
+    const periods = getPeriods(settings.periodType);
+    const classSubject = classSubjectsOf(actor.schoolId).find((x) => x.classId === classId && x.subjectId === subjectId);
+    const students = studentsOf(actor.schoolId).filter((s) => s.classId === classId);
+    const studentIds = students.map((s) => s.id);
+    const grades = gradesOf(actor.schoolId).filter((g) => g.classId === classId && g.subjectId === subjectId && studentIds.includes(g.studentId));
+
+    return {
+      classId,
+      className: classRoom.name,
+      subjectId,
+      subjectName: subject.name,
+      cycle: classRoom.cycle,
+      coefficient: classSubject?.coefficient ?? 1,
+      periods: periods.map((p) => {
+        const periodGrades = grades.filter((g) => g.period === p.id);
+        const avgs = periodGrades.map((g) => subjectAverage(g, classRoom.cycle)).filter((x): x is number => x !== null);
+        const avg = avgs.length ? round2(avgs.reduce((x, y) => x + y, 0) / avgs.length) : null;
+        const filled = periodGrades.reduce(
+          (a, g) => a + (classRoom.cycle === "elementaire" ? (g.composition !== null ? 1 : 0) : [g.devoir1, g.devoir2, g.composition].filter((x) => x !== null).length),
+          0,
+        );
+        const expected = studentIds.length * (classRoom.cycle === "elementaire" ? 1 : 3);
+        const completion = expected ? Math.min(100, Math.round((filled / expected) * 100)) : 0;
+
+        return {
+          periodId: p.id,
+          periodLabel: p.label,
+          average: avg,
+          studentCount: studentIds.length,
+          completion,
+        };
+      }),
+    };
+  });
+}
+
+/** Récupère l'historique pour toutes les affectations d'un enseignant. */
+export function getTeacherGradeHistory(actor: SessionUser): Promise<ClassSubjectGradeHistory[]> {
+  return respond(() => {
+    const teacherId = actor.teacherId ?? "";
+    const my = assignmentsOf(actor.schoolId).filter((a) => a.teacherId === teacherId);
+    const settings = settingsOf(actor.schoolId);
+    const periods = getPeriods(settings.periodType);
+
+    return my
+      .map((a) => {
+        const classRoom = classesOf(actor.schoolId).find((c) => c.id === a.classId);
+        const subject = subjectsOf(actor.schoolId).find((s) => s.id === a.subjectId);
+        if (!classRoom || !subject) return null;
+
+        const classSubject = classSubjectsOf(actor.schoolId).find((x) => x.classId === a.classId && x.subjectId === a.subjectId);
+        const students = studentsOf(actor.schoolId).filter((s) => s.classId === a.classId);
+        const studentIds = students.map((s) => s.id);
+        const grades = gradesOf(actor.schoolId).filter((g) => g.classId === a.classId && g.subjectId === a.subjectId && studentIds.includes(g.studentId));
+
+        return {
+          classId: a.classId,
+          className: classRoom.name,
+          subjectId: a.subjectId,
+          subjectName: subject.name,
+          cycle: classRoom.cycle,
+          coefficient: classSubject?.coefficient ?? 1,
+          periods: periods.map((p) => {
+            const periodGrades = grades.filter((g) => g.period === p.id);
+            const avgs = periodGrades.map((g) => subjectAverage(g, classRoom.cycle)).filter((x): x is number => x !== null);
+            const avg = avgs.length ? round2(avgs.reduce((x, y) => x + y, 0) / avgs.length) : null;
+            const filled = periodGrades.reduce(
+              (acc, g) => acc + (classRoom.cycle === "elementaire" ? (g.composition !== null ? 1 : 0) : [g.devoir1, g.devoir2, g.composition].filter((x) => x !== null).length),
+              0,
+            );
+            const expected = studentIds.length * (classRoom.cycle === "elementaire" ? 1 : 3);
+            const completion = expected ? Math.min(100, Math.round((filled / expected) * 100)) : 0;
+
+            return {
+              periodId: p.id,
+              periodLabel: p.label,
+              average: avg,
+              studentCount: studentIds.length,
+              completion,
+            };
+          }),
+        };
+      })
+      .filter(Boolean) as ClassSubjectGradeHistory[];
+  });
+}
+
 /** Cartes "Mes classes" : une par affectation (classe, matière). */
 export function getTeacherOverview(schoolId: string, teacherId: string, period: string): Promise<ContextOverview[]> {
   return respond(() => {
