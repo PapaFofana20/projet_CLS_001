@@ -56,7 +56,7 @@ export const pageHeroes: Record<"fonctionnalites" | "tarifs" | "ecoles" | "aprop
     image: { src: aproposHeroImg, alt: "Trois membres de l'équipe Classora dans une salle de classe", objectPosition: "50% 30%", width: 2816, height: 1584 },
   },
   contact: {
-    title: "Parlons de votre *école*",
+    title: "Parlons de votre *école*.",
     description: "Une question, une démonstration ou un besoin spécifique ? Écrivez-nous, nous vous répondons rapidement.",
     image: { src: contactHeroImg, alt: "Quatre élèves sénégalais devant un ordinateur portable dans une bibliothèque", objectPosition: "50% 40%", width: 2816, height: 1584 },
   },

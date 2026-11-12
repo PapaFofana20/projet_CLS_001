@@ -13,7 +13,7 @@ export default function NotFoundPage() {
     <Container className="flex min-h-[70vh] flex-col items-center justify-center py-20 text-center">
       <p className="text-2xl font-semibold text-forest-500">Erreur 404</p>
       <h1 className="mt-3 max-w-2xl text-4xl font-extrabold tracking-tight sm:text-5xl">
-        Cette page n'existe pas ou a été déplacée
+        Cette page n'existe pas ou a été déplacée.
       </h1>
       <p className="mt-4 max-w-xl text-neutral-600">
         Le lien est peut-être incorrect ou obsolète. Retrouvez l'essentiel de Classora depuis les pages
