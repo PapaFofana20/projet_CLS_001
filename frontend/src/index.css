@@ -2,8 +2,8 @@
 
 /* Design system Classora (équivalent du tailwind.config en Tailwind v4) */
 @theme {
-  --font-sans: "Montserrat", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Cabinet Grotesk", "Montserrat", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Cabinet Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Cabinet Grotesk", ui-sans-serif, system-ui, sans-serif;
 
   --color-lime: #c6f068;
   --color-lime-soft: #eef9cf;
@@ -68,11 +68,11 @@
 }
 
 /* ==========================================================================
-   TYPOGRAPHIE DES TITRES
-   Cabinet Grotesk (chargée via Fontshare dans index.html) remplace Montserrat
-   sur tous les niveaux de titres. Le corps de texte reste Montserrat.
-   `@layer base` + `:where()` : les utilitaires (.font-sans…) gardent la
-   priorité et peuvent surcharger.
+   TYPOGRAPHIE
+   Cabinet Grotesk (chargée via Fontshare dans index.html) est la police
+   unique de la plateforme : titres en Extrabold, textes courants en
+   Regular/Medium. `@layer base` + `:where()` : les utilitaires (.font-sans…)
+   gardent la priorité et peuvent surcharger.
    ========================================================================== */
 @layer base {
   :where(h1, h2, h3, h4, h5, h6) {
