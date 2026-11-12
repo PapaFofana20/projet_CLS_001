@@ -79,19 +79,23 @@ function AdminAuthWrapper() {
 
 const guard = (roles: keyof typeof ROUTE_ROLES, element: ReactElement) => <RoleRoute roles={ROUTE_ROLES[roles]}>{element}</RoleRoute>;
 
-/** Wrapper principal avec splash screen (première visite uniquement) */
-function AppWithSplash() {
+/** Wrapper pour la page d'accueil : splash screen à CHAQUE visite (forceShow) */
+function HomePageWithSplash() {
   const [splashDone, setSplashDone] = useState(false);
 
   return (
     <>
-      <SplashScreen onComplete={() => setSplashDone(true)} />
-      {splashDone && <AppRoutes />}
+      <SplashScreen
+        onComplete={() => setSplashDone(true)}
+        forceShow={true}
+        storageKey="classora-home-splash"
+      />
+      {splashDone && <HomePage />}
     </>
   );
 }
 
-function AppRoutes() {
+export default function App() {
   return (
     <BrowserRouter>
       <ToastProvider>
@@ -108,7 +112,7 @@ function AppRoutes() {
               <Routes>
             {/* PARTIE 1 : site public */}
             <Route element={<PublicLayout />}>
-              <Route index element={<HomePage />} />
+              <Route index element={<HomePageWithSplash />} />
               <Route path="fonctionnalites" element={<FeaturesPage />} />
               <Route path="tarifs" element={<PricingPage />} />
               <Route path="ecoles" element={<SchoolsPage />} />
@@ -203,8 +207,4 @@ function AppRoutes() {
       </ToastProvider>
     </BrowserRouter>
   );
-}
-
-export default function App() {
-  return <AppWithSplash />;
 }

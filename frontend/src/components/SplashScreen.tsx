@@ -1,14 +1,27 @@
 import { useEffect, useState } from "react";
 
+interface SplashScreenProps {
+  onComplete: () => void;
+  /** Si true, ignore le localStorage et affiche à chaque montage (défaut: false) */
+  forceShow?: boolean;
+  /** Clé de stockage pour éviter les répétitions (défaut: "classora-splash-seen") */
+  storageKey?: string;
+}
+
 /**
- * Splash Screen — première visite uniquement.
+ * Splash Screen — configurable.
  * - Fond vert forêt (#0F3D1E)
- * - Logo Classora officiel (logo-lime.png) centré, taille généreuse
- * - Animation d'entrée subtile et raffinée (6s total)
+ * - Logo Classora officiel (logo-lime.png) centré, responsive (320px max, 80vw sur mobile)
+ * - Animation 3 phases : enter (1.5s) → hold (3s) → exit (1.5s) = 6s total
  * - Transition fluide vers l'app
- * - Stocké dans localStorage : ne s'affiche qu'une seule fois
+ * - Par défaut : une seule fois via localStorage
+ * - Avec forceShow=true : à chaque montage (ex: page d'accueil à chaque visite)
  */
-export function SplashScreen({ onComplete }: { onComplete: () => void }) {
+export function SplashScreen({
+  onComplete,
+  forceShow = false,
+  storageKey = "classora-splash-seen",
+}: SplashScreenProps) {
   const [show, setShow] = useState(true);
   const [phase, setPhase] = useState<"enter" | "hold" | "exit">("enter");
 
@@ -19,11 +32,14 @@ export function SplashScreen({ onComplete }: { onComplete: () => void }) {
   const TOTAL_DURATION = ENTER_DURATION + HOLD_DURATION + EXIT_DURATION; // 6000ms
 
   useEffect(() => {
-    const hasSeenSplash = localStorage.getItem("classora-splash-seen");
-    if (hasSeenSplash) {
-      setShow(false);
-      onComplete();
-      return;
+    // Si forceShow, on ignore le stockage et on affiche à chaque fois
+    if (!forceShow) {
+      const hasSeenSplash = localStorage.getItem(storageKey);
+      if (hasSeenSplash) {
+        setShow(false);
+        onComplete();
+        return;
+      }
     }
 
     // Séquence : enter (1.5s) → hold (3.0s) → exit (1.5s) = 6s total
@@ -31,18 +47,20 @@ export function SplashScreen({ onComplete }: { onComplete: () => void }) {
       setTimeout(() => setPhase("hold"), ENTER_DURATION),
       setTimeout(() => setPhase("exit"), ENTER_DURATION + HOLD_DURATION),
       setTimeout(() => {
-        localStorage.setItem("classora-splash-seen", "true");
+        if (!forceShow) {
+          localStorage.setItem(storageKey, "true");
+        }
         setShow(false);
         onComplete();
       }, TOTAL_DURATION),
     ];
 
     return () => timers.forEach(clearTimeout);
-  }, [onComplete]);
+  }, [onComplete, forceShow, storageKey]);
 
   if (!show) return null;
 
-  const transitionDuration = `${ENTER_DURATION}ms`; // 1.5s pour enter/exit
+  const transitionDuration = `${ENTER_DURATION}ms`;
 
   const logoStyle = {
     width: "320px",
