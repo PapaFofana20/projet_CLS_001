@@ -1,7 +1,6 @@
 // Section de bienvenue du tableau de bord : salutation selon l'heure,
-// prénom du compte, date du jour et petit rappel adapté au rôle.
+// nom complet du compte, date du jour et petit rappel adapté au rôle.
 import { useEffect, useState } from "react";
-import { Avatar } from "@/components/ui/Brand";
 import { Icon } from "@/components/ui/Icon";
 import { useCurrentUser } from "@/context/AuthContext";
 import { useSchool } from "@/context/SchoolContext";
@@ -37,8 +36,7 @@ export function GreetingSection() {
     return () => window.clearInterval(t);
   }, []);
 
-  const fullName = `${user.firstName} ${user.lastName}`.trim();
-  const firstName = user.firstName?.trim() || fullName || "bienvenue";
+  const fullName = `${user.firstName} ${user.lastName}`.trim() || "bienvenue";
   const dateLabel = capitalize(
     new Intl.DateTimeFormat("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" }).format(now),
   );
@@ -57,12 +55,11 @@ export function GreetingSection() {
       <span aria-hidden="true" className="pointer-events-none absolute -right-16 -top-24 size-64 rounded-full bg-lime/20 blur-3xl" />
       <span aria-hidden="true" className="pointer-events-none absolute -bottom-28 left-1/3 size-56 rounded-full bg-white/10 blur-3xl" />
 
-      <div className="relative flex flex-wrap items-center gap-5 p-5 sm:p-6">
-        <Avatar name={fullName || firstName} size={64} className="ring-4 ring-white/20" />
+      <div className="relative flex flex-wrap items-start gap-5 p-5 sm:p-6">
         <div className="min-w-0 flex-1">
           <p className="text-xs font-bold uppercase tracking-widest text-lime">{ROLE_LABELS[user.role] ?? ""}</p>
           <h2 className="mt-1 text-2xl font-extrabold tracking-tight sm:text-3xl">
-            {greetingOf(now.getHours())}, <span className="text-lime">{firstName}</span>
+            {greetingOf(now.getHours())}, <span className="text-lime">{fullName || "bienvenue"}</span>
           </h2>
           <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-white/80">
             <Icon name="calendar_month" className="text-[18px] text-lime" />
