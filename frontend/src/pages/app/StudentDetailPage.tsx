@@ -1,5 +1,5 @@
 // Fiche détaillée d'un élève : aperçu, notes, paiements et famille.
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { AsyncView } from "@/components/ui/AsyncView";
 import { Avatar } from "@/components/ui/Brand";
@@ -104,6 +104,13 @@ function Detail({ d, onPaymentsChanged }: { d: StudentDetail; onPaymentsChanged:
     },
   ];
   const r = d.row;
+
+  // Trie les paiements : d'abord les frais (non-mensualités), puis les mensualités par ordre chronologique (année/mois croissants)
+  const sortedPayments = useMemo(() => {
+    const frais = d.payments.filter((p) => p.kind !== "mensualite");
+    const mensualites = d.payments.filter((p) => p.kind === "mensualite").sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+    return [...frais, ...mensualites];
+  }, [d.payments]);
   return (
     <div className="space-y-4">
       <Link to={user.role === "parent" ? "/app" : "/app/eleves"} className="inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-forest hover:underline">
@@ -154,7 +161,7 @@ function Detail({ d, onPaymentsChanged }: { d: StudentDetail; onPaymentsChanged:
         <>
           {canEditPayments && <p className="text-sm text-neutral-600">Pour chaque mois, choisissez le statut : <strong>À venir</strong> par défaut, <strong>Payé</strong> quand la famille a réglé, <strong>Impayé</strong> quand elle n'a pas encore payé.</p>}
           <Card padded={false} className="p-2">
-            <Table caption="Échéancier de paiement" columns={payCols} rows={d.payments} rowKey={(p) => p.id} />
+            <Table caption="Échéancier de paiement" columns={payCols} rows={sortedPayments} rowKey={(p) => p.id} />
           </Card>
         </>
       )}
