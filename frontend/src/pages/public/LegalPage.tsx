@@ -5,8 +5,8 @@ import { PageHero } from "@/components/layout/PageHero";
 import { Icon } from "@/components/ui/Icon";
 import type { LegalDocument } from "@/data/legal";
 import { usePageMeta } from "@/hooks/usePageMeta";
-const cguHeroImg = "/images/hero-5.jpg";
-const privacyHeroImg = "/images/hero-3.jpg";
+const cguHeroImg = "/images/hero-5.webp";
+const privacyHeroImg = "/images/hero-3.webp";
 
 const CONTACT_EMAIL = "contact@classora.sn";
 
