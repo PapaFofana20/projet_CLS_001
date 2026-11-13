@@ -4,10 +4,12 @@ import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button, LinkButton } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { Icon } from "@/components/ui/Icon";
 import { Input } from "@/components/ui/Input";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Select } from "@/components/ui/Select";
 import { useCurrentUser } from "@/context/AuthContext";
+import { useFeature } from "@/utils/features";
 import { useToast } from "@/context/ToastContext";
 import { SCHOOL_YEAR } from "@/data/school";
 import { createTimetable } from "@/services/timetableService";
@@ -27,6 +29,7 @@ const errorMessage = (e: unknown) =>
 // Formulaire court : nom, classe et annee scolaire du futur emploi du temps.
 export default function TimetableCreationPage() {
   const user = useCurrentUser();
+  const hasScheduling = useFeature("scheduling");
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -77,6 +80,21 @@ export default function TimetableCreationPage() {
       setBusy(false);
     }
   };
+
+  if (!hasScheduling) {
+    return (
+      <>
+        <PageHeader title="Nouvel emploi du temps" subtitle="Fonctionnalité disponible à partir du plan Pro." />
+        <Card className="max-w-3xl">
+          <div className="flex flex-col items-center gap-3 py-6 text-center">
+            <Icon name="workspace_premium" className="text-4xl text-neutral-300" />
+            <p className="font-semibold text-ink">Création d'emplois du temps réservée aux plans Pro et supérieurs.</p>
+            <p className="max-w-sm text-sm text-neutral-500">Passez à un plan supérieur depuis l'onglet Abonnement pour débloquer cette fonctionnalité.</p>
+          </div>
+        </Card>
+      </>
+    );
+  }
 
   return (
     <>

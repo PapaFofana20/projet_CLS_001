@@ -37,7 +37,11 @@ const FEATURE_REQUIREMENTS: Record<FeatureKey, PlanId> = {
 export function hasFeature(feature: FeatureKey, schoolId: string): boolean {
   const info = subscriptionInfoOf(schoolId);
   if (!info.plan) return false;
-  const currentPlanIndex = PLAN_ORDER.indexOf(info.plan.id as PlanId);
+  // Normalisation des ids de formule : « reseau » (landing) correspond à
+  // « illimite » (catalogue backend). Un plan inconnu reste bloquant.
+  const rawId = info.plan.id as string;
+  const normalizedId = rawId === "reseau" ? "illimite" : rawId;
+  const currentPlanIndex = PLAN_ORDER.indexOf(normalizedId as PlanId);
   const requiredPlanIndex = PLAN_ORDER.indexOf(FEATURE_REQUIREMENTS[feature]);
   if (currentPlanIndex === -1) return false; // Fail-closed : plan inconnu/corrompu = aucune feature premium.
   return currentPlanIndex >= requiredPlanIndex;

@@ -24,6 +24,7 @@ import { useDebounce } from "@/hooks/useDebounce";
 import { listPaymentRows, recordCashPayment, sendReminders } from "@/services/paymentService";
 import type { PaymentRow } from "@/services/paymentRows";
 import { formatCurrency, formatDate } from "@/utils/format";
+import { useFeature } from "@/utils/features";
 import { PAY_METHOD_LABELS, PAY_STATUS_LABELS, remaining, sum } from "@/utils/payments";
 import { buildReminderMessage, downloadDebtorsCsv, maxOverdueDays, reminderSubject, reminderLevelOf, whatsappReminderLink, type ReminderLine } from "@/utils/reminders";
 import { PAY_TONE } from "./ParentPayments";
@@ -48,6 +49,8 @@ interface Debtor {
 export function FinancePayments({ schoolName, canAct }: { schoolName: string; canAct: boolean }) {
   const user = useCurrentUser();
   const { toast } = useToast();
+  const canExportData = useFeature("data_export");
+  const canAutoRemind = useFeature("auto_reminders");
 
   const state = useAsync(() => listPaymentRows(user), [user.id]);
   const [tab, setTab] = useState("echeances");
@@ -228,8 +231,8 @@ export function FinancePayments({ schoolName, canAct }: { schoolName: string; ca
             <>
               <div className="flex flex-wrap items-center gap-3">
                 <Button variant="outline" onClick={() => setPicked(picked.length === debtors.length ? [] : debtors.map((d) => d.studentId))}>{picked.length === debtors.length && debtors.length ? "Tout désélectionner" : "Tout sélectionner"}</Button>
-                {canAct && <Button icon="send" disabled={picked.length === 0} loading={busy} onClick={() => void remind()}>Tracer la relance ({picked.length})</Button>}
-                <Button variant="outline" icon="download" disabled={debtors.length === 0} onClick={() => downloadDebtorsCsv(debtors)}>Exporter la liste</Button>
+                {canAct && <Button icon="send" disabled={picked.length === 0 || !canAutoRemind} loading={busy} onClick={() => void remind()} title={canAutoRemind ? undefined : "Disponible à partir du plan Pro"}>Tracer la relance ({picked.length})</Button>}
+                <Button variant="outline" icon="download" disabled={debtors.length === 0 || !canExportData} onClick={() => downloadDebtorsCsv(debtors)} title={canExportData ? undefined : "Disponible à partir du plan Premium"}>Exporter la liste</Button>
               </div>
               <p className="text-xs text-neutral-500">Chaque ligne ouvre WhatsApp avec un message personnalisé (montant + échéances). « Tracer la relance » enregistre l'envoi dans le journal d'audit.</p>
               {debtors.length === 0 ? <EmptyState icon="verified" title="Aucun impayé" text="Toutes les échéances échues sont réglées." /> : <Card padded={false} className="p-2"><Table caption="Élèves avec échéances impayées" columns={debtorCols} rows={debtors} rowKey={(d) => d.studentId} stagger /></Card>}

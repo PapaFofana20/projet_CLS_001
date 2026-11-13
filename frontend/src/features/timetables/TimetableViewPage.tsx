@@ -10,6 +10,7 @@ import { ConfirmDialog } from "@/components/ui/Modal";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { SkeletonCards, SkeletonTable } from "@/components/ui/Skeleton";
 import { useCurrentUser } from "@/context/AuthContext";
+import { useFeature } from "@/utils/features";
 import { useToast } from "@/context/ToastContext";
 import { TimetableGrid } from "@/features/timetables/TimetableGrid";
 import {
@@ -53,6 +54,7 @@ const sortCourses = (courses: TimetableCourse[]) =>
 // Sans identifiant, liste les emplois du temps ; sinon affiche le detail.
 export default function TimetableViewPage() {
   const user = useCurrentUser();
+  const hasScheduling = useFeature("scheduling");
   const { id } = useParams<{ id: string }>();
   const { toast } = useToast();
 
@@ -204,6 +206,20 @@ export default function TimetableViewPage() {
   };
 
   /* ----------------------------- Liste ----------------------------- */
+  if (!hasScheduling) {
+    return (
+      <>
+        <PageHeader title="Emplois du temps" subtitle="Fonctionnalité disponible à partir du plan Pro." />
+        <Card>
+          <div className="flex flex-col items-center gap-3 py-6 text-center">
+            <Icon name="workspace_premium" className="text-4xl text-neutral-300" />
+            <p className="font-semibold text-ink">Emplois du temps réservés aux plans Pro et supérieurs.</p>
+            <p className="max-w-sm text-sm text-neutral-500">Passez à un plan supérieur depuis l'onglet Abonnement pour débloquer les affectations et emplois du temps.</p>
+          </div>
+        </Card>
+      </>
+    );
+  }
   if (!id) {
     const visibleTimetables = isDirector ? timetables : timetables.filter((row) => row.status === "published");
 
