@@ -33,10 +33,23 @@ export default function RegisterPage() {
   const prefill = formatMatriculeInput(params.get("matricule") ?? "");
   const isParent = role === "parent";
 
+  // Le sous-titre suit l'étape du parcours : la phrase « choisissez votre
+  // situation » n'a de sens qu'au choix du rôle. Sur l'écran des tarifs elle
+  // est supprimée, la consigne de choix de formule est déjà dans le contenu.
+  const subtitle = !role
+    ? "Directeur, élève ou parent : choisissez votre situation, l'inscription prend moins de 3 minutes."
+    : role === "directeur"
+      ? directorPlan === null
+        ? undefined
+        : "Renseignez les informations de votre école et de votre compte directeur."
+      : isParent
+        ? "Rattachez vos enfants à votre école avec le matricule reçu."
+        : "Inscrivez-vous avec le matricule reçu auprès de votre école.";
+
   return (
     <AuthLayout
       title={role ? (role === "directeur" ? "Créer votre école" : isParent ? "Espace parent" : "Espace élève") : "Créer votre compte"}
-      subtitle="Directeur, élève ou parent : choisissez votre situation, l'inscription prend moins de 3 minutes."
+      subtitle={subtitle}
       showVisual={false}
       wide={role === "directeur" && directorPlan === null}
       backgroundImage

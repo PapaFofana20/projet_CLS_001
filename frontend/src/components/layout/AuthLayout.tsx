@@ -7,7 +7,8 @@ import { Logo } from "@/components/ui/Brand";
 
 interface Props {
   title: ReactNode;
-  subtitle: string;
+  /** Sous-titre optionnel : omis sur les étapes qui n'en ont pas besoin. */
+  subtitle?: string;
   children: ReactNode;
   visualTitle?: ReactNode;
   visualText?: string;
@@ -111,7 +112,7 @@ export function AuthLayout({ title, subtitle, children, visualTitle, visualText,
               « wide » (inscription directeur). */}
           <div className="mt-8 w-full">
             <h1 className="max-w-3xl text-3xl font-extrabold tracking-tight text-ink sm:text-4xl">{title}</h1>
-            <p className="mt-2 max-w-3xl text-sm text-neutral-600">{subtitle}</p>
+            {subtitle && <p className="mt-2 max-w-3xl text-sm text-neutral-600">{subtitle}</p>}
             <div className="mt-8">{children}</div>
           </div>
         </div>
