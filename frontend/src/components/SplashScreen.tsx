@@ -136,10 +136,10 @@ export function SplashScreen({
       {/* Le logo est décoratif : le libellé accessible est porté par role="status". */}
       <div style={logoWrapperStyle} aria-hidden="true">
         <img
-          src="/images/logo-lime.png"
+          src="/images/logo-lime.webp"
           alt=""
-          width={1121}
-          height={240}
+          width={480}
+          height={103}
           fetchPriority="high"
           decoding="async"
           style={logoStyle}

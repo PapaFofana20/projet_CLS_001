@@ -54,6 +54,7 @@ export default function ContactPage() {
               alt="Assistante technique Classora portant un casque et tenant un ordinateur portable"
               width={1028}
               height={941}
+              loading="lazy"
               decoding="async"
               className="relative mx-auto mt-8 block h-72 w-auto sm:h-80 md:h-[340px] lg:h-[440px]"
             />

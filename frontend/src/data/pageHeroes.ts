@@ -1,9 +1,11 @@
 // Références des images d'illustration des en-têtes de pages publiques.
+// Heroes servis en WebP redimensionné (1920 px de large) : ~60 à 120 Ko
+// chacun au lieu de 300 à 1 500 Ko.
 const fonctionnalitesHeroImg = "/images/fonctionnalites-hero.webp";
-const tarifsHeroImg = "/images/tarifs-hero.jpg";
-const ecolesHeroImg = "/images/ecoles-hero.jpg";
-const aproposHeroImg = "/images/apropos-hero.jpg";
-const contactHeroImg = "/images/contact-hero.jpg";
+const tarifsHeroImg = "/images/tarifs-hero.webp";
+const ecolesHeroImg = "/images/ecoles-hero.webp";
+const aproposHeroImg = "/images/apropos-hero.webp";
+const contactHeroImg = "/images/contact-hero.webp";
 
 /** Image d'illustration d'un hero de page publique. */
 export interface PageHeroImage {

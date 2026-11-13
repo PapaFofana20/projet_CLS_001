@@ -25,14 +25,29 @@ export function PlatformProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let cancelled = false;
-    getPlatformStatus().then((next) => {
-      if (!cancelled) {
-        setStatus(next);
-        setLoading(false);
-      }
-    });
+    let timeoutId: number | undefined;
+    const load = () => {
+      getPlatformStatus().then((next) => {
+        if (!cancelled) {
+          setStatus(next);
+          setLoading(false);
+        }
+      });
+    };
+    // Chargé après le premier rendu : cet appel réseau (API Render) ne doit pas
+    // concurrencer les ressources critiques de la page. Le statut par défaut
+    // (aucune maintenance) s'applique en attendant.
+    if (typeof window.requestIdleCallback === "function") {
+      const idleId = window.requestIdleCallback(load, { timeout: 2000 });
+      return () => {
+        cancelled = true;
+        window.cancelIdleCallback(idleId);
+      };
+    }
+    timeoutId = window.setTimeout(load, 1200);
     return () => {
       cancelled = true;
+      if (timeoutId !== undefined) window.clearTimeout(timeoutId);
     };
   }, []);
 

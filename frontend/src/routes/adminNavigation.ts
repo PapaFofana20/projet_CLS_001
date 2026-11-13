@@ -24,7 +24,7 @@ const ADMIN_NAV: AdminNavItem[] = [
   { to: "/admin/supervision/audit", label: "Journal d'audit", icon: "history", section: "Supervision", adminOrSuper: true },
   { to: "/admin/supervision/securite", label: "Sécurité", icon: "security", section: "Supervision", adminOrSuper: true },
   { to: "/admin/parametres", label: "Paramètres généraux", icon: "settings", section: "Configuration" },
-  { to: "/admin/timetables", label: "Emploi du temps", icon: "calendar", section: "Configuration" },
+  { to: "/admin/timetables", label: "Emploi du temps", icon: "calendar_month", section: "Configuration" },
 ];
 
 // Renvoie les liens admin visibles pour ce rôle d'agent.

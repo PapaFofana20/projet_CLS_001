@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { Container } from "@/components/layout/Container";
 import { Reveal } from "@/components/ui/Reveal";
 import { features } from "@/data/landing";
-const dashboardImg = "/images/features-dashboard.png";
+const dashboardImg = "/images/features-dashboard.webp";
 
 /** Carrousel horizontal de cartes image. */
 export function FeaturesCarousel() {

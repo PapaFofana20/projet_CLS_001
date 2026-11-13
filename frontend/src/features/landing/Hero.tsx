@@ -16,6 +16,9 @@ const SLIDE_DURATION = 8000;
  */
 export function Hero() {
   const [active, setActive] = useState(0);
+  // Seules la diapositive visible et la suivante sont demandées au premier
+  // rendu : l'accueil ne télécharge plus les six photos (≈ 1,1 Mo) d'un coup.
+  const [prepared, setPrepared] = useState<number[]>(() => (heroSlides.length > 1 ? [0, 1] : [0]));
 
   useEffect(() => {
     const id = window.setTimeout(() => {
@@ -24,6 +27,45 @@ export function Hero() {
     return () => window.clearTimeout(id);
   }, [active]);
 
+  // Si l'utilisateur clique un point avant le préchargement, on demande
+  // immédiatement l'image choisie.
+  useEffect(() => {
+    const next = (active + 1) % heroSlides.length;
+    setPrepared((prev) => {
+      const missing = [active, next].filter((index) => !prev.includes(index));
+      return missing.length ? [...prev, ...missing] : prev;
+    });
+  }, [active]);
+
+  // Toujours inclure la diapositive active, même avant l'exécution de l'effet :
+  // aucun cadre vide pendant le fondu.
+  const visible = prepared.includes(active) ? prepared : [...prepared, active];
+
+  // Les autres photos sont préchargées une fois la page devenue interactive,
+  // sans retarder le premier rendu ni les ressources critiques.
+  useEffect(() => {
+    let cancelled = false;
+    const run = () => {
+      if (cancelled) return;
+      heroSlides.forEach((slide) => {
+        const img = new Image();
+        img.src = slide.src;
+      });
+    };
+    if (typeof window.requestIdleCallback === "function") {
+      const idleId = window.requestIdleCallback(run, { timeout: 3500 });
+      return () => {
+        cancelled = true;
+        window.cancelIdleCallback(idleId);
+      };
+    }
+    const timeoutId = window.setTimeout(run, 2500);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeoutId);
+    };
+  }, []);
+
   return (
     <section className="mt-hero-top mb-hero-bottom">
       <Container>
@@ -31,9 +73,11 @@ export function Hero() {
           {heroSlides.map((slide, index) => (
             <img
               key={slide.src}
-              src={slide.src}
+              src={visible.includes(index) ? slide.src : undefined}
               alt={slide.alt}
               aria-hidden={index !== active}
+              width={1600}
+              height={900}
               loading={index === 0 ? "eager" : "lazy"}
               fetchPriority={index === 0 ? "high" : "low"}
               decoding="async"

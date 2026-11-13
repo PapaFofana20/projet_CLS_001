@@ -41,7 +41,9 @@ export function AuthLayout({ title, subtitle, children, visualTitle, visualText,
           <div
             className="size-full"
             style={{
-              backgroundImage: `url(${images.authBackground})`,
+              // AVIF pour les navigateurs modernes, WebP en repli : ~100 Ko
+              // au lieu des 6,6 Mo de l'ancien SVG, sans flash blanc.
+              backgroundImage: `image-set(url("${images.authBackground}") type("image/avif"), url("${images.authBackgroundFallback}") type("image/webp"))`,
               // Tuiles répétées à taille fixe (côte à côte + en dessous),
               // jamais étirées ni zoomées : l'image garde son échelle d'origine.
               backgroundRepeat: "repeat",

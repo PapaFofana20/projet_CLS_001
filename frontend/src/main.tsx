@@ -69,3 +69,37 @@ createRoot(document.getElementById("root")!).render(
     </ErrorBoundary>
   </StrictMode>
 );
+
+/**
+ * Préchargement des pages publiques les plus demandées (connexion, inscription,
+ * tarifs) une fois le premier rendu terminé.
+ *
+ * Les pages sont découpées en chunks (chargés à la demande par React.lazy) :
+ * sans ce préchargement, le premier clic depuis l'accueil attendrait un
+ * aller-retour réseau avant d'afficher le formulaire. Ici, le chunk est déjà
+ * en cache au moment du clic, sans retarder l'affichage initial.
+ */
+function prefetchPublicPages() {
+  const { pathname } = window.location;
+  if (pathname.startsWith("/app") || pathname.startsWith("/admin")) return;
+
+  // Respecte les forfaits mobiles limités et les connexions très lentes.
+  const connection = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
+  if (connection?.saveData) return;
+  if (connection?.effectiveType && /(^|-)2g$/.test(connection.effectiveType)) return;
+
+  const run = () => {
+    void import("@/pages/auth/LoginPage");
+    void import("@/pages/auth/RegisterPage");
+    void import("@/pages/auth/PremiumRegisterPage");
+    void import("@/pages/public/PricingPage");
+  };
+
+  if (typeof window.requestIdleCallback === "function") {
+    window.requestIdleCallback(run, { timeout: 2500 });
+  } else {
+    window.setTimeout(run, 1500);
+  }
+}
+
+prefetchPublicPages();

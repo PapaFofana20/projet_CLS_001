@@ -33,7 +33,7 @@ export default function SchoolsPage() {
             />
             <div className="relative">
               <h2 id="schools-partners-title" className="text-balance text-3xl font-extrabold tracking-tight sm:text-4xl md:text-5xl">
-                Des <span className="text-forest-500">établissements</span> qui avancent <br className="hidden lg:inline" /> avec <img src="/images/logo-dark.png" alt="Classora" width={240} height={46} className="inline-block h-[0.85em] w-auto align-[-0.1em]" />.
+                Des <span className="text-forest-500">établissements</span> qui avancent <br className="hidden lg:inline" /> avec <img src="/images/logo-dark.webp" alt="Classora" width={240} height={52} className="inline-block h-[0.85em] w-auto align-[-0.1em]" />.
               </h2>
               <div className="mx-auto mt-8 max-w-3xl space-y-4 text-lg leading-relaxed text-neutral-700 sm:mt-10">
                 <p>
@@ -45,10 +45,11 @@ export default function SchoolsPage() {
               </div>
             </div>
             <img
-              src="/images/ecoles-eleves.png"
+              src="/images/ecoles-eleves.webp"
               alt="Quatre élèves en uniforme vert réunis autour d'un ordinateur portable et de leurs cahiers"
-              width={1672}
-              height={941}
+              width={1400}
+              height={788}
+              loading="lazy"
               decoding="async"
               className="relative -mx-[30%] mt-8 block h-auto w-[160%] max-w-none sm:mx-auto sm:h-72 sm:w-auto md:h-[380px] lg:h-[520px]"
             />

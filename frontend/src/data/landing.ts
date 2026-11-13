@@ -1,20 +1,31 @@
 // Contenus de la page d'accueil publique : images, fonctionnalités, avis et questions fréquentes.
-const heroImg = "/images/hero.jpg";
-const hero1Img = "/images/hero-1.jpg";
-const hero2Img = "/images/hero-2.jpg";
-const hero3Img = "/images/hero-3.jpg";
-const hero4Img = "/images/hero-4.jpg";
-const hero5Img = "/images/hero-5.jpg";
-const hero6Img = "/images/hero-6.jpg";
-const aboutImg = "/images/about-home.jpg";
-const authImg = "/images/auth.jpg";
-const authBackgroundImg = "/images/auth-background.svg";
-const inscriptionsImg = "/images/feature-inscriptions.jpg";
-const bulletinsImg = "/images/feature-bulletins.jpg";
-const paiementsImg = "/images/feature-paiements.jpg";
-const enseignantsImg = "/images/feature-enseignants.jpg";
+// Images servies en WebP (2 à 10 fois plus légères que les JPEG/PNG d'origine)
+// et redimensionnées à la taille réellement affichée.
+const heroImg = "/images/hero.webp";
+const hero1Img = "/images/hero-1.webp";
+const hero2Img = "/images/hero-2.webp";
+const hero3Img = "/images/hero-3.webp";
+const hero4Img = "/images/hero-4.webp";
+const hero5Img = "/images/hero-5.webp";
+const hero6Img = "/images/hero-6.webp";
+const aboutImg = "/images/about-home.webp";
+const authImg = "/images/auth.webp";
+// Fond des pages d'authentification : AVIF (98 Ko) pour les navigateurs
+// modernes, WebP (135 Ko) en repli. L'ancien SVG pesait 6,6 Mo.
+const authBackgroundImg = "/images/auth-background.avif";
+const authBackgroundFallbackImg = "/images/auth-background.webp";
+const inscriptionsImg = "/images/feature-inscriptions.webp";
+const bulletinsImg = "/images/feature-bulletins.webp";
+const paiementsImg = "/images/feature-paiements.webp";
+const enseignantsImg = "/images/feature-enseignants.webp";
 
-export const images = { hero: heroImg, about: aboutImg, auth: authImg, authBackground: authBackgroundImg };
+export const images = {
+  hero: heroImg,
+  about: aboutImg,
+  auth: authImg,
+  authBackground: authBackgroundImg,
+  authBackgroundFallback: authBackgroundFallbackImg,
+};
 
 export interface HeroSlide {
   src: string;
@@ -161,9 +172,9 @@ export interface Testimonial {
 }
 
 export const testimonials: Testimonial[] = [
-  { id: "t1", quote: "Depuis Classora, nos bulletins sortent en une journée au lieu de deux semaines. Les parents paient par Wave sans se déplacer.", name: "Mme Aïssatou Diallo", role: "Directrice", school: "Complexe Scolaire Les Almadies, Dakar", photo: "/images/testimonials/aissatou-diallo.jpg", photoAlt: "Portrait de Mme Aïssatou Diallo, directrice du Complexe Scolaire Les Almadies" },
-  { id: "t2", quote: "La matrice des affectations nous a évité des erreurs d'emploi du temps. Chaque professeur voit uniquement ses classes.", name: "Dr Mbaye Seck", role: "Directeur des études", school: "Institut Horizon, Thiès", photo: "/images/testimonials/mbaye-seck.jpg", photoAlt: "Portrait du Dr Mbaye Seck, directeur des études à l'Institut Horizon" },
-  { id: "t3", quote: "Les impayés ont baissé de 35 % en un trimestre grâce aux relances et au paiement mobile money.", name: "Mme Mame Diarra Gaye", role: "Économe", school: "Groupe Les Baobabs, Mbour", photo: "/images/testimonials/mame-diarra-gaye.jpg", photoAlt: "Portrait de Mme Mame Diarra Gaye, économe du Groupe Les Baobabs" },
+  { id: "t1", quote: "Depuis Classora, nos bulletins sortent en une journée au lieu de deux semaines. Les parents paient par Wave sans se déplacer.", name: "Mme Aïssatou Diallo", role: "Directrice", school: "Complexe Scolaire Les Almadies, Dakar", photo: "/images/testimonials/aissatou-diallo.webp", photoAlt: "Portrait de Mme Aïssatou Diallo, directrice du Complexe Scolaire Les Almadies" },
+  { id: "t2", quote: "La matrice des affectations nous a évité des erreurs d'emploi du temps. Chaque professeur voit uniquement ses classes.", name: "Dr Mbaye Seck", role: "Directeur des études", school: "Institut Horizon, Thiès", photo: "/images/testimonials/mbaye-seck.webp", photoAlt: "Portrait du Dr Mbaye Seck, directeur des études à l'Institut Horizon" },
+  { id: "t3", quote: "Les impayés ont baissé de 35 % en un trimestre grâce aux relances et au paiement mobile money.", name: "Mme Mame Diarra Gaye", role: "Économe", school: "Groupe Les Baobabs, Mbour", photo: "/images/testimonials/mame-diarra-gaye.webp", photoAlt: "Portrait de Mme Mame Diarra Gaye, économe du Groupe Les Baobabs" },
 ];
 
 export interface Faq {

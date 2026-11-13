@@ -8,10 +8,10 @@ export function Logo({ dark, className, to = "/" }: { dark?: boolean; className?
   return (
     <Link to={to} aria-label="CLASSORA, retour à l'accueil" className="inline-flex items-center">
       <img
-        src={dark ? "/images/logo-lime.png" : "/images/logo-dark.png"}
+        src={dark ? "/images/logo-lime.webp" : "/images/logo-dark.webp"}
         alt="CLASSORA"
         width={240}
-        height={46}
+        height={52}
         className={cn("max-w-full w-auto h-auto", className ?? "h-8")}
       />
     </Link>

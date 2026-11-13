@@ -3,25 +3,12 @@ import { fileURLToPath } from "url";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
-import { viteSingleFile } from "vite-plugin-singlefile";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// vite-plugin-singlefile est réservé au build de production.
-// En mode dev, il peut empêcher l'exécution correcte du JavaScript (écran blanc).
-const isDev = process.env.NODE_ENV === "development";
-
 export default defineConfig({
-  plugins: [
-    react(),
-    tailwindcss(),
-    // base "/" : les ressources publiques (favicons, images, manifest) restent
-    // accessibles depuis toutes les routes profondes de la SPA. Le plugin
-    // singlefile force sinon base "./", ce qui cassait /favicon.svg dès qu'on
-    // ouvrait /app/... (l'URL relative pointait vers /app/favicon.svg).
-    isDev ? [] : [viteSingleFile({ overrideConfig: { base: "/" } })],
-  ],
+  plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "src"),
@@ -30,5 +17,25 @@ export default defineConfig({
   server: {
     port: 5173,
     host: true,
+  },
+  build: {
+    // Cibles navigateurs modernes : moins de code de compatibilité à parser.
+    target: "es2020",
+    // Le JavaScript n'est plus inliné dans index.html : chaque page garde son
+    // propre chunk, chargé à la demande et mis en cache séparément. L'ancien
+    // build "singlefile" produisait un index.html de ~1,7 Mo à re-télécharger
+    // et re-parser à chaque visite, sur toutes les pages.
+    cssCodeSplit: true,
+    assetsInlineLimit: 2048,
+    rollupOptions: {
+      output: {
+        // React et Supabase changent rarement : un chunk dédié reste en cache
+        // longtemps, même après une mise à jour de l'application.
+        manualChunks: {
+          react: ["react", "react-dom", "react-router-dom"],
+          supabase: ["@supabase/supabase-js"],
+        },
+      },
+    },
   },
 });

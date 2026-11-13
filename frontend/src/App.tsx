@@ -14,7 +14,8 @@ import { MustChangePasswordGuard, ProtectedRoute, PublicOnlyRoute, RoleRoute, Sc
 import { AdminProtectedRoute, adminGuard } from "@/routes/adminGuards";
 import { ROUTE_ROLES } from "@/routes/navigation";
 import { SplashScreen } from "@/components/SplashScreen";
-import HomePage from "@/pages/public/HomePage";
+
+const HomePage = lazy(() => import("@/pages/public/HomePage"));
 
 const FeaturesPage = lazy(() => import("@/pages/public/FeaturesPage"));
 const PricingPage = lazy(() => import("@/pages/public/PricingPage"));

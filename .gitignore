@@ -23,6 +23,9 @@ Thumbs.db
 **/supabase/.temp/
 **/supabase/.branches/
 
+# Vérifications locales (captures Playwright)
+frontend/temp-*.png
+
 # Logs
 *.log
 npm-debug.log*

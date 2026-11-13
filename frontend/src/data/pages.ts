@@ -21,10 +21,10 @@ export interface RoleFeature {
   bullets: string[];
 }
 
-const dashboardImg = "/images/role-directeur.jpg"; // remplacé par scène classe (3 rôles)
-const enseignantsImg = "/images/role-professeurs.jpg"; // remplacé par image enseignant
-const eleveImg = "/images/hero-1.jpg"; // CONSERVÉ — image élève non remplacée
-const parentsImg = "/images/role-parents.jpg"; // remplacé par parent téléphone
+const dashboardImg = "/images/role-directeur.webp"; // remplacé par scène classe (3 rôles)
+const enseignantsImg = "/images/role-professeurs.webp"; // remplacé par image enseignant
+const eleveImg = "/images/hero-1.webp"; // CONSERVÉ - image élève non remplacée
+const parentsImg = "/images/role-parents.webp"; // remplacé par parent téléphone
 
 /** Fonctionnalités détaillées, rôle par rôle, sur la page Fonctionnalités. */
 export const roleFeatures: RoleFeature[] = [

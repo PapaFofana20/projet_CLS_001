@@ -1,16 +1,40 @@
 // Page d'inscription selon le rôle choisi (directeur, élève ou parent).
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Link, Navigate, useSearchParams } from "react-router-dom";
 import { AuthLayout } from "@/components/layout/AuthLayout";
 import { Icon } from "@/components/ui/Icon";
-import { DirectorSignupForm } from "@/features/auth/DirectorSignupForm";
-import { MatriculeStep } from "@/features/auth/MatriculeStep";
-import { ParentSignupForm } from "@/features/auth/ParentSignupForm";
 import { RoleChoice } from "@/features/auth/RoleChoice";
-import { PricingSection } from "@/features/landing/PricingSection";
-import { StudentSignupForm } from "@/features/auth/StudentSignupForm";
 import { formatMatriculeInput } from "@/utils/matricule";
 import type { Role, School } from "@/types";
+
+// Les formulaires ne sont chargés qu'au moment où l'utilisateur choisit son
+// rôle : la page d'inscription s'affiche plus vite, sans parser les trois
+// parcours à la fois. Ils sont préchargés pendant l'inactivité juste après.
+const DirectorSignupForm = lazy(() =>
+  import("@/features/auth/DirectorSignupForm").then((m) => ({ default: m.DirectorSignupForm })),
+);
+const StudentSignupForm = lazy(() =>
+  import("@/features/auth/StudentSignupForm").then((m) => ({ default: m.StudentSignupForm })),
+);
+const ParentSignupForm = lazy(() =>
+  import("@/features/auth/ParentSignupForm").then((m) => ({ default: m.ParentSignupForm })),
+);
+const MatriculeStep = lazy(() => import("@/features/auth/MatriculeStep").then((m) => ({ default: m.MatriculeStep })));
+const PricingSection = lazy(() =>
+  import("@/features/landing/PricingSection").then((m) => ({ default: m.PricingSection })),
+);
+
+/** Attente locale du formulaire : simple réserve de hauteur, sans saut de page. */
+function FormLoading() {
+  return (
+    <div role="status" aria-label="Chargement du formulaire" className="space-y-3">
+      <div className="h-11 animate-pulse rounded-xl bg-mist" />
+      <div className="h-11 animate-pulse rounded-xl bg-mist" />
+      <div className="h-11 animate-pulse rounded-xl bg-mist" />
+      <div className="h-12 animate-pulse rounded-xl bg-mist" />
+    </div>
+  );
+}
 
 /**
  * /inscription — trois parcours : directeur (direct), élève et parent (matricule d'abord).
@@ -42,6 +66,32 @@ export default function RegisterPage() {
     window.scrollTo({ top: 0, left: 0, behavior: "instant" as ScrollBehavior });
   }, [directorPlan]);
 
+  // Précharge les formulaires pendant l'inactivité : au clic sur un rôle, le
+  // formulaire est déjà en cache et s'affiche immédiatement.
+  useEffect(() => {
+    let cancelled = false;
+    const run = () => {
+      if (cancelled) return;
+      void import("@/features/auth/DirectorSignupForm");
+      void import("@/features/auth/MatriculeStep");
+      void import("@/features/auth/StudentSignupForm");
+      void import("@/features/auth/ParentSignupForm");
+      void import("@/features/landing/PricingSection");
+    };
+    if (typeof window.requestIdleCallback === "function") {
+      const idleId = window.requestIdleCallback(run, { timeout: 2500 });
+      return () => {
+        cancelled = true;
+        window.cancelIdleCallback(idleId);
+      };
+    }
+    const timeoutId = window.setTimeout(run, 1000);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeoutId);
+    };
+  }, []);
+
   // Ancien lien Premium de la page tarifs : redirige vers le formulaire dédié.
   if (params.get("plan") === "premium") return <Navigate to="/inscription/premium" replace />;
 
@@ -72,27 +122,29 @@ export default function RegisterPage() {
       <div className="space-y-5">
         {!role && <RoleChoice value={role} onChange={(r) => { setRole(r); setDirectorPlan(null); setSchool(null); }} />}
 
-        {role === "directeur" && directorPlan === null && (
-          <div className="space-y-4">
-            <p className="text-sm text-neutral-600">Choisissez la formule adaptée à votre école avant de créer votre compte.</p>
-            <PricingSection withHeader={false} fullWidth showDescription={false} onSelectPlan={(id) => setDirectorPlan(id === "premium" ? "premium" : "decouverte")} />
-            <button type="button" onClick={() => setRole(null)} className="text-sm font-semibold text-forest underline-offset-4 hover:underline">Retour au choix du rôle</button>
-          </div>
-        )}
-        {role === "directeur" && directorPlan !== null && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between gap-3 rounded-2xl bg-lime-soft p-4">
-              <p className="text-sm font-semibold text-forest">Formule choisie : {directorPlan === "premium" ? "Premium" : "Découverte"}</p>
-              <button type="button" onClick={() => setDirectorPlan(null)} className="text-sm font-semibold text-forest underline-offset-4 hover:underline">Changer</button>
+        <Suspense fallback={<FormLoading />}>
+          {role === "directeur" && directorPlan === null && (
+            <div className="space-y-4">
+              <p className="text-sm text-neutral-600">Choisissez la formule adaptée à votre école avant de créer votre compte.</p>
+              <PricingSection withHeader={false} fullWidth showDescription={false} onSelectPlan={(id) => setDirectorPlan(id === "premium" ? "premium" : "decouverte")} />
+              <button type="button" onClick={() => setRole(null)} className="text-sm font-semibold text-forest underline-offset-4 hover:underline">Retour au choix du rôle</button>
             </div>
-            <DirectorSignupForm variant={directorPlan === "premium" ? "premium" : "decouverte"} />
-          </div>
-        )}
+          )}
+          {role === "directeur" && directorPlan !== null && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between gap-3 rounded-2xl bg-lime-soft p-4">
+                <p className="text-sm font-semibold text-forest">Formule choisie : {directorPlan === "premium" ? "Premium" : "Découverte"}</p>
+                <button type="button" onClick={() => setDirectorPlan(null)} className="text-sm font-semibold text-forest underline-offset-4 hover:underline">Changer</button>
+              </div>
+              <DirectorSignupForm variant={directorPlan === "premium" ? "premium" : "decouverte"} />
+            </div>
+          )}
 
-        {(role === "eleve" || role === "parent") && !school && <MatriculeStep initial={prefill} onFound={setSchool} onBack={() => setRole(null)} />}
+          {(role === "eleve" || role === "parent") && !school && <MatriculeStep initial={prefill} onFound={setSchool} onBack={() => setRole(null)} />}
 
-        {role === "eleve" && school && <StudentSignupForm school={school} onBack={() => setSchool(null)} />}
-        {role === "parent" && school && <ParentSignupForm school={school} onBack={() => setSchool(null)} />}
+          {role === "eleve" && school && <StudentSignupForm school={school} onBack={() => setSchool(null)} />}
+          {role === "parent" && school && <ParentSignupForm school={school} onBack={() => setSchool(null)} />}
+        </Suspense>
 
         <p className="flex items-start gap-2 pt-2 text-xs text-neutral-500">
           <Icon name="info" className="text-[16px]" />

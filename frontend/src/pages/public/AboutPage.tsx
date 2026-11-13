@@ -31,7 +31,7 @@ export default function AboutPage() {
             />
             <div className="relative">
               <h2 id="mission-title" className="text-4xl font-extrabold tracking-tight sm:text-5xl lg:text-6xl max-w-3xl mx-auto text-center">
-                <img src="/images/logo-dark.png" alt="Classora" width={240} height={46} className="inline-block h-[0.85em] w-auto align-[-0.1em]" /> : pensé pour les <span className="text-forest-500">réalités</span> de nos <span className="text-forest-500">écoles</span>.
+                <img src="/images/logo-dark.webp" alt="Classora" width={240} height={52} className="inline-block h-[0.85em] w-auto align-[-0.1em]" /> : pensé pour les <span className="text-forest-500">réalités</span> de nos <span className="text-forest-500">écoles</span>.
               </h2>
               <div className="mt-8 max-w-3xl mx-auto space-y-4 text-lg leading-relaxed text-neutral-700 text-center sm:mt-10 md:mt-12">
                 <p>
@@ -46,10 +46,11 @@ export default function AboutPage() {
               </div>
             </div>
             <img
-              src="/images/about-team.png"
+              src="/images/about-team.webp"
               alt="L'équipe Classora : deux collaborateurs en polo vert Classora et un responsable, avec un ordinateur portable et une tablette"
-              width={1672}
-              height={941}
+              width={1400}
+              height={788}
+              loading="lazy"
               decoding="async"
               className="relative -mx-[30%] mt-8 block h-auto w-[160%] max-w-none sm:mx-auto sm:h-72 sm:w-auto md:h-[380px] lg:h-[520px]"
             />

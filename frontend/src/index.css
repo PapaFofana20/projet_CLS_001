@@ -1,5 +1,32 @@
 @import "tailwindcss";
 
+/**
+ * Polices auto-hébergées (dossier public/fonts), préchargées dans index.html :
+ * plus de feuille de style tierce bloquante (ni Fontshare ni Google Fonts) et
+ * un seul aller-retour réseau, sur la même origine que le reste du site.
+ *
+ * - Cabinet Grotesk : police variable unique de la plateforme (100–900).
+ * - Material Symbols Rounded : sous-ensemble limité aux icônes utilisées par
+ *   l'application (le fichier complet pèse plus de 3 Mo, le sous-ensemble 62 Ko).
+ */
+@font-face {
+  font-family: "Cabinet Grotesk";
+  src: url("/fonts/cabinet-grotesk.woff2?v=1") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Material Symbols Rounded";
+  src: url("/fonts/material-symbols-rounded.woff2?v=1") format("woff2");
+  /* Les icônes sont des ligatures : « block » évite d'afficher le nom brut de
+     l'icône (ex. « arrow_back ») pendant le chargement. */
+  font-weight: 300 600;
+  font-style: normal;
+  font-display: block;
+}
+
 /* Design system Classora (équivalent du tailwind.config en Tailwind v4) */
 @theme {
   --font-sans: "Cabinet Grotesk", ui-sans-serif, system-ui, sans-serif;
