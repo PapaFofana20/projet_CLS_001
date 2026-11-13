@@ -8,11 +8,11 @@ import { plans } from "@/data/landing";
 import { cn } from "@/utils/cn";
 
 // Compare les trois formules et envoie vers l'inscription adaptee.
-export function PricingSection({ withHeader = true, onSelectPlan }: { withHeader?: boolean; onSelectPlan?: (planId: string) => void }) {
+export function PricingSection({ withHeader = true, onSelectPlan, fullWidth = false }: { withHeader?: boolean; onSelectPlan?: (planId: string) => void; fullWidth?: boolean }) {
   // Sans en-tête (page /tarifs), le H2 #pricing-title n'est pas rendu : ne pas
   // référencer un identifiant absent (aria-labelledby cassé).
   return (
-    <section className={cn("mx-auto w-full max-w-[1280px] px-gutter", withHeader ? "py-16" : "pt-8 pb-16")} aria-labelledby={withHeader ? "pricing-title" : undefined}>
+    <section className={cn("mx-auto w-full px-gutter", fullWidth ? "max-w-full" : "max-w-[1280px]", withHeader ? "py-16" : "pt-8 pb-16")} aria-labelledby={withHeader ? "pricing-title" : undefined}>
       {withHeader && (
         <Reveal>
           <div className="mb-12 text-center">
