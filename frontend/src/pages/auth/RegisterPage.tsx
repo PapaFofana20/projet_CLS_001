@@ -47,7 +47,7 @@ export default function RegisterPage() {
         {role === "directeur" && directorPlan === null && (
           <div className="space-y-4">
             <p className="text-sm text-neutral-600">Choisissez la formule adaptée à votre école avant de créer votre compte.</p>
-            <PricingSection withHeader={false} fullWidth onSelectPlan={(id) => setDirectorPlan(id === "premium" ? "premium" : "decouverte")} />
+            <PricingSection withHeader={false} fullWidth showDescription={false} onSelectPlan={(id) => setDirectorPlan(id === "premium" ? "premium" : "decouverte")} />
             <button type="button" onClick={() => setRole(null)} className="text-sm font-semibold text-forest underline-offset-4 hover:underline">Retour au choix du rôle</button>
           </div>
         )}

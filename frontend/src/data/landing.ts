@@ -128,7 +128,7 @@ export const plans: Plan[] = [
     name: "Plan découverte",
     price: "Gratuit",
     unit: "",
-    description: "Pour démarrer une école — tout le nécessaire pour gérer les élèves, les notes et le personnel.",
+    description: "Pour démarrer une école : élèves, notes, bulletins et personnel.",
     items: ["Jusqu'à 100 élèves", "Classes, notes et bulletins automatiques", "Espace parents", "Création d'accès du personnel (enseignants, économe, secrétaire, surveillant)", "Support par WhatsApp"],
   },
   {
@@ -136,7 +136,7 @@ export const plans: Plan[] = [
     name: "Premium",
     price: "500 FCFA",
     unit: "par élève / mois",
-    description: "Tous les modules Pro + comptes du personnel, export et accompagnement dédié.",
+    description: "Pour une école en croissance : paiements, emplois du temps, rappels et export.",
     highlight: true,
     items: ["Élèves illimités", "Tous les modules du plan Découverte", "Paiements Wave / Orange Money / Free Money", "Affectations et emplois du temps", "Rappels automatiques des impayés", "Comptes économe, secrétaire et surveillant inclus", "Export des données et rapports", "Accompagnement dédié"],
   },
@@ -145,7 +145,7 @@ export const plans: Plan[] = [
     name: "Groupe scolaire",
     price: "Sur devis",
     unit: "multi-établissements",
-    description: "Pour les réseaux d'écoles avec des besoins spécifiques.",
+    description: "Pour les réseaux d'écoles : plusieurs établissements, pilotage consolidé.",
     items: ["Plusieurs établissements", "Tableau de bord consolidé", "Formation sur site", "Intégrations sur mesure", "Gestionnaire de compte dédié"],
   },
 ];

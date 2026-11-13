@@ -8,7 +8,9 @@ import { plans } from "@/data/landing";
 import { cn } from "@/utils/cn";
 
 // Compare les trois formules et envoie vers l'inscription adaptee.
-export function PricingSection({ withHeader = true, onSelectPlan, fullWidth = false }: { withHeader?: boolean; onSelectPlan?: (planId: string) => void; fullWidth?: boolean }) {
+// `showDescription` : masque le chapeau de chaque carte (page d'inscription,
+// ou la liste des avantages suffit et prendrait de la hauteur inutile).
+export function PricingSection({ withHeader = true, onSelectPlan, fullWidth = false, showDescription = true }: { withHeader?: boolean; onSelectPlan?: (planId: string) => void; fullWidth?: boolean; showDescription?: boolean }) {
   // Sans en-tête (page /tarifs), le H2 #pricing-title n'est pas rendu : ne pas
   // référencer un identifiant absent (aria-labelledby cassé).
   return (
@@ -30,7 +32,9 @@ export function PricingSection({ withHeader = true, onSelectPlan, fullWidth = fa
             <Reveal key={p.id} delay={i * 100} className="h-full">
               <article className={cn("relative flex h-full min-h-[24rem] flex-col rounded-3xl p-8 transition-transform duration-300 hover:-translate-y-1", p.highlight ? "bg-forest text-white shadow-soft" : isGroup ? "bg-lime text-forest shadow-soft" : "bg-mist")}>
                 <h3 className="text-lg font-bold">{p.name}</h3>
-                <p className={cn("mt-1 text-sm", p.highlight ? "text-white/70" : isGroup ? "text-forest/70" : "text-neutral-600")}>{p.description}</p>
+                {showDescription && (
+                  <p className={cn("mt-1 text-sm", p.highlight ? "text-white/70" : isGroup ? "text-forest/70" : "text-neutral-600")}>{p.description}</p>
+                )}
                 <p className="mt-6 text-4xl font-extrabold tracking-tight">{p.price}</p>
                 <p className={cn("text-sm", p.id === "premium" ? "text-base font-bold" : "", p.highlight ? "text-white/70" : isGroup ? "text-forest/70" : "text-neutral-500")}>{p.unit}</p>
                 <ul className="my-7 flex-1 space-y-3 text-sm">
