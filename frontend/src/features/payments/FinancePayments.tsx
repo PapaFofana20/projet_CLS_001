@@ -1,10 +1,9 @@
-// Gestion des paiements cote ecole : encaissements, impayes et relances.
-
+// Gestion des paiements côté école : mensualités du mois courant avec statut manuel.
 import { useEffect, useMemo, useState } from "react";
 import { AsyncView } from "@/components/ui/AsyncView";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
+import { Card, CardHeader } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { FilterSheet } from "@/components/ui/FilterSheet";
 import { Icon } from "@/components/ui/Icon";
@@ -21,7 +20,7 @@ import { useToast } from "@/context/ToastContext";
 import { todayIso } from "@/data/school";
 import { useAsync } from "@/hooks/useAsync";
 import { useDebounce } from "@/hooks/useDebounce";
-import { listPaymentRows, recordCashPayment, sendReminders } from "@/services/paymentService";
+import { listPaymentRows, recordCashPayment, sendReminders, setPaymentManualStatus } from "@/services/paymentService";
 import type { PaymentRow } from "@/services/paymentRows";
 import { formatCurrency, formatDate } from "@/utils/format";
 import { useFeature } from "@/utils/features";
@@ -31,6 +30,13 @@ import { PAY_TONE } from "./ParentPayments";
 import { Receipt } from "./Receipt";
 
 const PAGE = 12;
+
+// Libellés pour le statut manuel (dropdown)
+const MANUAL_STATUS_LABELS: Record<"a_venir" | "paye" | "impaye", string> = {
+  a_venir: "Non payé",
+  paye: "Payé",
+  impaye: "En retard",
+};
 
 interface Debtor {
   studentId: string;
@@ -45,7 +51,7 @@ interface Debtor {
   maxOverdueDays: number;
 }
 
-// Vue ecole des paiements : filtres, impayes, encaissement et relances WhatsApp.
+// Vue école des paiements : mensualités du mois courant, statut manuel par dropdown.
 export function FinancePayments({ schoolName, canAct }: { schoolName: string; canAct: boolean }) {
   const user = useCurrentUser();
   const { toast } = useToast();
@@ -57,7 +63,6 @@ export function FinancePayments({ schoolName, canAct }: { schoolName: string; ca
   const [q, setQ] = useState("");
   const dq = useDebounce(q, 250);
   const [cls, setCls] = useState("");
-  const [status, setStatus] = useState("");
   const [page, setPage] = useState(1);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [cash, setCash] = useState<PaymentRow | null>(null);
@@ -65,25 +70,35 @@ export function FinancePayments({ schoolName, canAct }: { schoolName: string; ca
   const [receipt, setReceipt] = useState<PaymentRow | null>(null);
   const [picked, setPicked] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
+  const [busyStatus, setBusyStatus] = useState<Set<string>>(new Set());
 
   const rows = useMemo(() => state.data ?? [], [state.data]);
-  useEffect(() => setPage(1), [dq, cls, status, tab]);
+  useEffect(() => setPage(1), [dq, cls, tab]);
 
-  const due = rows.filter((p) => p.dueDate <= todayIso());
+  // Mois courant (YYYY-MM)
+  const currentMonth = todayIso().slice(0, 7);
+
+  // Filtre : uniquement les mensualités du mois courant
+  const currentMonthRows = useMemo(() =>
+    rows.filter((p) => p.kind === "mensualite" && p.dueDate.startsWith(currentMonth)),
+    [rows, currentMonth]
+  );
+
+  const due = currentMonthRows.filter((p) => p.dueDate <= todayIso());
   const expected = sum(due.map((p) => p.amount));
   const collected = sum(due.map((p) => p.paidAmount));
-  const classes = Array.from(new Set(rows.map((r) => r.className))).sort((a, b) => a.localeCompare(b, "fr", { numeric: true }));
+  const classes = Array.from(new Set(currentMonthRows.map((r) => r.className))).sort((a, b) => a.localeCompare(b, "fr", { numeric: true }));
 
   const filtered = useMemo(() => {
     const t = dq.trim().toLowerCase();
-    return rows
-      .filter((p) => (!t || `${p.studentName} ${p.parentName}`.toLowerCase().includes(t)) && (!cls || p.className === cls) && (!status || p.status === status))
+    return currentMonthRows
+      .filter((p) => (!t || `${p.studentName} ${p.parentName}`.toLowerCase().includes(t)) && (!cls || p.className === cls))
       .sort((a, b) => a.dueDate.localeCompare(b.dueDate) || a.studentName.localeCompare(b.studentName));
-  }, [rows, dq, cls, status]);
+  }, [currentMonthRows, dq, cls]);
 
   const debtors = useMemo<Debtor[]>(() => {
     const map = new Map<string, Debtor>();
-    rows.filter((p) => p.dueDate <= todayIso() && remaining(p) > 0).forEach((p) => {
+    currentMonthRows.filter((p) => p.dueDate <= todayIso() && remaining(p) > 0).forEach((p) => {
       const d = map.get(p.studentId) ?? { studentId: p.studentId, studentName: p.studentName, className: p.className, parentName: p.parentName, parentFirstName: p.parentName.split(" ")[0] ?? p.parentName, parentPhone: p.parentPhone, count: 0, total: 0, lines: [], maxOverdueDays: 0 };
       d.count += 1;
       d.total += remaining(p);
@@ -92,7 +107,7 @@ export function FinancePayments({ schoolName, canAct }: { schoolName: string; ca
       map.set(p.studentId, d);
     });
     return Array.from(map.values()).filter((d) => (!cls || d.className === cls) && (!dq || `${d.studentName} ${d.parentName}`.toLowerCase().includes(dq.toLowerCase()))).sort((a, b) => b.total - a.total);
-  }, [rows, cls, dq]);
+  }, [currentMonthRows, cls, dq]);
 
   const cashAmount = Number(amount);
   const cashErr = cash && (!(cashAmount > 0) || cashAmount > remaining(cash)) ? `Montant entre 1 et ${formatCurrency(remaining(cash))}.` : null;
@@ -139,21 +154,60 @@ export function FinancePayments({ schoolName, canAct }: { schoolName: string; ca
     }
   };
 
+  // Changement de statut manuel via dropdown
+  const changeManualStatus = async (row: PaymentRow, next: "a_venir" | "paye" | "impaye") => {
+    if (!canAct) return;
+    setBusyStatus((s) => new Set(s).add(row.id));
+    try {
+      await setPaymentManualStatus(user, row.id, next);
+      toast(`${MANUAL_STATUS_LABELS[next]} pour ${row.studentName}.`);
+      state.reload();
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Impossible de changer le statut.", "error");
+    } finally {
+      setBusyStatus((s) => { const n = new Set(s); n.delete(row.id); return n; });
+    }
+  };
+
   const actions = (p: PaymentRow) => (
     <div className="flex justify-end gap-2">
       {canAct && remaining(p) > 0 && <Button size="sm" variant="primary" onClick={() => { setCash(p); setAmount(String(remaining(p))); }}>Encaisser</Button>}
       {p.paidAmount > 0 && <Button size="sm" variant="outline" icon="receipt_long" aria-label={`Reçu de ${p.studentName}`} onClick={() => setReceipt(p)} />}
     </div>
   );
+
+  const manualStatusOptions = [
+    { value: "a_venir", label: "Non payé" },
+    { value: "paye", label: "Payé" },
+    { value: "impaye", label: "En retard" },
+  ] as const;
+
+  const manualStatusCell = (p: PaymentRow) => {
+    const ms = p.manualStatus ?? "a_venir";
+    const isBusy = busyStatus.has(p.id);
+    return (
+      <Select
+        compact
+        value={ms}
+        onChange={(e) => void changeManualStatus(p, e.target.value as "a_venir" | "paye" | "impaye")}
+        disabled={!canAct || isBusy}
+        options={manualStatusOptions.map((o) => ({ value: o.value, label: o.label }))}
+        className="min-w-[130px]"
+      />
+    );
+  };
+
   const cols: Column<PaymentRow>[] = [
     { key: "s", header: "Élève", render: (p) => <span><strong>{p.studentName}</strong><span className="block text-xs text-neutral-500">{p.className}</span></span>, noTruncate: true },
     { key: "l", header: "Échéance", render: (p) => p.label },
     { key: "d", header: "Date limite", render: (p) => formatDate(p.dueDate) },
-    { key: "a", header: "Montant", align: "right", render: (p) => formatCurrency(p.amount), numeric: true },
+    { key: "a", header: "Mensualité", align: "right", render: (p) => formatCurrency(p.amount), numeric: true },
     { key: "p", header: "Payé", align: "right", render: (p) => formatCurrency(p.paidAmount), numeric: true },
-    { key: "st", header: "Statut", render: (p) => <Badge tone={PAY_TONE[p.status]}>{PAY_STATUS_LABELS[p.status]}</Badge> },
+    { key: "st", header: "Statut auto", render: (p) => <Badge tone={PAY_TONE[p.status]}>{PAY_STATUS_LABELS[p.status]}</Badge> },
+    { key: "ms", header: "Statut manuel", render: manualStatusCell },
     { key: "ac", header: <span className="sr-only">Actions</span>, align: "right", render: actions, shrink: 0 },
   ];
+
   const debtorCols: Column<Debtor>[] = [
     { key: "c", header: <span className="sr-only">Sélection</span>, render: (d) => <label className="grid size-11 cursor-pointer place-items-center rounded-full hover:bg-mist"><input type="checkbox" className="size-5 accent-forest" aria-label={`Sélectionner ${d.studentName}`} checked={picked.includes(d.studentId)} onChange={() => setPicked((p) => (p.includes(d.studentId) ? p.filter((x) => x !== d.studentId) : [...p, d.studentId]))} /></label>, shrink: 0 },
     { key: "s", header: "Élève", render: (d) => <span><strong>{d.studentName}</strong><span className="block text-xs text-neutral-500">{d.className}</span></span>, noTruncate: true },
@@ -172,6 +226,7 @@ export function FinancePayments({ schoolName, canAct }: { schoolName: string; ca
         </div>
       ), shrink: 0 },
   ];
+
   const receiptRows = filtered.filter((p) => p.paidAmount > 0 && p.paidAt).sort((a, b) => (b.paidAt ?? "").localeCompare(a.paidAt ?? ""));
   const receiptCols: Column<PaymentRow>[] = [
     { key: "d", header: "Date", render: (p) => formatDate(p.paidAt) },
@@ -182,13 +237,11 @@ export function FinancePayments({ schoolName, canAct }: { schoolName: string; ca
     { key: "a", header: "Montant", align: "right", render: (p) => formatCurrency(p.paidAmount) },
     { key: "x", header: <span className="sr-only">Reçu</span>, align: "right", render: actions },
   ];
+
   const list = tab === "recus" ? receiptRows : filtered;
-  const activeFilters = [cls, status].filter(Boolean).length;
+  const activeFilters = cls ? 1 : 0;
   const filterFields = (
-    <>
-      <Select compact aria-label="Classe" placeholder="Toutes les classes" value={cls} onChange={(e) => setCls(e.target.value)} options={classes.map((c) => ({ value: c, label: c }))} />
-      {tab === "echeances" && <Select compact aria-label="Statut" placeholder="Tous les statuts" value={status} onChange={(e) => setStatus(e.target.value)} options={Object.entries(PAY_STATUS_LABELS).map(([value, label]) => ({ value, label }))} />}
-    </>
+    <Select compact aria-label="Classe" placeholder="Toutes les classes" value={cls} onChange={(e) => setCls(e.target.value)} options={classes.map((c) => ({ value: c, label: c }))} />
   );
 
   return (
@@ -197,12 +250,16 @@ export function FinancePayments({ schoolName, canAct }: { schoolName: string; ca
         <div className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <StatCard dark icon="account_balance_wallet" label="Encaissé" value={formatCurrency(collected)} />
-            <StatCard icon="request_quote" label="Attendu à ce jour" value={formatCurrency(expected)} />
+            <StatCard icon="request_quote" label="Attendu ce mois" value={formatCurrency(expected)} />
             <StatCard icon="warning" label="Impayés" value={formatCurrency(expected - collected)} badge={{ text: `${debtors.length} élèves`, tone: "down" }} />
             <StatCard icon="percent" label="Recouvrement" value={`${expected ? Math.round((collected / expected) * 100) : 0} %`} />
           </div>
-          <Tabs label="Paiements" value={tab} onChange={setTab} items={[{ id: "echeances", label: "Échéances", icon: "calendar_month" }, { id: "impayes", label: "Impayés et relances", icon: "notifications_active", badge: debtors.length }, { id: "recus", label: "Reçus", icon: "receipt_long" }]} />
+          <Tabs label="Paiements" value={tab} onChange={setTab} items={[{ id: "echeances", label: "Mensualités du mois", icon: "calendar_month" }, { id: "impayes", label: "Impayés et relances", icon: "notifications_active", badge: debtors.length }, { id: "recus", label: "Reçus", icon: "receipt_long" }]} />
           <Card>
+            <CardHeader
+              title={`Mensualités de ${new Date().toLocaleString("fr-FR", { month: "long", year: "numeric" })}`}
+              subtitle="Seules les mensualités du mois en cours sont affichées. Utilisez le menu « Statut manuel » pour marquer Payé / En retard / Non payé."
+            />
             <div className="grid gap-3 md:grid-cols-3">
               <Input aria-label="Rechercher" icon="search" placeholder="Élève ou parent…" value={q} onChange={(e) => setQ(e.target.value)} />
               <div className="hidden md:contents">{filterFields}</div>
@@ -214,7 +271,7 @@ export function FinancePayments({ schoolName, canAct }: { schoolName: string; ca
                 {activeFilters > 0 && <span className="grid min-w-6 place-items-center rounded-full bg-lime px-1.5 text-xs font-bold leading-6 text-forest">{activeFilters}</span>}
               </button>
               {activeFilters > 0 && (
-                <button type="button" onClick={() => { setCls(""); setStatus(""); }} className="min-h-12 rounded-2xl px-3 text-sm font-semibold text-neutral-600">
+                <button type="button" onClick={() => { setCls(""); }} className="min-h-12 rounded-2xl px-3 text-sm font-semibold text-neutral-600">
                   Réinitialiser
                 </button>
               )}
@@ -238,10 +295,10 @@ export function FinancePayments({ schoolName, canAct }: { schoolName: string; ca
               {debtors.length === 0 ? <EmptyState icon="verified" title="Aucun impayé" text="Toutes les échéances échues sont réglées." /> : <Card padded={false} className="p-2"><Table caption="Élèves avec échéances impayées" columns={debtorCols} rows={debtors} rowKey={(d) => d.studentId} stagger /></Card>}
             </>
           ) : list.length === 0 ? (
-            <EmptyState icon="search_off" title="Aucun résultat" text="Modifiez vos filtres." />
+            <EmptyState icon="search_off" title="Aucune mensualité ce mois" text="Aucune mensualité programmée pour ce mois ou filtre trop restrictif." />
           ) : (
             <Card padded={false} className="p-2">
-              <Table caption="Paiements" columns={tab === "recus" ? receiptCols : cols} rows={list.slice((page - 1) * PAGE, page * PAGE)} rowKey={(p) => p.id} stagger />
+              <Table caption="Mensualités du mois" columns={tab === "recus" ? receiptCols : cols} rows={list.slice((page - 1) * PAGE, page * PAGE)} rowKey={(p) => p.id} stagger />
               <div className="px-4 pb-4"><Pagination page={page} pageSize={PAGE} total={list.length} onChange={setPage} /></div>
             </Card>
           )}
