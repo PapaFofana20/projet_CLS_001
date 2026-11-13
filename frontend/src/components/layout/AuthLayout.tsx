@@ -104,10 +104,14 @@ export function AuthLayout({ title, subtitle, children, visualTitle, visualText,
               <span className="underline-offset-4 hover:underline">Retour</span>
             </Link>
           </div>
-          {/* Marge au-dessus du titre : sépare nettement le logo du formulaire. */}
-          <div className="mt-8 w-full max-w-3xl">
-            <h1 className="text-3xl font-extrabold tracking-tight text-ink sm:text-4xl">{title}</h1>
-            <p className="mt-2 text-sm text-neutral-600">{subtitle}</p>
+          {/* Marge au-dessus du titre : sépare nettement le logo du formulaire.
+              Titre et sous-titre gardent une largeur de lecture confortable ;
+              le contenu (children) occupe toute la largeur du conteneur, sinon
+              la section tarifs resterait bloquée à max-w-3xl sur les pages
+              « wide » (inscription directeur). */}
+          <div className="mt-8 w-full">
+            <h1 className="max-w-3xl text-3xl font-extrabold tracking-tight text-ink sm:text-4xl">{title}</h1>
+            <p className="mt-2 max-w-3xl text-sm text-neutral-600">{subtitle}</p>
             <div className="mt-8">{children}</div>
           </div>
         </div>
