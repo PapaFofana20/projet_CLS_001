@@ -5,7 +5,7 @@ import { FaqSection } from "@/features/landing/FaqSection";
 import { FeaturesCarousel } from "@/features/landing/FeaturesCarousel";
 import { Hero } from "@/features/landing/Hero";
 import { LogoStrip } from "@/features/landing/LogoStrip";
-import { PricingSection } from "@/features/landing/PricingSection";
+
 import { StepsBento } from "@/features/landing/StepsBento";
 import { TestimonialsSection } from "@/features/landing/TestimonialsSection";
 import { usePageMeta } from "@/hooks/usePageMeta";
@@ -25,7 +25,6 @@ export default function HomePage() {
       <AboutSection />
       <FeaturesCarousel />
       <StepsBento />
-      <PricingSection />
       <TestimonialsSection />
       <FaqSection />
       <CtaSection />

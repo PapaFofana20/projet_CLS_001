@@ -40,7 +40,7 @@ export const CONTACT = {
 export const navLinks = [
   { to: "/", label: "Accueil" },
   { to: "/fonctionnalites", label: "Fonctionnalités" },
-  { to: "/tarifs", label: "Tarifs" },
+
   { to: "/ecoles", label: "Écoles" },
   { to: "/a-propos", label: "À propos" },
   { to: "/contact", label: "Contact" },
@@ -205,7 +205,7 @@ export const aboutStats = [
 ];
 
 export const footerColumns = [
-  { title: "Produit", links: [{ to: "/fonctionnalites", label: "Fonctionnalités" }, { to: "/tarifs", label: "Tarifs" }, { to: "/ecoles", label: "Écoles partenaires" }] },
+  { title: "Produit", links: [{ to: "/fonctionnalites", label: "Fonctionnalités" },  { to: "/ecoles", label: "Écoles partenaires" }] },
   { title: "Entreprise", links: [{ to: "/a-propos", label: "À propos" }, { to: "/contact", label: "Contact" }, { to: "/tarifs", label: "FAQ" }] },
   { title: "Accès", links: [{ to: "/connexion", label: "Se connecter" }, { to: "/inscription", label: "Créer un compte" }, { to: "/mot-de-passe-oublie", label: "Mot de passe oublié" }] },
   { title: "Légal", links: [{ to: "/cgu", label: "CGU" }, { to: "/confidentialite", label: "Politique de confidentialité" }] },

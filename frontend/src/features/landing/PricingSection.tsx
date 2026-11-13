@@ -1,13 +1,14 @@
 // Cartes tarifaires de la page d'accueil et de la page tarifs.
 
 import { ArrowButton } from "@/components/ui/ArrowButton";
+import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
 import { Reveal } from "@/components/ui/Reveal";
 import { plans } from "@/data/landing";
 import { cn } from "@/utils/cn";
 
 // Compare les trois formules et envoie vers l'inscription adaptee.
-export function PricingSection({ withHeader = true }: { withHeader?: boolean }) {
+export function PricingSection({ withHeader = true, onSelectPlan }: { withHeader?: boolean; onSelectPlan?: (planId: string) => void }) {
   // Sans en-tête (page /tarifs), le H2 #pricing-title n'est pas rendu : ne pas
   // référencer un identifiant absent (aria-labelledby cassé).
   return (
@@ -40,16 +41,22 @@ export function PricingSection({ withHeader = true }: { withHeader?: boolean }) 
                     </li>
                   ))}
                 </ul>
-                <ArrowButton
-                  to={
-                    isGroup
-                      ? "/contact"
-                      : p.id === "premium"
-                        ? "/inscription/premium"
-                        : `/inscription?plan=${p.id}`
-                  } tone={p.highlight ? "lime" : "forest"} className="w-full justify-between">
-                  {isGroup ? "Demander un devis" : "Choisir " + p.name}
-                </ArrowButton>
+                {onSelectPlan && !isGroup ? (
+                  <Button type="button" variant={p.highlight ? "primary" : "outline"} className="w-full justify-between" onClick={() => onSelectPlan(p.id)}>
+                    {isGroup ? "Demander un devis" : "Choisir " + p.name}
+                  </Button>
+                ) : (
+                  <ArrowButton
+                    to={
+                      isGroup
+                        ? "/contact"
+                        : p.id === "premium"
+                          ? "/inscription/premium"
+                          : `/inscription?plan=${p.id}`
+                    } tone={p.highlight ? "lime" : "forest"} className="w-full justify-between">
+                    {isGroup ? "Demander un devis" : "Choisir " + p.name}
+                  </ArrowButton>
+                )}
               </article>
             </Reveal>
           );

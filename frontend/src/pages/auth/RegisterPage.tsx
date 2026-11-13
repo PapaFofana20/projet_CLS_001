@@ -7,6 +7,7 @@ import { DirectorSignupForm } from "@/features/auth/DirectorSignupForm";
 import { MatriculeStep } from "@/features/auth/MatriculeStep";
 import { ParentSignupForm } from "@/features/auth/ParentSignupForm";
 import { RoleChoice } from "@/features/auth/RoleChoice";
+import { PricingSection } from "@/features/landing/PricingSection";
 import { StudentSignupForm } from "@/features/auth/StudentSignupForm";
 import { formatMatriculeInput } from "@/utils/matricule";
 import type { Role, School } from "@/types";
@@ -24,6 +25,7 @@ export default function RegisterPage() {
   const [params] = useSearchParams();
   const [role, setRole] = useState<Role | null>(null);
   const [school, setSchool] = useState<School | null>(null);
+  const [directorPlan, setDirectorPlan] = useState<"decouverte" | "premium" | null>(null);
 
   // Ancien lien Premium de la page tarifs : redirige vers le formulaire dédié.
   if (params.get("plan") === "premium") return <Navigate to="/inscription/premium" replace />;
@@ -39,9 +41,24 @@ export default function RegisterPage() {
       backgroundImage
     >
       <div className="space-y-5">
-        {!role && <RoleChoice value={role} onChange={setRole} />}
+        {!role && <RoleChoice value={role} onChange={(r) => { setRole(r); setDirectorPlan(null); setSchool(null); }} />}
 
-        {role === "directeur" && <DirectorSignupForm />}
+        {role === "directeur" && directorPlan === null && (
+          <div className="space-y-4">
+            <p className="text-sm text-neutral-600">Choisissez la formule adaptée à votre école avant de créer votre compte.</p>
+            <PricingSection withHeader={false} onSelectPlan={(id) => setDirectorPlan(id === "premium" ? "premium" : "decouverte")} />
+            <button type="button" onClick={() => setRole(null)} className="text-sm font-semibold text-forest underline-offset-4 hover:underline">Retour au choix du rôle</button>
+          </div>
+        )}
+        {role === "directeur" && directorPlan !== null && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between gap-3 rounded-2xl bg-lime-soft p-4">
+              <p className="text-sm font-semibold text-forest">Formule choisie : {directorPlan === "premium" ? "Premium" : "Découverte"}</p>
+              <button type="button" onClick={() => setDirectorPlan(null)} className="text-sm font-semibold text-forest underline-offset-4 hover:underline">Changer</button>
+            </div>
+            <DirectorSignupForm variant={directorPlan === "premium" ? "premium" : "decouverte"} />
+          </div>
+        )}
 
         {(role === "eleve" || role === "parent") && !school && <MatriculeStep initial={prefill} onFound={setSchool} onBack={() => setRole(null)} />}
 
