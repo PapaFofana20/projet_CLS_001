@@ -15,6 +15,33 @@ export interface SchoolOverview {
   school: School | null;
 }
 
+/**
+ * Écrit une ligne unique SANS `upsert`.
+ *
+ * PostgREST traduit un upsert en `INSERT ... ON CONFLICT (...) DO UPDATE SET`
+ * en incluant TOUTES les colonnes envoyées — y compris celles de la clé
+ * (school_id, level_id…). Or `authenticated` ne possède qu'un grant UPDATE
+ * par colonne sur `level_fees` (inscription, mensualite) et `class_subjects`
+ * (coefficient) : l'upsert échouait donc avec « permission denied for table ».
+ * On fait ici un UPDATE ciblé, puis un INSERT si aucune ligne n'existait.
+ */
+async function updateOrInsert(
+  table: "level_fees" | "class_subjects",
+  match: Record<string, string>,
+  values: Record<string, number>,
+  echo: string,
+): Promise<string | null> {
+  let update = supabase.from(table).update(values);
+  for (const [column, value] of Object.entries(match)) update = update.eq(column, value);
+  const { data, error } = await update.select(echo);
+  if (error) return error.message;
+  if (data && data.length > 0) return null;
+  const row = { ...match, ...values } as Record<string, string | number>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error: insertError } = await supabase.from(table).insert(row as any);
+  return insertError?.message ?? null;
+}
+
 // Vue d'ensemble d'une école (niveaux, classes, matières, réglages) depuis le cache.
 export const getSchoolOverview = (schoolId: string): Promise<SchoolOverview> =>
   (async () => {
@@ -43,21 +70,29 @@ export function updateSettings(schoolId: string, patch: Partial<SchoolSettings>)
     if (patch.siblingDiscount !== undefined) settingsPatch.sibling_discount = patch.siblingDiscount;
     if (patch.blockStudentBulletins !== undefined) settingsPatch.block_student_bulletins = patch.blockStudentBulletins;
     if (Object.keys(settingsPatch).length > 0) {
-      const { error } = await supabase.from("school_settings").update(settingsPatch).eq("school_id", schoolId);
+      // `.select()` permet de détecter une mise à jour qui ne touche aucune
+      // ligne : sans lui, Supabase renvoyait « succès » et l'interface affichait
+      // des valeurs jamais enregistrées (RLS en lecture seule, ligne absente).
+      const { data, error } = await supabase
+        .from("school_settings")
+        .update(settingsPatch)
+        .eq("school_id", schoolId)
+        .select("school_id");
       if (error) throw new Error(/read-only|row-level/i.test(error.message) ? "Mode lecture seule : l'abonnement de votre école est expiré. Les modifications sont désactivées." : error.message);
+      if (!data || data.length === 0) throw new Error("Réglages introuvables pour cette école : aucune modification n'a été enregistrée.");
     }
     if (patch.fees !== undefined) {
-      const rows = Object.entries(patch.fees).map(([levelId, fee]) => ({
-        school_id: schoolId,
-        level_id: levelId,
-        inscription: Number(fee.inscription) || 0,
-        mensualite: Number(fee.mensualite) || 0,
-      }));
-      for (const fee of rows) {
-        const { error } = await supabase
-          .from("level_fees")
-          .upsert(fee, { onConflict: "school_id,level_id" });
-        if (error) throw new Error("Frais non modifiables : l'abonnement de votre école n'autorise plus les modifications.");
+      const currentFees = settingsOf(schoolId).fees;
+      for (const [levelId, fee] of Object.entries(patch.fees)) {
+        const next = {
+          inscription: Math.max(0, Math.round(Number(fee.inscription) || 0)),
+          mensualite: Math.max(0, Math.round(Number(fee.mensualite) || 0)),
+        };
+        const before = currentFees[levelId];
+        // Tarif inchangé : inutile d'écrire (et d'attendre un aller-retour).
+        if (before && before.inscription === next.inscription && before.mensualite === next.mensualite) continue;
+        const message = await updateOrInsert("level_fees", { school_id: schoolId, level_id: levelId }, next, "level_id");
+        if (message) throw new Error(/read-only|row-level/i.test(message) ? "Frais non modifiables : l'abonnement de votre école n'autorise plus les modifications." : `Frais non enregistrés : ${message}`);
       }
     }
     const schoolPatch: Record<string, unknown> = {};
@@ -67,8 +102,9 @@ export function updateSettings(schoolId: string, patch: Partial<SchoolSettings>)
     if (patch.email !== undefined) schoolPatch.email = patch.email;
     if (patch.cycles !== undefined) schoolPatch.cycles = patch.cycles;
     if (Object.keys(schoolPatch).length > 0) {
-      const { error } = await supabase.from("schools").update(schoolPatch).eq("id", schoolId);
+      const { data, error } = await supabase.from("schools").update(schoolPatch).eq("id", schoolId).select("id");
       if (error) throw new Error(/row-level/i.test(error.message) ? "L'identité de l'école est modifiable par la direction uniquement." : error.message);
+      if (!data || data.length === 0) throw new Error("École introuvable : aucune modification n'a été enregistrée.");
     }
     await hydrate("settings");
     return settingsOf(schoolId);
@@ -287,10 +323,14 @@ export function createClass(schoolId: string, input: NewClassInput): Promise<Cla
       classesOf(schoolId).find((c) => c.cycle === level.cycle);
     if (template && cls.id !== template.id) {
       for (const cs of classSubjectsOf(schoolId).filter((x) => x.classId === template.id)) {
-        const { error: copyError } = await supabase.from("class_subjects").upsert(
-          { school_id: schoolId, class_id: cls.id, subject_id: cs.subjectId, coefficient: cs.coefficient },
-          { onConflict: "school_id,class_id,subject_id" },
-        );
+        // La classe vient d'être créée : ses lignes n'existent pas encore, un
+        // simple INSERT suffit (l'upsert échouait sur les grants par colonne).
+        const { error: copyError } = await supabase.from("class_subjects").insert({
+          school_id: schoolId,
+          class_id: cls.id,
+          subject_id: cs.subjectId,
+          coefficient: cs.coefficient,
+        });
         if (copyError) throw new Error(/read-only|row-level/i.test(copyError.message) ? "Mode lecture seule : l'abonnement de votre école est expiré. Les modifications sont désactivées." : copyError.message);
       }
       await hydrate("classSubjects");

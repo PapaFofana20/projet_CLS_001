@@ -123,8 +123,8 @@ export function FeesTab({ overview, onSaved }: TabProps) {
       await updateSettings(schoolId, { fees: nextFees, annexFees: { cantine: Number(annex.cantine), transport: Number(annex.transport), tenue: Number(annex.tenue) }, siblingDiscount: Number(discount) });
       toast("Tarifs enregistrés.");
       onSaved();
-    } catch {
-      toast("Enregistrement impossible.", "error");
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Enregistrement impossible.", "error");
     } finally {
       setBusy(false);
     }
