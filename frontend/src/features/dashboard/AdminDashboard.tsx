@@ -21,6 +21,7 @@ import { MatriculeCard } from "@/features/subscription/MatriculeCard";
 import { OnboardingChecklist } from "@/features/subscription/OnboardingChecklist";
 import { formatCurrency, formatNumber } from "@/utils/format";
 import { ClassBars, CycleDonut, CYCLE_COLORS, PaymentsChart } from "./charts";
+import { CurrentMonthMensualites } from "./CurrentMonthMensualites";
 import { GreetingSection } from "./GreetingSection";
 import { LatestPayments } from "./LatestPayments";
 import { useState } from "react";
@@ -155,6 +156,8 @@ function Content({ s, finance }: { s: AdminStats; finance: boolean }) {
           </Card>
         </div>
       </div>
+      {/* Mensualités du mois courant — visible pour direction et économe */}
+      <CurrentMonthMensualites />
       <div className="grid gap-4 lg:grid-cols-3">
         {!finance && (
           <Card className="lg:col-span-2">
