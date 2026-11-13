@@ -112,7 +112,9 @@ export function AuthLayout({ title, subtitle, children, visualTitle, visualText,
               « wide » (inscription directeur). */}
           <div className="mt-8 w-full">
             <h1 className="max-w-3xl text-3xl font-extrabold tracking-tight text-ink sm:text-4xl">{title}</h1>
-            {subtitle && <p className="mt-2 max-w-3xl text-sm text-neutral-600">{subtitle}</p>}
+            {/* mt-1 : le sous-titre reste détaché du titre, mais l'espace est
+                resserré (8px -> 4px) pour ne pas ressembler à deux blocs. */}
+            {subtitle && <p className="mt-1 max-w-3xl text-sm text-neutral-600">{subtitle}</p>}
             <div className="mt-8">{children}</div>
           </div>
         </div>

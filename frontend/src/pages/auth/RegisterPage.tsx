@@ -1,5 +1,5 @@
 // Page d'inscription selon le rôle choisi (directeur, élève ou parent).
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, Navigate, useSearchParams } from "react-router-dom";
 import { AuthLayout } from "@/components/layout/AuthLayout";
 import { Icon } from "@/components/ui/Icon";
@@ -26,6 +26,21 @@ export default function RegisterPage() {
   const [role, setRole] = useState<Role | null>(null);
   const [school, setSchool] = useState<School | null>(null);
   const [directorPlan, setDirectorPlan] = useState<"decouverte" | "premium" | null>(null);
+
+  // Choisir une formule remplace les cartes tarifaires par le formulaire de
+  // création de compte. La position de défilement (au milieu des cartes) est
+  // alors conservée : le formulaire n'apparaîtrait qu'en partie, coupé au
+  // milieu ou en bas de l'écran. On remonte donc en haut de page pour que le
+  // début du formulaire soit toujours visible. Même retour en arrière quand
+  // l'utilisateur clique sur « Changer » pour revoir les formules.
+  const mounted = useRef(false);
+  useEffect(() => {
+    if (!mounted.current) {
+      mounted.current = true;
+      return;
+    }
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" as ScrollBehavior });
+  }, [directorPlan]);
 
   // Ancien lien Premium de la page tarifs : redirige vers le formulaire dédié.
   if (params.get("plan") === "premium") return <Navigate to="/inscription/premium" replace />;
