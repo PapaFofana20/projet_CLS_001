@@ -1,10 +1,10 @@
--- 00016 — Retrait temporaire du paiement mobile money (Wave / Orange Money / Free).
+-- 00016 — Retrait temporaire du paiement (Wave / Orange Money / Free).
 --
 -- Les échéances de scolarité restent gérées (suivi des soldes + saisie
 -- manuelle des espèces par l'économe via `record_cash_payment`). Ce qui est
 -- retiré ici, c'est uniquement le circuit de paiement EN LIGNE :
 --
---   - `payment_transactions` : registre des tentatives mobile money (plus
+--   - `payment_transactions` : registre des tentatives de paiement (plus
 --     aucun flux ne l'écrit ni ne le lit) ;
 --   - `start_installment_payments` : initiation d'un paiement d'échéances par
 --     la famille (appelle le prestataire) ;

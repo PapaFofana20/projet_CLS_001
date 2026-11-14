@@ -125,7 +125,7 @@ export const cgu: LegalDocument = {
       title: "10. Tarifs, abonnement et paiement",
       paragraphs: [
         "Les conditions tarifaires applicables sont celles présentées sur la page Tarifs ou dans le devis accepté par l'Établissement. Les prix sont indiqués en francs CFA (FCFA).",
-        "Sauf mention contraire, l'abonnement est dû pour la durée convenue et peut être renouvelé selon les modalités du forfait choisi. Les paiements effectués par mobile money sont soumis aux conditions des opérateurs concernés.",
+        "Sauf mention contraire, l'abonnement est dû pour la durée convenue et peut être renouvelé selon les modalités du forfait choisi.",
         "Tout retard de paiement peut entraîner la suspension de l'accès aux fonctionnalités payantes, après information de l'Établissement, sans préjudice des sommes déjà dues.",
         "Les données de l'Établissement sont conservées pendant la durée de la relation contractuelle, puis restituées ou supprimées selon les modalités prévues par la loi et la Politique de confidentialité.",
       ],

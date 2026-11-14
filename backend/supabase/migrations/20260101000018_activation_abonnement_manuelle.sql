@@ -1,7 +1,7 @@
 -- ============================================================================
 -- 00018 — Activation manuelle d'un abonnement et attribution du matricule.
 --
--- Depuis 00016, le circuit mobile money et `apply_paid_subscription` ont été
+-- Depuis 00016, le circuit paiement et `apply_paid_subscription` ont été
 -- retirés. L'activation est désormais faite par le support. Cette RPC :
 --   - est réservée à `service_role` ;
 --   - valide la formule et le cycle dans `plans` ;

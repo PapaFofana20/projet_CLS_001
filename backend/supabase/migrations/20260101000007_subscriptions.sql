@@ -285,4 +285,4 @@ revoke execute on function public.verify_matricule(text) from public;
 -- service_role l'utilise aussi via verify-matricule.
 grant execute on function public.verify_matricule(text) to anon, authenticated, service_role;
 comment on table public.payment_transactions is
-  'Registre des tentatives de paiement mobile money. Ecriture par service_role uniquement (start-subscription / payment-webhook).';
+  'Registre des tentatives de paiement. Ecriture par service_role uniquement (start-subscription / payment-webhook).';

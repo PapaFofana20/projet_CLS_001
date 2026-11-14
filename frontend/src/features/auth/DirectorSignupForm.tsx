@@ -169,7 +169,7 @@ export function DirectorSignupForm({ variant = "decouverte" }: { variant?: Signu
             <div className="text-sm min-w-0">
               <p className="font-bold text-forest">Plan Premium — élèves illimités</p>
               <p className="text-neutral-600">
-                Tous les modules débloqués : emploi du temps, paiements mobile money, comptes du personnel, exports et accompagnement dédié. Votre abonnement Premium est activé immédiatement pour un an.
+                Tous les modules débloqués : emploi du temps, comptes du personnel, exports et accompagnement dédié. Votre abonnement Premium est activé immédiatement pour un an.
               </p>
             </div>
           </div>

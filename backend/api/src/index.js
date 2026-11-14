@@ -11,7 +11,7 @@
  *   - routes authentifiées : login-guard, staff-* (JWT vérifié auprès de
  *     Supabase Auth).
  *
- *   NB : les routes de paiement mobile money (start-subscription,
+ *   NB : les routes de paiement (start-subscription,
  *   pay-installment, payment-webhook) sont retirées pour l'instant —
  *   elles seront réintroduites plus tard.
  */

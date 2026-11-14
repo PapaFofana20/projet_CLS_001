@@ -81,7 +81,7 @@ export const roleFeatures: RoleFeature[] = [
     icon: "family_restroom",
     title: "Suivre ses enfants, payer et rester informé.",
     description:
-      "Un seul compte pour tous les enfants, quel que soit le cycle. Les parents suivent les notes et règlent les échéances par mobile money.",
+      "Un seul compte pour tous les enfants, quel que soit le cycle. Les parents suivent les notes et règlent les échéances.",
     image: parentsImg,
     imageAlt: "Parent consultant ses paiements sur son téléphone",
     bullets: [
@@ -108,7 +108,7 @@ export const timeline = [
   },
   { 
     year: "2025", 
-    title: "Le paiement mobile money, levier pour les familles.",
+    title: "Le paiement, levier pour les familles.",
     text: "Wave, Orange Money et Free Money sont intégrés nativement. Les parents règlent les échéances depuis leur téléphone, l'école suit les encaissements en temps réel, l'économe gagne des heures chaque semaine. La gestion financière sort du papier." 
   },
   { 

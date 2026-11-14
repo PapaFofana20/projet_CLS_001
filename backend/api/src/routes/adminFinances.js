@@ -1,7 +1,7 @@
 /**
  * Finances Classora : revenus d'abonnement rÃ©ellement encaissÃ©s.
  *
- * Depuis la migration 00016, le circuit mobile money et `payment_transactions`
+ * Depuis la migration 00016, le circuit paiement et `payment_transactions`
  * ont Ã©tÃ© retirÃ©s : la source de vÃ©ritÃ© est `subscription_events` (journal
  * immuable des activations/renouvellements) complÃ©tÃ©e par `subscriptions`.
  * Aucun montant n'est estimÃ© Ã  partir d'un prix forfaitaire inventÃ©.

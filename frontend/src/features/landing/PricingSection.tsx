@@ -31,7 +31,7 @@ export function PricingSection({ withHeader = true, onSelectPlan, fullWidth = fa
           return (
             <Reveal key={p.id} delay={i * 100} className="h-full">
               <article className={cn("relative flex h-full min-h-[24rem] flex-col rounded-3xl p-8 transition-transform duration-300 hover:-translate-y-1", p.highlight ? "bg-forest text-white shadow-soft" : isGroup ? "bg-lime text-forest shadow-soft" : "bg-mist")}>
-                <h3 className="text-lg font-bold">{p.name}</h3>
+                <h3 className="text-2xl font-bold">{p.name}</h3>
                 {showDescription && (
                   <p className={cn("mt-1 text-sm", p.highlight ? "text-white/70" : isGroup ? "text-forest/70" : "text-neutral-600")}>{p.description}</p>
                 )}

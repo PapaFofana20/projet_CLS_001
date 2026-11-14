@@ -316,7 +316,7 @@ create table public.payments (
   unique (school_id, student_id, kind, label, due_date)
 );
 
--- Toute tentative de paiement mobile money : le registre qui fait foi.
+-- Toute tentative de paiement : le registre qui fait foi.
 create table public.payment_transactions (
   id           uuid primary key default gen_random_uuid(),
   school_id    uuid not null references public.schools (id) on delete cascade,

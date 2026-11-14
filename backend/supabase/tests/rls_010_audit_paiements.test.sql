@@ -160,7 +160,7 @@ select is((select pg_temp.temp_try($$select public.record_cash_payment((select i
   'refusé'::text, 'un encaissement supérieur au dû est refusé') as c14;
 
 -- ===========================================================================
--- 3. Paiement mobile money : la confirmation du prestataire DOIT créditer
+-- 3. Paiement : la confirmation du prestataire DOIT créditer
 -- ===========================================================================
 select pg_temp.temp_role('postgres');
 insert into public.payment_transactions

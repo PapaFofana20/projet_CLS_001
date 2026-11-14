@@ -102,7 +102,7 @@ export const features: Feature[] = [
   },
   {
     id: "paiements",
-    title: "Paiements mobile money",
+    title: "Paiements",
     description: "Les parents règlent les mensualités par Wave, Orange Money ou Free Money. Reçus et relances intégrés.",
     image: paiementsImg,
     bullets: ["Wave, Orange Money, Free Money", "Échéancier sur 10 mois", "Reçus instantanés", "Relances des impayés"],
@@ -120,7 +120,7 @@ export const steps = [
   { id: 1, icon: "tune", title: "Configurez votre école.", text: "Choisissez vos cycles, vos périodes (semestres ou trimestres), vos matières et vos tarifs par niveau." },
   { id: 2, icon: "assignment_ind", title: "Affectez vos enseignants.", text: "Un instituteur titulaire par classe à l'élémentaire, des professeurs par matière au moyen et au secondaire." },
   { id: 3, icon: "edit_note", title: "Saisissez les notes.", text: "Chaque enseignant ne voit que ses classes. Moyennes, rangs et bulletins sont générés automatiquement." },
-  { id: 4, icon: "savings", title: "Encaissez et communiquez.", text: "Les parents paient par mobile money, reçoivent leurs reçus, depuis un seul compte, même avec plusieurs élèves." },
+  { id: 4, icon: "savings", title: "Encaissez et communiquez.", text: "Les parents règlent les échéances, reçoivent leurs reçus, depuis un seul compte, même avec plusieurs élèves." },
 ];
 
 export interface Plan {
@@ -174,7 +174,7 @@ export interface Testimonial {
 export const testimonials: Testimonial[] = [
   { id: "t1", quote: "Depuis Classora, nos bulletins sortent en une journée au lieu de deux semaines. Les parents paient par Wave sans se déplacer.", name: "Mme Aïssatou Diallo", role: "Directrice", school: "Complexe Scolaire Les Almadies, Dakar", photo: "/images/testimonials/aissatou-diallo.webp", photoAlt: "Portrait de Mme Aïssatou Diallo, directrice du Complexe Scolaire Les Almadies" },
   { id: "t2", quote: "La matrice des affectations nous a évité des erreurs d'emploi du temps. Chaque professeur voit uniquement ses classes.", name: "Dr Mbaye Seck", role: "Directeur des études", school: "Institut Horizon, Thiès", photo: "/images/testimonials/mbaye-seck.webp", photoAlt: "Portrait du Dr Mbaye Seck, directeur des études à l'Institut Horizon" },
-  { id: "t3", quote: "Les impayés ont baissé de 35 % en un trimestre grâce aux relances et au paiement mobile money.", name: "Mme Mame Diarra Gaye", role: "Économe", school: "Groupe Les Baobabs, Mbour", photo: "/images/testimonials/mame-diarra-gaye.webp", photoAlt: "Portrait de Mme Mame Diarra Gaye, économe du Groupe Les Baobabs" },
+  { id: "t3", quote: "Les impayés ont baissé de 35 % en un trimestre grâce aux relances.", name: "Mme Mame Diarra Gaye", role: "Économe", school: "Groupe Les Baobabs, Mbour", photo: "/images/testimonials/mame-diarra-gaye.webp", photoAlt: "Portrait de Mme Mame Diarra Gaye, économe du Groupe Les Baobabs" },
 ];
 
 export interface Faq {

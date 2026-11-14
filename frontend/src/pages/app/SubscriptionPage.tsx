@@ -17,7 +17,7 @@ import { STATUS_LABELS, STATUS_TONES } from "@/utils/subscription";
 // support@classora.com n'existait nulle part ailleurs.
 const EMAIL_SUPPORT = "contact@classora.sn";
 
-/** /app/abonnement — lecture seule : l'activation se fait côté support (l'achat en ligne mobile money est retiré pour l'instant). */
+/** /app/abonnement — lecture seule : l'activation se fait côté support (l'achat en ligne est retiré pour l'instant). */
 export default function SubscriptionPage() {
   const { schoolId } = useAuth();
   const school = useSchool();
@@ -70,7 +70,7 @@ export default function SubscriptionPage() {
           {info === "AUCUN" && (
             <p className="mt-3 flex items-center gap-2 rounded-2xl bg-lime-soft p-4 text-sm font-medium text-forest">
               <Icon name="info" className="text-[20px]" />
-              Le paiement en ligne (mobile money) est momentanément désactivé. Pour activer votre abonnement, contactez le support Classora : l'activation est effectuée manuellement.
+              Le paiement en ligne est momentanément désactivé. Pour activer votre abonnement, contactez le support Classora : l'activation est effectuée manuellement.
             </p>
           )}
         </Card>

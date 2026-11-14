@@ -100,7 +100,7 @@ export async function refreshSchoolSubscription(): Promise<void> {
 }
 
 /**
- * L'achat en ligne (mobile money) est retiré pour l'instant : l'activation
+ * L'achat en ligne est retiré pour l'instant : l'activation
  * d'un abonnement se fait manuellement, côté support (insertion SQL dans
  * `subscriptions`). Cette page reste en lecture seule pour le directeur.
  */

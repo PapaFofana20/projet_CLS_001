@@ -6,7 +6,6 @@ import { steps } from "@/data/landing";
 import { cn } from "@/utils/cn";
 
 const tones = ["bg-lime text-forest", "bg-lime text-forest", "bg-lime text-forest"];
-const features = ["Bulletins", "Échéancier"];
 
 /** Grille bento « Comment ça marche » : la dernière carte, large, est en vert foncé. */
 export function StepsBento() {
@@ -32,16 +31,7 @@ export function StepsBento() {
                   <h3 className="text-2xl font-bold">{s.title}</h3>
                   <p className={cn("mt-3 text-sm leading-relaxed", last ? "text-forest" : "text-neutral-700")}>{s.text}</p>
                 </div>
-                {last && (
-                  <div className="relative z-10 mt-8 flex flex-wrap gap-3 md:mt-0 md:flex-col" aria-label="Inclus dans Classora">
-                    {features.map((m) => (
-                      <span key={m} className="inline-flex items-center gap-2 text-sm font-semibold text-forest/85">
-                        <Icon name="check_circle" fill className="text-forest shrink-0 overflow-visible" />
-                        {m}
-                      </span>
-                    ))}
-                  </div>
-                )}
+                
               </article>
             </Reveal>
           );
