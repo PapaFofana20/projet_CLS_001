@@ -16,22 +16,25 @@ import { listPaymentRows, setPaymentManualStatus, type PaymentRow } from "@/serv
 import { formatCurrency } from "@/utils/format";
 import { todayIso } from "@/data/school";
 
-const MANUAL_STATUS_LABELS: Record<"a_venir" | "paye" | "impaye", string> = {
+const MANUAL_STATUS_LABELS: Record<"a_venir" | "paye" | "impaye" | "acompte", string> = {
   a_venir: "Non payé",
   paye: "Payé",
   impaye: "En retard",
+  acompte: "Acompte",
 };
 
-const MANUAL_STATUS_TONES: Record<"a_venir" | "paye" | "impaye", "success" | "neutral" | "danger"> = {
+const MANUAL_STATUS_TONES: Record<"a_venir" | "paye" | "impaye" | "acompte", "success" | "neutral" | "danger" | "warning"> = {
   a_venir: "neutral",
   paye: "success",
   impaye: "danger",
+  acompte: "warning",
 };
 
-const MANUAL_STATUS_ICONS: Record<"a_venir" | "paye" | "impaye", string> = {
+const MANUAL_STATUS_ICONS: Record<"a_venir" | "paye" | "impaye" | "acompte", string> = {
   a_venir: "radio_button_unchecked",
   paye: "check_circle",
   impaye: "schedule",
+  acompte: "payments",
 };
 
 export function CurrentMonthMensualites() {

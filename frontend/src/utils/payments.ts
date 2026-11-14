@@ -23,11 +23,12 @@ export const PAY_STATUS_LABELS: Record<PaymentStatus, string> = {
   a_venir: "À venir",
 };
 
-/** Libellés du menu déroulant de la fiche élève : À venir (défaut) / Payé / Impayé. */
+/** Libellés du menu déroulant de la fiche élève : À venir (défaut) / Payé / Impayé / Acompte. */
 export const MANUAL_PAYMENT_LABELS: Record<ManualPaymentStatus, string> = {
   a_venir: "À venir",
   paye: "Payé",
   impaye: "Impayé",
+  acompte: "Acompte",
 };
 
 /**

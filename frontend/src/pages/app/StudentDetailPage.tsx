@@ -4,9 +4,12 @@ import { Link, useParams } from "react-router-dom";
 import { AsyncView } from "@/components/ui/AsyncView";
 import { Avatar } from "@/components/ui/Brand";
 import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Icon } from "@/components/ui/Icon";
+import { Input } from "@/components/ui/Input";
+import { Modal } from "@/components/ui/Modal";
 import { Select } from "@/components/ui/Select";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Table, type Column } from "@/components/ui/Table";
@@ -15,7 +18,7 @@ import { useCurrentUser } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
 import { CYCLE_LABELS, todayIso } from "@/data/school";
 import { useAsync } from "@/hooks/useAsync";
-import { setPaymentManualStatus } from "@/services/paymentService";
+import { setPaymentManualStatus, recordCashPayment } from "@/services/paymentService";
 import { getStudentDetail, type StudentDetail } from "@/services/studentService";
 import type { ManualPaymentStatus, Payment, ReportLine } from "@/types";
 import { ageFrom, formatCurrency, formatDate, formatNumber } from "@/utils/format";
@@ -24,6 +27,14 @@ import { MANUAL_PAYMENT_LABELS, manualChoiceOf, PAY_STATUS_LABELS, STUDENT_STATU
 
 const PAY_TONE = { paye: "success", partiel: "warning", en_retard: "danger", a_venir: "neutral" } as const;
 const STATUS_TONE = { a_jour: "success", partiel: "warning", impaye: "danger" } as const;
+
+// Variante de couleur pour le Select selon le statut manuel
+function selectVariantFor(status: ManualPaymentStatus | "partiel"): "default" | "success" | "danger" | "warning" {
+  if (status === "paye") return "success";
+  if (status === "impaye") return "danger";
+  if (status === "acompte") return "warning";
+  return "default";
+}
 
 function Info({ label, value }: { label: string; value: string }) {
   return (
@@ -39,10 +50,20 @@ function Detail({ d, onPaymentsChanged }: { d: StudentDetail; onPaymentsChanged:
   const { toast } = useToast();
   const [tab, setTab] = useState("apercu");
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [acomptePayment, setAcomptePayment] = useState<Payment | null>(null);
+  const [acompteAmount, setAcompteAmount] = useState("");
   const canEditPayments = user.role === "directeur" || user.role === "econome";
 
   const changePaymentStatus = async (p: Payment, next: ManualPaymentStatus) => {
     if (next === manualChoiceOf(p)) return;
+    
+    // Si on choisit "Acompte", on ouvre le modal au lieu de sauver directement
+    if (next === "acompte") {
+      setAcomptePayment(p);
+      setAcompteAmount(String(p.amount - p.paidAmount)); // Par défaut : reste à payer
+      return;
+    }
+
     setSavingId(p.id);
     try {
       const updated = await setPaymentManualStatus(user, p.id, next);
@@ -50,6 +71,29 @@ function Detail({ d, onPaymentsChanged }: { d: StudentDetail; onPaymentsChanged:
       onPaymentsChanged();
     } catch (e) {
       toast(e instanceof Error ? e.message : "Changement impossible.", "error");
+    } finally {
+      setSavingId(null);
+    }
+  };
+
+  const confirmAcompte = async () => {
+    if (!acomptePayment || !acompteAmount) return;
+    const amount = Number(acompteAmount);
+    if (!(amount > 0) || amount > acomptePayment.amount) {
+      toast("Montant invalide.", "error");
+      return;
+    }
+    setSavingId(acomptePayment.id);
+    try {
+      // Enregistrer l'acompte comme paiement partiel + statut manuel "acompte"
+      await recordCashPayment(user, acomptePayment.id, amount);
+      await setPaymentManualStatus(user, acomptePayment.id, "acompte");
+      toast(`Acompte de ${formatCurrency(amount)} enregistré pour ${acomptePayment.label}.`);
+      setAcomptePayment(null);
+      setAcompteAmount("");
+      onPaymentsChanged();
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Impossible d'enregistrer l'acompte.", "error");
     } finally {
       setSavingId(null);
     }
@@ -92,6 +136,7 @@ function Detail({ d, onPaymentsChanged }: { d: StudentDetail; onPaymentsChanged:
         return (
           <Select
             compact
+            variant={selectVariantFor(choice)}
             aria-label={`Statut de ${p.label}`}
             className="min-w-36"
             value={choice}
@@ -213,6 +258,37 @@ function Detail({ d, onPaymentsChanged }: { d: StudentDetail; onPaymentsChanged:
           </Card>
         </div>
       )}
+      {/* Modal Acompte */}
+      <Modal
+        open={!!acomptePayment}
+        onClose={() => { setAcomptePayment(null); setAcompteAmount(""); }}
+        title="Enregistrer un acompte"
+        size="sm"
+        footer={
+          <>
+            <Button variant="outline" onClick={() => { setAcomptePayment(null); setAcompteAmount(""); }}>Annuler</Button>
+            <Button variant="dark" loading={savingId === acomptePayment?.id} onClick={confirmAcompte}>Valider l'acompte</Button>
+          </>
+        }
+      >
+        {acomptePayment && (
+          <div className="space-y-4">
+            <p className="text-sm">
+              <strong>{d.row.firstName} {d.row.lastName}</strong> · {acomptePayment.label}<br />
+              Montant total : <strong>{formatCurrency(acomptePayment.amount)}</strong> · Déjà payé : <strong>{formatCurrency(acomptePayment.paidAmount)}</strong><br />
+              Reste à payer : <strong>{formatCurrency(acomptePayment.amount - acomptePayment.paidAmount)}</strong>
+            </p>
+            <Input
+              label="Montant de l'acompte (FCFA)"
+              type="number"
+              inputMode="numeric"
+              value={acompteAmount}
+              onChange={(e) => setAcompteAmount(e.target.value)}
+              error={acompteAmount && (Number(acompteAmount) <= 0 || Number(acompteAmount) > acomptePayment.amount) ? `Entre 1 et ${formatCurrency(acomptePayment.amount)}.` : null}
+            />
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

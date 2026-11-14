@@ -10,7 +10,7 @@ export type PayMethod = "wave" | "orange_money" | "free_money" | "especes";
 export type PaymentKind = "inscription" | "mensualite" | "tenue";
 export type PaymentStatus = "paye" | "partiel" | "en_retard" | "a_venir";
 /** Choix manuel (directeur / économe) sur la fiche élève, par échéance. `a_venir` est le défaut. */
-export type ManualPaymentStatus = "a_venir" | "paye" | "impaye";
+export type ManualPaymentStatus = "a_venir" | "paye" | "impaye" | "acompte";
 export type StudentPayStatus = "a_jour" | "partiel" | "impaye";
 /** Statuts d'abonnement d'une école. */
 export type SubscriptionStatus = "AUCUN" | "ACTIF" | "EXPIRE_BIENTOT" | "EXPIRE";

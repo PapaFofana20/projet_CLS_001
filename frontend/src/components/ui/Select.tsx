@@ -24,6 +24,8 @@ export interface Option {
   label: string;
 }
 
+type SelectVariant = "default" | "success" | "danger" | "warning" | "info";
+
 interface SelectProps extends Omit<SelectHTMLAttributes<HTMLSelectElement>, "children" | "multiple" | "size" | "defaultValue"> {
   label?: string;
   error?: string | null;
@@ -33,6 +35,8 @@ interface SelectProps extends Omit<SelectHTMLAttributes<HTMLSelectElement>, "chi
   hint?: string;
   /** Affiche un champ de recherche dans la liste (activé automatiquement au-delà de 7 options). */
   searchable?: boolean;
+  /** Variante de couleur du déclencheur selon la sélection. */
+  variant?: SelectVariant;
 }
 
 interface Item extends Option {
@@ -69,6 +73,7 @@ export function Select({
   value,
   required,
   disabled,
+  variant = "default",
   ...rest
 }: SelectProps) {
   const auto = useId();
@@ -347,6 +352,10 @@ export function Select({
           "group flex w-full items-center justify-between gap-3 rounded-2xl border bg-white pl-4 pr-3 text-left text-sm text-ink transition focus:border-forest focus:outline-none focus-visible:ring-4 focus-visible:ring-lime/50 disabled:cursor-not-allowed disabled:border-neutral-200 disabled:bg-mist disabled:text-neutral-500",
           compact ? "min-h-11" : "min-h-12",
           error ? "border-danger" : open ? "border-forest ring-4 ring-lime/40" : "border-neutral-300 hover:border-forest/40",
+          variant === "success" && "bg-emerald-50 border-emerald-300 text-emerald-800 hover:bg-emerald-100",
+          variant === "danger" && "bg-red-50 border-red-300 text-red-800 hover:bg-red-100",
+          variant === "warning" && "bg-amber-50 border-amber-300 text-amber-800 hover:bg-amber-100",
+          variant === "info" && "bg-sky-50 border-sky-300 text-sky-800 hover:bg-sky-100",
         )}
       >
         <span className={cn("truncate", !selectedLabel && "text-neutral-400")}>{selectedLabel || placeholder || "Sélectionner…"}</span>
