@@ -13,7 +13,6 @@ import { ToastProvider } from "@/context/ToastContext";
 import { MustChangePasswordGuard, ProtectedRoute, PublicOnlyRoute, RoleRoute, ScrollToTop, SubscriptionGuard } from "@/routes/guards";
 import { AdminProtectedRoute, adminGuard } from "@/routes/adminGuards";
 import { ROUTE_ROLES } from "@/routes/navigation";
-import { SplashScreen } from "@/components/SplashScreen";
 
 const HomePage = lazy(() => import("@/pages/public/HomePage"));
 
@@ -81,22 +80,10 @@ function AdminAuthWrapper() {
 const guard = (roles: keyof typeof ROUTE_ROLES, element: ReactElement) => <RoleRoute roles={ROUTE_ROLES[roles]}>{element}</RoleRoute>;
 
 /**
- * Wrapper pour la page d'accueil : splash screen à CHAQUE visite (forceShow).
- *
- * Le splash est monté AVEC la page, en surcouche. Il ne conditionne plus le
- * rendu de HomePage : l'ancien `{splashDone && <HomePage />}` laissait un
- * <main> vide pendant le fondu de sortie, ce qui faisait apparaître le footer
- * avant le hero.
+ * L'accueil utilise le splash monté dans PublicLayout (voir ce fichier) :
+ * il y est rendu de façon synchrone dès la première frame, ce qui évite
+ * de voir le footer du layout pendant le chargement du chunk de la page.
  */
-function HomePageWithSplash() {
-  return (
-    <>
-      <SplashScreen forceShow />
-      <HomePage />
-    </>
-  );
-}
-
 export default function App() {
   return (
     <BrowserRouter>
@@ -114,7 +101,7 @@ export default function App() {
               <Routes>
             {/* PARTIE 1 : site public */}
             <Route element={<PublicLayout />}>
-              <Route index element={<HomePageWithSplash />} />
+              <Route index element={<HomePage />} />
               <Route path="fonctionnalites" element={<FeaturesPage />} />
               <Route path="tarifs" element={<PricingPage />} />
               <Route path="ecoles" element={<SchoolsPage />} />
