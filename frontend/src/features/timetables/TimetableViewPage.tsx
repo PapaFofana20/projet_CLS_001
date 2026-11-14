@@ -209,11 +209,11 @@ export default function TimetableViewPage() {
   if (!hasScheduling) {
     return (
       <>
-        <PageHeader title="Emplois du temps" subtitle="Fonctionnalité disponible à partir du plan Pro." />
+        <PageHeader title="Emplois du temps" subtitle="Fonctionnalité disponible à partir du plan Découverte." />
         <Card>
           <div className="flex flex-col items-center gap-3 py-6 text-center">
             <Icon name="workspace_premium" className="text-4xl text-neutral-300" />
-            <p className="font-semibold text-ink">Emplois du temps réservés aux plans Pro et supérieurs.</p>
+            <p className="font-semibold text-ink">Emplois du temps réservés aux plans Découverte et supérieurs.</p>
             <p className="max-w-sm text-sm text-neutral-500">Passez à un plan supérieur depuis l'onglet Abonnement pour débloquer les affectations et emplois du temps.</p>
           </div>
         </Card>

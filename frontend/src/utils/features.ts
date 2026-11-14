@@ -10,7 +10,7 @@ export type FeatureKey =
   /** Plans Pro+ */
   | "mobile_payments"           // Paiements Wave / Orange Money / Free Money
   | "auto_reminders"            // Rappels automatiques des impayés
-  | "scheduling"                // Affectations et emplois du temps
+  | "scheduling"                // Affectations et emplois du temps (disponible dès le plan Découverte)
   /** Plans Premium+ */
   | "staff_accounts"            // Comptes économe, secrétaire, surveillant (disponible dès le plan Découverte)
   | "data_export"               // Export des données et rapports
@@ -24,7 +24,7 @@ const PLAN_ORDER: PlanId[] = ["essentiel", "pro", "premium", "illimite"];
 const FEATURE_REQUIREMENTS: Record<FeatureKey, PlanId> = {
   mobile_payments: "pro",
   auto_reminders: "pro",
-  scheduling: "pro",
+  scheduling: "essentiel",
   staff_accounts: "essentiel",
   data_export: "premium",
   multi_campus: "illimite",
