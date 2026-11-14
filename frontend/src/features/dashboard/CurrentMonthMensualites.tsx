@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
-import { EmptyState } from "@/components/ui/EmptyState";
+import { EmptyState, ErrorState } from "@/components/ui/EmptyState";
 import { Icon } from "@/components/ui/Icon";
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import { Table, type Column } from "@/components/ui/Table";
@@ -125,7 +125,9 @@ export function CurrentMonthMensualites() {
           <span className="text-xs text-neutral-500">Seules les mensualités du mois sont listées</span>
         ) : null}
       />
-      {state.loading ? (
+      {state.error ? (
+        <ErrorState message={state.error} onRetry={state.reload} />
+      ) : state.loading ? (
         <SkeletonTable rows={5} />
       ) : rows.length === 0 ? (
         <EmptyState icon="verified" title="Aucune mensualité ce mois" text="Toutes les mensualités de ce mois sont déjà réglées ou aucune n'est programmée." />
