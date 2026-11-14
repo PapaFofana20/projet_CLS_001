@@ -87,6 +87,23 @@ export function requireSnPhone(obj, field, label) {
 }
 
 /**
+ * Date ISO (AAAA-MM-JJ) OBLIGATOIRE (parent/élève : preuve d'identité par
+ * date de naissance, cf. migration 00054) — contrôle strict du calendrier :
+ * `new Date("2026-02-31")` ne renvoie pas NaN.
+ */
+export function requireIsoDate(obj, field, label) {
+  const raw = requireString(obj, field, label, { max: 10, trim: true });
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw);
+  if (!m) throw new ValidationError(`${label} est invalide.`);
+  const [, y, mo, d] = m;
+  const dt = new Date(Date.UTC(Number(y), Number(mo) - 1, Number(d)));
+  if (dt.getUTCFullYear() !== Number(y) || dt.getUTCMonth() !== Number(mo) - 1 || dt.getUTCDate() !== Number(d)) {
+    throw new ValidationError(`${label} est invalide.`);
+  }
+  return raw;
+}
+
+/**
  * Date ISO (AAAA-MM-JJ) optionnelle (élève : naissance) — contrôle strict du
  * calendrier : `new Date("2026-02-31")` ne renvoie pas NaN.
  */

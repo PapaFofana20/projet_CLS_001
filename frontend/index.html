@@ -11,7 +11,7 @@
     -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.onrender.com http://localhost:* ws://localhost:*; object-src 'none'; base-uri 'self'"
+      content="default-src 'self'; script-src %VITE_CSP_SCRIPT_SRC%; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src %VITE_CSP_CONNECT_SRC%; object-src 'none'; base-uri 'self'"
     />
     <title>Classora — Gestion scolaire pour les écoles privées au Sénégal</title>
     <meta

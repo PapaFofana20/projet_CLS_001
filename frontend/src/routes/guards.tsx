@@ -11,6 +11,7 @@ import { ContactSchoolScreen, RenewScreen, SubscriptionRequiredScreen } from "@/
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { logout } from "@/services/authService";
 import { useIdleLogout } from "@/hooks/useIdleLogout";
+import { usePlatformStatus } from "@/context/PlatformContext";
 
 /** Écran de chargement de session : spinner + libellé (au lieu d'un écran blanc). */
 // Affiche une attente claire pendant que la session se restaure.
@@ -107,10 +108,14 @@ export function SubscriptionGuard() {
   const { pathname } = useLocation();
   const { user } = useAuth();
   const school = useSchool();
+  const { status } = usePlatformStatus();
 
-  // Déconnexion automatique après 30 minutes d'inactivité (M-07 de l'audit).
-  // Délai par défaut : 30 min — à rendre configurable via settings.session_timeout_minutes.
-  useIdleLogout(30, () => {
+  // Déconnexion automatique après inactivité (M-07 de l'audit).
+  // Le délai est le réglage plateforme session_timeout_minutes (éditable dans
+  // /admin/parametres) — le réglage s'applique désormais aussi à l'espace
+  // école, pas seulement à la console admin. 30 min par défaut tant que le
+  // statut n'est pas chargé.
+  useIdleLogout(status.sessionTimeoutMinutes || 30, () => {
     logout();
     window.location.replace("/connexion");
   });

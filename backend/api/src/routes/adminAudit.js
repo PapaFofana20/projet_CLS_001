@@ -1,6 +1,6 @@
 /**
- * Journal d'audit : consultation paginÃ©e et purgÃ© contrÃ´lÃ©e.
- * Lecture pour tous les agents, purge rÃ©servÃ©e au superadministrateur.
+ * Journal d'audit : consultation paginée et purge contrôlée.
+ * Lecture pour tous les agents, purge réservée au superadministrateur.
  */
 import { auditAdmin, requireAdminRole, requireSuperAdmin, serviceClient } from "../lib/authAdmin.js";
 import { badRequest, ok, route, serverError, RATE_LIMIT_RE, logError } from "../lib/http.js";
@@ -55,7 +55,7 @@ export default route(async (req, res) => {
       const { data: rows, error, count } = await query.range((page - 1) * pageSize, page * pageSize - 1);
       if (error) throw new Error("Impossible de charger le journal d'audit.");
 
-      // Ã‰chantillon pour la rÃ©partition par action (1 000 derniers Ã©vÃ©nements).
+      // Échantillon pour la répartition par action (1 000 derniers événements).
       const { data: sample } = await svc
         .from("audit_log")
         .select("action")
@@ -105,7 +105,7 @@ export default route(async (req, res) => {
         rows: (rows ?? []).map((r) => ({
           id: r.id,
           schoolId: r.school_id,
-          schoolName: r.school_id ? schoolById.get(r.school_id)?.name ?? "Ã‰tablissement supprimÃ©" : null,
+          schoolName: r.school_id ? schoolById.get(r.school_id)?.name ?? "Établissement supprimé" : null,
           actorId: r.actor_id,
           actorName: r.actor_id ? actorById.get(r.actor_id)?.name ?? null : null,
           actorRole: r.actor_role,
@@ -132,7 +132,7 @@ export default route(async (req, res) => {
       const defaultDays = settings.auditRetentionDays;
       const requested = body.olderThanDays === undefined ? defaultDays : Number(body.olderThanDays);
       if (!Number.isInteger(requested) || requested < 30 || requested > 3650) {
-        throw new ValidationError("La purge doit porter sur une pÃ©riode de 30 Ã  3 650 jours.");
+        throw new ValidationError("La purge doit porter sur une période de 30 à 3 650 jours.");
       }
 
       const cutoff = new Date(Date.now() - requested * 86_400_000).toISOString();
@@ -155,13 +155,13 @@ export default route(async (req, res) => {
       });
 
       return ok(res, {
-        message: `${count ?? 0} Ã©vÃ©nement(s) supprimÃ©(s) du journal (antÃ©rieurs au ${cutoff.slice(0, 10)}).`,
+        message: `${count ?? 0} événement(s) supprimé(s) du journal (antérieurs au ${cutoff.slice(0, 10)}).`,
         deleted: count ?? 0,
         cutoff,
       });
     }
 
-    return ok(res, { error: "MÃ©thode non autorisÃ©e." }, 405);
+    return ok(res, { error: "Méthode non autorisée." }, 405);
   } catch (e) {
     if (e instanceof ValidationError) return badRequest(res, e.message);
     if (e instanceof Error && RATE_LIMIT_RE.test(e.message)) return ok(res, { error: e.message }, 429);

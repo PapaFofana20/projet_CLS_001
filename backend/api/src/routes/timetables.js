@@ -23,7 +23,7 @@
 import { expectObject, optionalString, requireString, requireUuid } from "../lib/validate.js";
 import { badRequest, forbidden, notFound, ok, route, unauthorized, serverError, logError } from "../lib/http.js";
 import { getCallerProfile, schoolIsWritable, serviceClient } from "../lib/auth.js";
-import { enforceRateLimit } from "../lib/rateLimit.js";
+import { enforceRateLimit, RATE_LIMIT_RE } from "../lib/rateLimit.js";
 
 const DAYS = new Set(["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"]);
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/;
@@ -65,7 +65,16 @@ export default route(async (req, res) => {
   }
 
   // Rate limit : clé par utilisateur (comme les autres routes privilégiées).
-  await enforceRateLimit(svc, `timetables:${caller.id}`, writing ? 60 : 180, 300);
+  // Attrapé ici : « Trop de tentatives » doit sortir en 429 (contrat du front)
+  // et non en 500 « erreur inattendue » via le catch générique de route().
+  try {
+    await enforceRateLimit(svc, `timetables:${caller.id}`, writing ? 60 : 180, 300);
+  } catch (e) {
+    if (e instanceof Error && RATE_LIMIT_RE.test(e.message)) {
+      return ok(res, { error: e.message }, 429);
+    }
+    throw e;
+  }
 
   const id = req.params.id;
 

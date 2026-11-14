@@ -237,7 +237,7 @@ insert into public.payments (school_id, student_id, kind, label, due_date, amoun
           'mensualite', 'Octobre', current_date, 20000, 0);
 select pg_temp.temp_statu('faa11111-0000-0000-0000-0000000000a5');
 select is(
-  (select pg_temp.temp_try($$select public.link_child('ABCDB2')$$)),
+  (select pg_temp.temp_try($$select public.link_child('ABCDB2', '2015-01-01')$$)),
   'refusé'::text, 'un parent ne rattache pas un élève d''une autre école'
 ) as b13;
 

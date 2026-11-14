@@ -47,6 +47,7 @@ export function ParentHome() {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [matricule, setMatricule] = useState("");
+  const [birthDate, setBirthDate] = useState("");
   const [busy, setBusy] = useState(false);
 
   if (!loading && !error && children.length === 0)
@@ -59,12 +60,17 @@ export function ParentHome() {
 
   const addChild = async () => {
     if (matricule.trim().length < 4) return;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(birthDate)) {
+      toast("Saisissez la date de naissance de l'élève (elle prouve son identité).", "error");
+      return;
+    }
     setBusy(true);
     try {
-      const child = await linkChild(user, matricule);
+      const child = await linkChild(user, matricule, birthDate);
       toast(`${child.firstName} ${child.lastName} est rattaché à votre compte.`);
       setOpen(false);
       setMatricule("");
+      setBirthDate("");
       reload();
     } catch (e) {
       toast(e instanceof Error ? e.message : "Rattachement impossible.", "error");
@@ -169,7 +175,12 @@ export function ParentHome() {
             <Button variant="outline" onClick={() => setOpen(false)}>
               Annuler
             </Button>
-            <Button variant="dark" loading={busy} disabled={matricule.trim().length < 4} onClick={() => void addChild()}>
+            <Button
+              variant="dark"
+              loading={busy}
+              disabled={matricule.trim().length < 4 || !/^\d{4}-\d{2}-\d{2}$/.test(birthDate)}
+              onClick={() => void addChild()}
+            >
               Rattacher
             </Button>
           </>
@@ -190,6 +201,15 @@ export function ParentHome() {
             value={matricule}
             onChange={(e) => setMatricule(formatMatriculeInput(e.target.value, 20))}
             error={matricule && matricule.trim().length < 4 ? "Matricule invalide." : null}
+          />
+          <Input
+            label="Date de naissance de l'élève"
+            type="date"
+            required
+            max={new Date().toISOString().slice(0, 10)}
+            hint="Second facteur d'identité : elle doit correspondre à la fiche de l'élève."
+            value={birthDate}
+            onChange={(e) => setBirthDate(e.target.value)}
           />
         </div>
       </Modal>

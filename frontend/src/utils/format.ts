@@ -87,9 +87,8 @@ export function pluralize(count: number, singular: string, plural: string): stri
 /** Initiales à partir de graphèmes (supporte emoji, noms composés) */
 // Initiales qui gèrent les emoji et noms composés, avec repli simple.
 export function initialsGrapheme(first: string, last: string): string {
-  // @ts-ignore - Intl.Segmenter not in TS lib yet but exists at runtime
   if (typeof Intl !== "undefined" && (Intl as any).Segmenter) {
-    // @ts-ignore
+    // @ts-expect-error - Intl.Segmenter not in TS lib yet but exists at runtime
     const segmenter = new Intl.Segmenter("fr", { granularity: "grapheme" });
     const firstSeg = [...segmenter.segment(first.trim())].find((s) => s.isWordLike)?.segment ?? first.charAt(0);
     const lastSeg = [...segmenter.segment(last.trim())].find((s) => s.isWordLike)?.segment ?? last.charAt(0);

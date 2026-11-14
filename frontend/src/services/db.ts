@@ -315,6 +315,24 @@ function mapAbsence(r: any): AbsenceRecord {
 const HYDRATION_PAGE_SIZE = 500;
 const HYDRATION_MAX_ROWS = 100_000;
 
+/** Échecs d'hydratation depuis la dernière réussite (table → message d'erreur).
+ *  Exposés au bandeau HydrationBanner : l'utilisateur ne doit jamais voir des
+ *  listes vides SANS savoir qu'un chargement a échoué (réseau, RLS, 500). */
+const hydrationFailures = new Map<string, string>();
+
+/** Échecs d'hydratation courants. Sortie : Map table → message (copie). */
+export function getHydrationFailures(): Map<string, string> {
+  return new Map(hydrationFailures);
+}
+
+/** Efface les échecs enregistrés (après une revalidation réussie). */
+export function clearHydrationFailures(): void {
+  if (hydrationFailures.size) {
+    hydrationFailures.clear();
+    window.dispatchEvent(new Event("ec:hydration"));
+  }
+}
+
 async function fetchAllRows(table: string): Promise<any[]> {
   const rows: any[] = [];
   for (let from = 0; ; from += HYDRATION_PAGE_SIZE) {
@@ -337,11 +355,19 @@ async function fetchAllRows(table: string): Promise<any[]> {
 async function assign(tableName: keyof Database): Promise<void> {
   const table = TABLES[tableName];
   if (!table) return;
+  // L'échec est TRACÉ (hydrateAll affiche un bandeau avec bouton Réessayer)
+  // puis RELANCÉ : avaler l'erreur faisait croire à un directeur qu'il n'a
+  // « aucun élève / aucune note » alors que la table n'avait pas pu être
+  // chargée (réseau, RLS, 500). L'appelant décide de la politique.
   try {
     const data = await fetchAllRows(table);
     replace(tableName, data.map(MAPPERS[tableName]));
+    hydrationFailures.delete(tableName);
   } catch (e) {
-    console.error(`[db] hydratation ${tableName} échouée :`, e);
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error(`[db] hydratation ${tableName} échouée :`, msg);
+    hydrationFailures.set(tableName, msg);
+    throw e;
   }
 }
 
@@ -392,6 +418,8 @@ async function hydrateSettings(): Promise<void> {
   ]);
   if (settingsRes.error) {
     console.error("[db] hydratation settings refusée :", settingsRes.error.message);
+    hydrationFailures.set("settings", settingsRes.error.message);
+    window.dispatchEvent(new Event("ec:hydration"));
     return;
   }
   const schools = (schoolsRes.data ?? []) as any[];
@@ -418,31 +446,46 @@ async function hydrateSettings(): Promise<void> {
 }
 
 // Recharge UNE table (ou une entité spéciale) depuis Supabase vers le cache.
-export function hydrate(entity: keyof Database): Promise<void> {
-  if (entity === "settings") return hydrateSettings().catch(() => undefined);
+// En cas d'échec : tracé (bandeau) PUIS relancé — l'appelant décide de la
+// politique d'affichage, il ne voit plus jamais un échec transformé en liste vide.
+export async function hydrate(entity: keyof Database): Promise<void> {
+  if (entity === "settings") {
+    await hydrateSettings();
+    hydrationFailures.delete(entity);
+    return;
+  }
   return assign(entity);
 }
 
-/** Hydrate tout le cache avec ce que le rôle courant peut lire. */
+/** Hydrate tout le cache avec ce que le rôle courant peut lire.
+ *  allSettled : un échec ne doit pas empêcher le chargement des autres tables.
+ *  Les échecs restent tracés (bandeau « Certaines données n'ont pas pu être
+ *  chargées ») au lieu de produire des listes vides silencieuses. */
 export async function hydrateAll(): Promise<void> {
-  await Promise.all([
-    hydrate("schools"),
-    hydrate("subscriptions"),
-    hydrate("registrationRequests"),
-    hydrate("users"),
-    hydrate("teachers"),
-    hydrate("parents"),
-    hydrate("students"),
-    hydrate("classes"),
-    hydrate("subjects"),
-    hydrate("classSubjects"),
-    hydrate("assignments"),
-    hydrate("grades"),
-    hydrate("reportMetas"),
-    hydrate("payments"),
-    hydrate("absences"),
-    hydrate("settings"),
-  ]);
+  const entities: (keyof Database)[] = [
+    "schools",
+    "subscriptions",
+    "registrationRequests",
+    "users",
+    "teachers",
+    "parents",
+    "students",
+    "classes",
+    "subjects",
+    "classSubjects",
+    "assignments",
+    "grades",
+    "reportMetas",
+    "payments",
+    "absences",
+    "settings",
+  ];
+  const results = await Promise.allSettled(entities.map((e) => hydrate(e)));
+  results.forEach((r, i) => {
+    if (r.status === "fulfilled") hydrationFailures.delete(entities[i]);
+  });
+  // Le bandeau s'abonne à cet événement pour (re)vérifier les échecs.
+  window.dispatchEvent(new Event("ec:hydration"));
 }
 
 // Vide entièrement le cache local (déconnexion, changement d'école).

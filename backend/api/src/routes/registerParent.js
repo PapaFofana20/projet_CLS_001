@@ -9,7 +9,7 @@ import { passwordError, serviceClient } from "../lib/auth.js";
 import { badRequest, ok, route, serverError, RATE_LIMIT_RE, logError, withTimeout } from "../lib/http.js";
 import { readPlatformSettings } from "../lib/platformSettings.js";
 import { enforceRateLimit, clientIp } from "../lib/rateLimit.js";
-import { expectObject, optionalString, optionalUuid, requireEmail, requireSnPhone, requireString } from "../lib/validate.js";
+import { expectObject, optionalString, optionalUuid, requireEmail, requireIsoDate, requireSnPhone, requireString } from "../lib/validate.js";
 
 // Handler principal : POST /register-parent — inscription publique d'un parent.
 export default route(async (req, res) => {
@@ -39,6 +39,9 @@ export default route(async (req, res) => {
     const email = requireEmail(body);
     const phone = requireSnPhone(body, "phone", "Le téléphone");
     const studentMatricule = requireString(body, "studentMatricule", "Le matricule de l'élève", { min: 4, max: 20 }).toUpperCase();
+    // Preuve d'identité (migration 00054) : la date de naissance de la fiche
+    // est obligatoire avec le matricule (séquentiel, semi-public).
+    const birthDate = requireIsoDate(body, "birthDate", "La date de naissance");
     const password = requireString(body, "password", "Le mot de passe", { min: 8, max: 72, trim: false });
 
     let resolvedSchool = null;
@@ -51,15 +54,17 @@ export default route(async (req, res) => {
       const { data: sch } = await svc.from("schools").select("id").eq("matricule", matricule).maybeSingle();
       resolvedSchool = sch?.id ?? null;
       if (resolvedSchool) {
-        // Pré-validation du matricule élève de l'école (message identique au front).
+        // Pré-validation du matricule élève + de la date de naissance.
+        // Message IDENTIQUE dans les deux cas d'échec : la pré-vérification
+        // ne doit pas servir d'oracle pour énumérer les matricules.
         const { data: child } = await svc
           .from("students")
-          .select("id")
+          .select("id, birth_date")
           .eq("school_id", resolvedSchool)
           .eq("matricule", studentMatricule)
           .maybeSingle();
-        if (!child) {
-          return badRequest(res, "Matricule élève introuvable dans cette école. Vérifiez le matricule reçu auprès de l'école.");
+        if (!child || child.birth_date !== birthDate) {
+          return badRequest(res, "Vérification échouée. Vérifiez le matricule et la date de naissance de l'élève auprès de l'école.");
         }
       }
     }
@@ -112,6 +117,7 @@ export default route(async (req, res) => {
           p_phone: phone,
           p_email: email,
           p_student_matricule: studentMatricule,
+          p_birth_date: birthDate,
         }),
         15_000,
         "finish_parent_registration"
@@ -132,6 +138,32 @@ export default route(async (req, res) => {
         childName: result.child_name,
       });
     } catch (sqlError) {
+      // Avant de supprimer le compte Auth : vérifier si la RPC a dépassé le
+      // timeout tout en réussissant ensuite en base (profil créé) — sinon les
+      // données créées seraient orphelines (compte Auth supprimé).
+      try {
+        const { data: existingProfile } = await svc
+          .from("profiles")
+          .select("id")
+          .eq("id", created.user.id)
+          .maybeSingle();
+        if (existingProfile) {
+          console.warn("[register-parent] RPC réussie malgré le timeout : compte conservé.");
+          return ok(res, {
+            user: {
+              id: created.user.id,
+              email,
+              firstName,
+              lastName,
+              role: "parent",
+              status: "EN_ATTENTE",
+            },
+            approved: false,
+          });
+        }
+      } catch (checkError) {
+        logError("register-parent:check-profile", checkError);
+      }
       await svc.auth.admin.deleteUser(created.user.id);
       const message = sqlError instanceof Error ? sqlError.message : undefined;
       if (message && /un compte existe déjà|matricule élève|école|inscriptions/i.test(message)) {

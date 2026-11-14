@@ -4,7 +4,7 @@
  * Limité en débit par compte appelant.
  */
 
-import { audit, EMAIL_RE, isStaffRole, requireDirecteur, schoolIsWritable, serviceClient } from "../lib/auth.js";
+import { audit, EMAIL_RE, SN_PHONE_RE, isStaffRole, requireDirecteur, schoolIsWritable, serviceClient } from "../lib/auth.js";
 import { badRequest, forbidden, ok, route, serverError, RATE_LIMIT_RE, logError } from "../lib/http.js";
 import { enforceRateLimit } from "../lib/rateLimit.js";
 import { expectObject, optionalString, requireString, requireUuid, ValidationError } from "../lib/validate.js";
@@ -53,6 +53,11 @@ export default route(async (req, res) => {
     if (email && !EMAIL_RE.test(email)) {
       return badRequest(res, "Adresse e-mail invalide.");
     }
+    // Même exigence qu'à la création (createStaffAccount) : un numéro
+    // invalide ne doit pas pouvoir être introduit via la mise à jour.
+    if (phone && !SN_PHONE_RE.test(phone.replace(/\s+/g, " "))) {
+      return badRequest(res, "Le téléphone est invalide (format sénégalais attendu).");
+    }
 
     if (email && email !== (target.email ?? "").toLowerCase()) {
       const { error: emailError } = await svc.auth.admin.updateUserById(userId, {
@@ -75,6 +80,16 @@ export default route(async (req, res) => {
     if (Object.keys(patch).length) {
       const { error } = await svc.from("profiles").update(patch).eq("id", userId);
       if (error) {
+        // Rollback Auth : si l'e-mail a déjà été changé côté Auth mais que la
+        // mise à jour de profiles échoue, l'agent ne pourrait plus se
+        // connecter avec l'adresse affichée (Auth ≠ profiles/teachers).
+        if (email && email !== (target.email ?? "").toLowerCase()) {
+          const { error: revertError } = await svc.auth.admin.updateUserById(userId, {
+            email: (target.email ?? "").toLowerCase(),
+            email_confirm: true,
+          });
+          if (revertError) logError("update-staff:revert-email", revertError);
+        }
         logError("update-staff", error);
         return serverError(res);
       }
@@ -124,8 +139,14 @@ export default route(async (req, res) => {
 function requireStringArrayOptional(body) {
   const raw = body["specialties"];
   if (raw === undefined) return undefined;
-  if (!Array.isArray(raw) || raw.some((v) => typeof v !== "string" || v.length > 80)) {
-    throw new ValidationError("Les spécialités sont invalides.");
+  // Borne identique à requireStringArray (validate.js) : un tableau illimité
+  // permettrait d'injecter des centaines d'éléments dans la ligne teachers.
+  if (
+    !Array.isArray(raw) ||
+    raw.length > 20 ||
+    raw.some((v) => typeof v !== "string" || v.length > 80)
+  ) {
+    throw new ValidationError("Les spécialités sont invalides (20 éléments maximum, 80 caractères par élément).");
   }
   return raw.map((v) => v.trim()).filter(Boolean);
 }

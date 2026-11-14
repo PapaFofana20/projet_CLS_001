@@ -4,7 +4,7 @@
  * Aucune donnée sensible : uniquement les réglages destinés à l'affichage.
  */
 import { serviceClient } from "../lib/authAdmin.js";
-import { ok, route } from "../lib/http.js";
+import { ok, route, RATE_LIMIT_RE } from "../lib/http.js";
 import { DEFAULT_PLATFORM_SETTINGS, publicPlatformStatus, readPlatformSettings } from "../lib/platformSettings.js";
 import { clientIp, enforceRateLimit } from "../lib/rateLimit.js";
 
@@ -18,8 +18,17 @@ export default route(async (req, res) => {
 
   const svc = serviceClient();
   // Rate limiting AVANT le cache : un cache-hit ne doit pas contourner la
-  // borne (sinon l'endpoint public est illimité en cache).
-  await enforceRateLimit(svc, `platform-status:${clientIp(req) ?? "sans-adresse"}`, 60, 300);
+  // borne (sinon l'endpoint public est illimité en cache). Attrapé ici :
+  // « Trop de tentatives » doit sortir en 429 et non en 500 (le repli
+  // fail-closed ci-dessous est réservé aux erreurs de lecture SQL).
+  try {
+    await enforceRateLimit(svc, `platform-status:${clientIp(req) ?? "sans-adresse"}`, 60, 300);
+  } catch (e) {
+    if (e instanceof Error && RATE_LIMIT_RE.test(e.message)) {
+      return ok(res, { error: e.message }, 429);
+    }
+    throw e;
+  }
 
   // Cache mémoire (TTL 30 s) : /platform-status est public et non borné — sans
   // cache, chaque requête scriptee coûte 1 lecture SQL (amplification DoS).

@@ -138,7 +138,7 @@ export function StudentCsvImport({ overview, onImported }: Props) {
         <div role="alert" className="rounded-2xl bg-red-50 p-4 text-sm text-danger">
           <strong>{errors.length} erreur(s) :</strong>
           <ul className="mt-1 list-inside list-disc space-y-0.5">
-            {errors.slice(0, 20).map((e, i) => <li key={i}>{e}</li>)}
+            {errors.slice(0, 20).map((e, i) => <li key={`${i}-${e.slice(0, 40)}`}>{e}</li>)}
             {errors.length > 20 && <li>…et {errors.length - 20} autre(s).</li>}
           </ul>
         </div>
@@ -188,7 +188,7 @@ export function StudentCsvImport({ overview, onImported }: Props) {
               <strong>Résultat : {result.ok} importé(s), {result.failed} échec(s).</strong>
               {result.failedLines.length > 0 && (
                 <ul className="mt-1 list-inside list-disc space-y-0.5">
-                  {result.failedLines.slice(0, 20).map((e, i) => <li key={i}>{e}</li>)}
+                  {result.failedLines.slice(0, 20).map((e, i) => <li key={`${i}-${String(e).slice(0, 40)}`}>{e}</li>)}
                 </ul>
               )}
             </div>

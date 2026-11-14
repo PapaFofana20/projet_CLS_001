@@ -25,7 +25,6 @@ export function PlatformProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let cancelled = false;
-    let timeoutId: number | undefined;
     const load = () => {
       getPlatformStatus().then((next) => {
         if (!cancelled) {
@@ -44,10 +43,10 @@ export function PlatformProvider({ children }: { children: ReactNode }) {
         window.cancelIdleCallback(idleId);
       };
     }
-    timeoutId = window.setTimeout(load, 1200);
+    const timeoutId = window.setTimeout(load, 1200);
     return () => {
       cancelled = true;
-      if (timeoutId !== undefined) window.clearTimeout(timeoutId);
+      window.clearTimeout(timeoutId);
     };
   }, []);
 

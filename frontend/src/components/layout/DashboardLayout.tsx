@@ -6,6 +6,7 @@ import { SidebarProvider, useSidebar } from "@/context/SidebarContext";
 import { TeachingProvider } from "@/context/TeachingContext";
 import { SubscriptionBanner } from "@/features/subscription/SubscriptionBanner";
 import { MaintenanceBanner } from "./MaintenanceBanner";
+import { HydrationBanner } from "./HydrationBanner";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { BottomNav } from "./BottomNav";
 import { Sidebar } from "./Sidebar";
@@ -32,6 +33,7 @@ function Shell() {
               en haut de page est déjà géré par ScrollToTop dans App.tsx. */}
           <main id="contenu" tabIndex={-1} className="min-w-0 focus:outline-none">
             <MaintenanceBanner />
+            <HydrationBanner />
             <SubscriptionBanner />
             <SuspenseOutlet />
           </main>

@@ -23,10 +23,12 @@ export default route(async (req, res) => {
     // Écoles réellement actives : inscriptions ouvertes ET abonnement valide
     // — même définition que le statut ACTIF/INACTIF de la RPC
     // admin_school_stats (l'ancien comptage ignorait la suspension admin).
+    // `.limit(5000)` explicite : sans limite, PostgREST tronque à 1000 lignes
+    // et les compteurs (actives, MRR, expirations) deviennent faux sans signal.
     const today = new Date().toISOString().slice(0, 10);
     const monthStart = `${today.slice(0, 7)}-01`;
-    const { data: schoolRows } = await svc.from("schools").select("id, registration_open");
-    const { data: subRows } = await svc.from("subscriptions").select("school_id, plan_id, ends_at");
+    const { data: schoolRows } = await svc.from("schools").select("id, registration_open").limit(5000);
+    const { data: subRows } = await svc.from("subscriptions").select("school_id, plan_id, ends_at").limit(5000);
     const subEndsBySchool = new Map((subRows ?? []).map((r) => [r.school_id, r.ends_at]));
     const activeSchools = (schoolRows ?? []).filter(
       (s) => s.registration_open && (subEndsBySchool.get(s.id) ?? "") >= today,

@@ -5,6 +5,7 @@ import { SidebarProvider } from "@/context/SidebarContext";
 import { AdminSidebar } from "./AdminSidebar";
 import { AdminTopbar } from "./AdminTopbar";
 import { MaintenanceBanner } from "./MaintenanceBanner";
+import { HydrationBanner } from "./HydrationBanner";
 import { useAdminAuth } from "@/context/AdminAuthContext";
 import { usePlatformStatus } from "@/context/PlatformContext";
 import { useIdleLogout } from "@/hooks/useIdleLogout";
@@ -34,6 +35,7 @@ function Shell() {
         <div className="min-w-0 flex-1 overflow-x-clip px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] md:px-8 md:pb-10">
           <AdminTopbar agent={agent} onMenu={() => setDrawer(true)} onLogout={logout} />
           <MaintenanceBanner />
+          <HydrationBanner />
           {/* Pas de key={pathname} : il remontait toute la page à chaque clic
               (perte d'état, skeletons et refetch systématiques). Le défilement
               en haut de page est déjà géré par ScrollToTop dans App.tsx. */}

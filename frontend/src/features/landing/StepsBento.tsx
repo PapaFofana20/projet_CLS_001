@@ -1,6 +1,5 @@
 // Presentation de la prise en main en quatre etapes.
 
-import { Icon } from "@/components/ui/Icon";
 import { Reveal } from "@/components/ui/Reveal";
 import { steps } from "@/data/landing";
 import { cn } from "@/utils/cn";

@@ -126,6 +126,26 @@ export default route(async (req, res) => {
       });
     } catch (sqlError) {
       // 4. Nettoyage : le compte Auth ne doit pas survivre sans école/profil.
+      // MAIS si la RPC a dépassé le timeout (withTimeout) tout en RÉUSSISSANT
+      // ensuite en base, l'école/profil existent déjà : supprimer le compte
+      // Auth orphelinerait les données. On vérifie donc si le profil existe.
+      try {
+        const { data: existingProfile } = await svc
+          .from("profiles")
+          .select("id")
+          .eq("id", created.user.id)
+          .maybeSingle();
+        if (existingProfile) {
+          console.warn("[register-director] RPC réussie malgré le timeout : compte conservé.");
+          return ok(res, {
+            schoolId: typeof data === "string" ? data : null,
+            email,
+            message: "Compte créé. Connectez-vous pour ouvrir votre session.",
+          });
+        }
+      } catch (checkError) {
+        logError("register-director:check-profile", checkError);
+      }
       await svc.auth.admin.deleteUser(created.user.id);
       const message = sqlError instanceof Error ? sqlError.message : undefined;
       if (message && /un compte existe déjà/i.test(message)) return badRequest(res, message);

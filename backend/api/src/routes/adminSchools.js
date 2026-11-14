@@ -185,11 +185,17 @@ export default route(async (req, res) => {
       }
 
       // Met à jour le statut via registration_open (suspendue = inscriptions closes + école désactivée).
-      const { error: updateError } = await svc
+      // `.select("id")` + contrôle du résultat : sans retour, une UUID
+      // inexistante produisait « activé avec succès » (0 ligne modifiée n'est
+      // pas une erreur PostgREST).
+      const { data: updated, error: updateError } = await svc
         .from("schools")
         .update({ registration_open: newStatus === "ACTIF" })
-        .eq("id", schoolId);
+        .eq("id", schoolId)
+        .select("id")
+        .maybeSingle();
       if (updateError) return serverError(res);
+      if (!updated) return notFound(res, "Établissement introuvable.");
 
       await auditAdmin(svc, {
         schoolId,

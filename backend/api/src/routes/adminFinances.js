@@ -1,10 +1,10 @@
 /**
- * Finances Classora : revenus d'abonnement rÃ©ellement encaissÃ©s.
+ * Finances Classora : revenus d'abonnement réellement encaissés.
  *
  * Depuis la migration 00016, le circuit paiement et `payment_transactions`
- * ont Ã©tÃ© retirÃ©s : la source de vÃ©ritÃ© est `subscription_events` (journal
- * immuable des activations/renouvellements) complÃ©tÃ©e par `subscriptions`.
- * Aucun montant n'est estimÃ© Ã  partir d'un prix forfaitaire inventÃ©.
+ * ont été retirés : la source de vérité est `subscription_events` (journal
+ * immuable des activations/renouvellements) complétée par `subscriptions`.
+ * Aucun montant n'est estimé à partir d'un prix forfaitaire inventé.
  */
 import { requireAdminRole, serviceClient } from "../lib/authAdmin.js";
 import { ok, route, serverError, RATE_LIMIT_RE, logError } from "../lib/http.js";
@@ -14,7 +14,7 @@ import { enforceRateLimit } from "../lib/rateLimit.js";
 const EVENT_SELECT =
   "id, school_id, event_type, plan_id, amount_paid, method, payment_ref, starts_at, ends_at, created_at";
 
-/** RÃ©cupÃ¨re tout le journal par pages de 1 000 (plafond de sÃ©curitÃ© 20 000). */
+/** Récupère tout le journal par pages de 1 000 (plafond de sécurité 20 000). */
 async function fetchAllEvents(svc) {
   const pageSize = 1000;
   const out = [];
@@ -34,7 +34,7 @@ async function fetchAllEvents(svc) {
 
 // Handler principal : GET /admin/finances — revenus d'abonnement réellement encaissés.
 export default route(async (req, res) => {
-  if (req.method !== "GET") return ok(res, { error: "MÃ©thode non autorisÃ©e." }, 405);
+  if (req.method !== "GET") return ok(res, { error: "Méthode non autorisée." }, 405);
   const svc = serviceClient();
   try {
     const admin = await requireAdminRole(svc, req, res, ["admin", "superadmin"]);
@@ -155,18 +155,18 @@ export default route(async (req, res) => {
       methodTotals.set(method, current);
     }
 
-    // Journal complet (plafonnÃ©) : les onglets Transactions et Factures
-    // filtrent et paginent cÃ´tÃ© navigateur sans nouvelle requÃªte.
+    // Journal complet (plafonné) : les onglets Transactions et Factures
+    // filtrent et paginent côté navigateur sans nouvelle requête.
     const mapEvent = (e) => {
       const school = schoolById.get(e.school_id);
       return {
         id: e.id,
         schoolId: e.school_id,
-        schoolName: school?.name ?? "Ã‰tablissement supprimÃ©",
+        schoolName: school?.name ?? "Établissement supprimé",
         matricule: school?.matricule ?? "",
         eventType: e.event_type,
         planId: e.plan_id,
-        planName: planById.get(e.plan_id)?.name ?? e.plan_id ?? "â€”",
+        planName: planById.get(e.plan_id)?.name ?? e.plan_id ?? "—",
         amountPaid: amountOf(e),
         method: e.method,
         paymentRef: e.payment_ref ?? "",

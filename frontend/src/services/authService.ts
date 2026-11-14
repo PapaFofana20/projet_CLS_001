@@ -254,6 +254,8 @@ export async function registerEnrolledStudent(
 export interface ParentSignupInput {
   schoolId: string;
   studentMatricule: string;
+  /** Date de naissance (AAAA-MM-JJ) de l'élève : preuve d'identité (migration 00054). */
+  birthDate: string;
   firstName: string;
   lastName: string;
   phone: string;
@@ -288,16 +290,26 @@ export async function registerParent(
   return { user: toSession(user), requestId: result.requestId, childName: result.childName };
 }
 
-/** Rattachement d'un enfant supplémentaire (autre matricule) depuis l'espace parent. */
-export async function linkChild(actor: SessionUser, studentMatricule: string): Promise<Student> {
+/** Rattachement d'un enfant supplémentaire (autre matricule) depuis l'espace
+ *  parent. La date de naissance de la fiche est le second facteur d'identité
+ *  (migration 00054) : le matricule seul, séquentiel, ne prouve rien. */
+export async function linkChild(
+  actor: SessionUser,
+  studentMatricule: string,
+  birthDate: string,
+): Promise<Student> {
   if (actor.role !== "parent" || !actor.parentId) throw new Error("Action réservée aux comptes parents.");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(birthDate)) {
+    throw new Error("Saisissez la date de naissance de l'élève (elle prouve son identité).");
+  }
   const { error } = await supabase.rpc("link_child", {
     p_student_matricule: studentMatricule.trim().toUpperCase(),
+    p_birth_date: birthDate,
   });
   if (error) throw new Error(error.message);
   await hydrate("students");
   const child = db.students.find((s) => s.matricule.toUpperCase() === studentMatricule.trim().toUpperCase());
-  if (!child) throw new Error("Matricule élève introuvable dans votre école. Vérifiez le matricule reçu auprès de l'école.");
+  if (!child) throw new Error("Vérification échouée. Vérifiez le matricule et la date de naissance auprès de l'école.");
   return child;
 }
 

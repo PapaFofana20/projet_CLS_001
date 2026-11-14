@@ -69,14 +69,18 @@ export default route(async (req, res) => {
 
     // Si le MFA est activé pour cet agent, exiger une session MFA vérifiée
     // (créée via POST /admin/mfa/verify après validation du second facteur).
+    // `.limit(1)` plutôt que `.maybeSingle()` : deux lignes actives (ancien
+    // doublon, ou course entre deux onglets) feraient renvoyer PGRST116
+    // (data = null) et verrouilleraient la console en boucle « Second
+    // facteur requis » jusqu'à expiration des lignes.
     if (agent.totp_enabled === true) {
-      const { data: mfaSession } = await svc
+      const { data: mfaRows } = await svc
         .from("admin_mfa_sessions")
         .select("id")
         .eq("agent_id", agent.id)
         .gt("expires_at", new Date().toISOString())
-        .maybeSingle();
-      if (!mfaSession) {
+        .limit(1);
+      if (!mfaRows || mfaRows.length === 0) {
         await auditAdmin(svc, {
           actorId: user.id,
           actorRole: agent.role,

@@ -1,7 +1,7 @@
 /**
- * Supervision de la sÃ©curitÃ© : activitÃ© de connexion des agents, tentatives
- * refusÃ©es, actions sensibles et limites de dÃ©bit rÃ©ellement atteintes.
- * Uniquement des faits observÃ©s dans audit_log / rate_limits / admin_agents.
+ * Supervision de la sécurité : activité de connexion des agents, tentatives
+ * refusées, actions sensibles et limites de débit réellement atteintes.
+ * Uniquement des faits observés dans audit_log / rate_limits / admin_agents.
  */
 import { requireAdminRole, serviceClient } from "../lib/authAdmin.js";
 import { ok, route, serverError, RATE_LIMIT_RE, logError } from "../lib/http.js";
@@ -36,7 +36,7 @@ function dayKey(iso) {
 
 // Handler principal : GET /admin/security — supervision de l'activité de connexion des agents.
 export default route(async (req, res) => {
-  if (req.method !== "GET") return ok(res, { error: "MÃ©thode non autorisÃ©e." }, 405);
+  if (req.method !== "GET") return ok(res, { error: "Méthode non autorisée." }, 405);
   const svc = serviceClient();
   try {
     const admin = await requireAdminRole(svc, req, res, ["admin", "superadmin"]);
@@ -86,9 +86,9 @@ export default route(async (req, res) => {
     ]);
 
     if (agentsError) throw new Error("Impossible de charger les agents.");
-    if (loginError) throw new Error("Impossible de charger l'activitÃ© de connexion.");
+    if (loginError) throw new Error("Impossible de charger l'activité de connexion.");
     if (sensitiveError) throw new Error("Impossible de charger les actions sensibles.");
-    if (rateError) throw new Error("Impossible de charger les limites de dÃ©bit.");
+    if (rateError) throw new Error("Impossible de charger les limites de débit.");
 
     const allAgents = agents ?? [];
     const logins = (loginRows ?? []).filter((r) => r.action === "admin_login");

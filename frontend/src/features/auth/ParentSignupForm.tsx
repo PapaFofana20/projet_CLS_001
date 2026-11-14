@@ -25,7 +25,7 @@ export function ParentSignupForm({ school, onBack }: Props) {
   const { registerParent, logout } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const [form, setForm] = useState({ firstName: "", lastName: "", phone: "", email: "", studentMatricule: "", password: "", confirm: "" });
+  const [form, setForm] = useState({ firstName: "", lastName: "", phone: "", email: "", studentMatricule: "", birthDate: "", password: "", confirm: "" });
   const [terms, setTerms] = useState(false);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [busy, setBusy] = useState(false);
@@ -37,6 +37,7 @@ export function ParentSignupForm({ school, onBack }: Props) {
     phone: !isValidSnPhone(form.phone) ? "Format attendu : 77 123 45 67." : null,
     email: !isValidEmail(form.email) ? "Saisissez une adresse e-mail valide." : null,
     studentMatricule: form.studentMatricule.trim().length < 4 ? "Saisissez le matricule de l'élève (ex. EC260001)." : null,
+    birthDate: !/^\d{4}-\d{2}-\d{2}$/.test(form.birthDate) ? "Saisissez la date de naissance de l'élève (elle prouve son identité)." : null,
     password: passwordError(form.password, form.confirm),
     confirm: form.confirm !== form.password ? "Les mots de passe ne correspondent pas." : null,
     terms: terms ? null : "Vous devez accepter les CGU et la politique de confidentialité.",
@@ -61,6 +62,7 @@ export function ParentSignupForm({ school, onBack }: Props) {
         phone: form.phone,
         email: form.email,
         studentMatricule: form.studentMatricule.trim().toUpperCase(),
+        birthDate: form.birthDate,
         password: form.password,
       });
       logout();
@@ -92,6 +94,17 @@ export function ParentSignupForm({ school, onBack }: Props) {
         <Input label="Téléphone" type="tel" required placeholder="77 123 45 67" autoComplete="tel" hint="Numéro sénégalais à 9 chiffres." value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} onBlur={() => touch("phone")} error={show("phone")} />
         <Input label="Adresse e-mail" type="email" required autoComplete="email" placeholder="vous@exemple.sn" hint="Cette adresse servira à vous connecter." value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} onBlur={() => touch("email")} error={show("email")} />
         <ChildCodeInput value={form.studentMatricule} onChange={(v) => setForm({ ...form, studentMatricule: v })} error={form.studentMatricule ? show("studentMatricule") : null} />
+        <Input
+          label="Date de naissance de l'élève"
+          type="date"
+          required
+          max={new Date().toISOString().slice(0, 10)}
+          hint="Elle doit correspondre à la fiche de l'élève : le matricule seul ne suffit pas à prouver le lien de parenté."
+          value={form.birthDate}
+          onChange={(e) => setForm({ ...form, birthDate: e.target.value })}
+          onBlur={() => touch("birthDate")}
+          error={show("birthDate")}
+        />
         <PasswordField value={form.password} placeholder="••••••••" onChange={(v) => setForm({ ...form, password: v })} error={show("password")} />
         <PasswordField label="Confirmer" showStrength={false} hint="Ressaisissez le même mot de passe." placeholder="••••••••" value={form.confirm} onChange={(v) => setForm({ ...form, confirm: v })} error={show("confirm")} />
       </div>

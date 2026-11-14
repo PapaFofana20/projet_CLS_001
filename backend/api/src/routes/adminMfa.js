@@ -35,11 +35,21 @@ import {
   unauthorized,
   logError,
 } from "../lib/http.js";
-import { enforceRateLimit } from "../lib/rateLimit.js";
+import { enforceRateLimit, clientIp } from "../lib/rateLimit.js";
 import { expectObject, requireString } from "../lib/validate.js";
 
-/** Enregistre une session MFA vérifiée pour l'agent (utilisée par /admin/auth). */
+/** Enregistre une session MFA vérifiée pour l'agent (utilisée par /admin/auth).
+ *  Une seule session active par agent : on PURGE d'abord les lignes existantes
+ *  (y compris expirées). Sans purge, un second login < 5 min insérait une 2e
+ *  ligne pour le même agent et la lecture `.maybeSingle()` côté /admin/auth
+ *  renvoyait PGRST116 (data=null) → console verrouillée en « Second facteur
+ *  requis » jusqu'à expiration de toutes les lignes. */
 async function markMFASessionVerified(svc, agentId) {
+  const { error: purgeError } = await svc
+    .from("admin_mfa_sessions")
+    .delete()
+    .eq("agent_id", agentId);
+  if (purgeError) return { error: purgeError };
   return svc.from("admin_mfa_sessions").insert({
     agent_id: agentId,
     expires_at: new Date(Date.now() + PRE_AUTH_TTL_MS).toISOString(),
@@ -156,7 +166,7 @@ async function handleVerify(svc, req, res) {
   const preAuthToken = requireString(body, "preAuthToken", "Le jeton pré-authentifié", { min: 16 });
   const token = requireString(body, "token", "Le code TOTP", { min: 6, max: 6 });
 
-  await enforceRateLimit(svc, `admin-mfa-verify:ip:${req.ip ?? "sans-adresse"}`, 10, 300);
+  await enforceRateLimit(svc, `admin-mfa-verify:ip:${clientIp(req) ?? "sans-adresse"}`, 10, 300);
 
   const agentId = peekPreAuthSession(preAuthToken);
   if (!agentId) {
