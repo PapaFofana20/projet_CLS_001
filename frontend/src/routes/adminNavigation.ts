@@ -18,7 +18,7 @@ const ADMIN_NAV: AdminNavItem[] = [
   { to: "/admin/agents", label: "Agents administratifs", icon: "badge", section: "Utilisateurs et accès", superAdminOnly: true },
   { to: "/admin/abonnements", label: "Abonnements", icon: "workspace_premium", section: "Abonnements" },
   { to: "/admin/finances", label: "Finances", icon: "account_balance_wallet", section: "Finances", adminOrSuper: true },
-  { to: "/admin/analyses", label: "Croissance des établissements", icon: "trending_up", section: "Analyses et statistiques" },
+  { to: "/admin/analyses", label: "Analyse", icon: "trending_up", section: "Analyses et statistiques" },
   { to: "/admin/supervision/audit", label: "Journal d'audit", icon: "history", section: "Supervision", adminOrSuper: true },
   { to: "/admin/supervision/securite", label: "Sécurité", icon: "security", section: "Supervision", adminOrSuper: true },
   { to: "/admin/parametres", label: "Paramètres généraux", icon: "settings", section: "Configuration" },

@@ -30,13 +30,13 @@ on conflict (id) do nothing;
 -- Formules d'abonnement (identiques à frontend/src/data/plans.ts), prix en FCFA
 -- ----------------------------------------------------------------------------
 insert into public.plans (id, name, tagline, student_limit, monthly_price, yearly_price, features, highlight) values
-  ('essentiel', 'Essentiel', 'Pour démarrer une école', 100, 15000, 150000,
+  ('essentiel', 'Essentiel', 'Pour démarrer une école', 100, 0, 0,
    array['Jusqu''à 100 élèves', 'Classes, notes et bulletins', 'Espace parents', 'Support par WhatsApp'], false),
   ('pro',       'Pro',       'La formule la plus choisie', 300, 30000, 300000,
    array['Jusqu''à 300 élèves', 'Affectations et emplois du temps', 'Paiements Wave / Orange Money / Free Money',
          'Messagerie parents-enseignants', 'Rappels automatiques des impayés'], true),
-  ('premium',   'Premium',   'Grands établissements', 600, 50000, 500000,
-   array['Jusqu''à 600 élèves', 'Tous les modules Pro', 'Comptes econome et surveillant inclus',
+  ('premium',   'Premium',   'Grands établissements', null, 50000, 500000,
+   array['Élèves illimités', 'Tous les modules Pro', 'Comptes econome et surveillant inclus',
          'Export des données et rapports', 'Accompagnement dédié'], false),
   ('illimite',  'Illimité',  'Réseau scolaire', null, 90000, 900000,
    array['Élèves illimités', 'Tous les modules Premium', 'Multi-sièges / multi-campus',
