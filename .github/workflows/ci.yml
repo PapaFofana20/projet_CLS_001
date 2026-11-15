@@ -70,6 +70,6 @@ jobs:
           npx supabase db reset
 
       # L'étape "Audit front (parité + dates)" a été retirée du gating : le
-      // harnais (audit-parite.mjs) importait TODAY_ISO supprimé du code et
-      // rendait la CI nécessairement rouge. À recréer séparément (ticket AUD-013)
-      // avant de la réintroduire comme étape bloquante.
+      # harnais (audit-parite.mjs) importait TODAY_ISO supprimé du code et
+      # rendait la CI nécessairement rouge. À recréer séparément (ticket AUD-013)
+      # avant de la réintroduire comme étape bloquante.
