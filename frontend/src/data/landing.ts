@@ -34,7 +34,7 @@ export interface HeroSlide {
 
 export const heroSlides: HeroSlide[] = [
   { src: hero1Img, alt: "Élève consultant son téléphone dans une salle de classe au Sénégal" },
-  { src: hero2Img, alt: "Enseignante souriante devant son ordinateur dans une salle de classe" },
+  { src: hero2Img, alt: "Deux enseignants souriants devant un ordinateur portable dans une salle de classe" },
   { src: hero3Img, alt: "Deux membres de l'équipe Classora dans un couloir d'école" },
   { src: hero4Img, alt: "Quatre élèves travaillant sur des ordinateurs à la bibliothèque" },
   { src: hero5Img, alt: "L'équipe Classora serre la main d'un directeur d'école" },
