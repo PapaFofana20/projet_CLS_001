@@ -10,7 +10,6 @@ import { Input } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Select } from "@/components/ui/Select";
-import { StatCard } from "@/components/ui/StatCard";
 import { Table, type Column } from "@/components/ui/Table";
 import { Tabs } from "@/components/ui/Tabs";
 import { useToast } from "@/context/ToastContext";
@@ -22,6 +21,7 @@ import { useCurrentUser } from "@/context/AuthContext";
 import type { AbsenceRecord } from "@/types";
 import { formatDate } from "@/utils/format";
 import { GreetingSection } from "./GreetingSection";
+import { KpiTile, PanelHeading } from "@/features/admin/adminUi";
 
 const TYPE_LABELS: Record<AbsenceRecord["type"], string> = { absence: "Absence", retard: "Retard", discipline: "Discipline" };
 const TYPE_TONES = { absence: "warning", retard: "info", discipline: "danger" } as const;
@@ -75,11 +75,12 @@ export function SurveillantDashboard() {
       <AsyncView state={state}>
         {() => (
           <div className="space-y-4">
+            <PanelHeading icon="event_busy" title="Vie scolaire" subtitle="Absences, retards et incidents disciplinaires" />
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <StatCard dark icon="event_busy" label="Absences" value={String(count("absence"))} note="ce mois-ci" />
-              <StatCard icon="schedule" label="Retards" value={String(count("retard"))} note="ce mois-ci" />
-              <StatCard icon="gavel" label="Incidents disciplinaires" value={String(count("discipline"))} />
-              <StatCard icon="report" label="Non justifiées" value={String(rows.filter((r) => r.type !== "discipline" && !r.justified).length)} badge={{ text: "À suivre", tone: "down" }} />
+              <KpiTile tone="red" icon="event_busy" label="Absences" value={String(count("absence"))} note="ce mois-ci" />
+              <KpiTile tone="amber" icon="schedule" label="Retards" value={String(count("retard"))} note="ce mois-ci" />
+              <KpiTile tone="lime" icon="gavel" label="Incidents disciplinaires" value={String(count("discipline"))} />
+              <KpiTile tone="violet" icon="report" label="Non justifiées" value={String(rows.filter((r) => r.type !== "discipline" && !r.justified).length)} note="À suivre" />
             </div>
             <Tabs label="Filtrer par type" value={tab} onChange={setTab} items={[{ id: "all", label: "Tout", badge: rows.length }, { id: "absence", label: "Absences" }, { id: "retard", label: "Retards" }, { id: "discipline", label: "Discipline" }]} />
             <Card padded={false}>{filtered.length ? <Table caption="Absences, retards et discipline" columns={columns} rows={filtered} rowKey={(r) => r.id} /> : <EmptyState icon="verified" title="Rien à signaler" />}</Card>

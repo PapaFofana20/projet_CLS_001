@@ -7,7 +7,6 @@ import { AsyncView } from "@/components/ui/AsyncView";
 import { Icon } from "@/components/ui/Icon";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { LinkButton } from "@/components/ui/Button";
-import { StatCard } from "@/components/ui/StatCard";
 import { Switch } from "@/components/ui/Switch";
 import { CYCLE_LABELS } from "@/data/school";
 import { useAsync } from "@/hooks/useAsync";
@@ -24,6 +23,7 @@ import { ClassBars, CycleDonut, CYCLE_COLORS, PaymentsChart } from "./charts";
 import { CurrentMonthMensualites } from "./CurrentMonthMensualites";
 import { GreetingSection } from "./GreetingSection";
 import { LatestPayments } from "./LatestPayments";
+import { KpiTile, PanelHeading } from "@/features/admin/adminUi";
 import { useState } from "react";
 
 // Charge les statistiques, puis delegue l'affichage au contenu ci-dessous.
@@ -97,25 +97,26 @@ function Content({ s, finance }: { s: AdminStats; finance: boolean }) {
         </>
       )}
       {/* Grilles pilotées par le conteneur (@container) : le nombre de colonnes ne change pas pendant la transition de la sidebar. */}
+      <PanelHeading icon="dashboard" title="Indicateurs clés" subtitle="Vue rapide de l'activité de l'établissement" />
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {finance ? (
               <>
-                <StatCard dark icon="account_balance_wallet" label="Encaissé à ce jour" value={formatCurrency(s.collected)} badge={{ text: `${s.recoveryRate}%`, tone: "up" }} note="sur les échéances échues" />
-                <StatCard icon="request_quote" label="Attendu à ce jour" value={formatCurrency(s.expected)} note="échéances au 15/12/2026" />
+                <KpiTile tone="lime" icon="account_balance_wallet" label="Encaissé à ce jour" value={formatCurrency(s.collected)} note="sur les échéances échues" />
+                <KpiTile tone="sky" icon="request_quote" label="Attendu à ce jour" value={formatCurrency(s.expected)} note="échéances au 15/12/2026" />
               </>
             ) : (
               <>
-                <StatCard dark icon="groups" label="Effectif total" value={String(s.totalStudents)} badge={{ text: "2026-2027", tone: "neutral" }} note={s.byCycle.map((c) => `${CYCLE_LABELS[c.cycle]} ${c.count}`).join(" · ")} />
-                <StatCard icon="savings" label="Taux de recouvrement" value={`${s.recoveryRate} %`} badge={{ text: s.recoveryRate >= 80 ? "Bon" : "À suivre", tone: s.recoveryRate >= 80 ? "up" : "down" }} note={`${formatCurrency(s.collected)} encaissés`} />
+                <KpiTile tone="lime" icon="groups" label="Effectif total" value={String(s.totalStudents)} note={s.byCycle.map((c) => `${CYCLE_LABELS[c.cycle]} ${c.count}`).join(" · ")} />
+                <KpiTile tone="amber" icon="savings" label="Taux de recouvrement" value={`${s.recoveryRate} %`} note={`${formatCurrency(s.collected)} encaissés`} />
               </>
             )}
-            <StatCard icon="warning" label="Impayés" value={formatCurrency(s.unpaidTotal)} badge={{ text: `${s.unpaidStudents} élèves`, tone: "down" }} note="échéances en retard" />
+            <KpiTile tone="red" icon="warning" label="Impayés" value={formatCurrency(s.unpaidTotal)} note="échéances en retard" />
             {finance ? (
-              <StatCard icon="percent" label="Taux de recouvrement" value={`${s.recoveryRate} %`} badge={{ text: s.recoveryRate >= 80 ? "Bon" : "À suivre", tone: s.recoveryRate >= 80 ? "up" : "down" }} />
+              <KpiTile tone="violet" icon="percent" label="Taux de recouvrement" value={`${s.recoveryRate} %`} />
             ) : (
-              <StatCard icon="grade" label="Moyenne générale" value={s.generalAverage === null ? "—" : `${formatNumber(s.generalAverage)} / 20`} badge={{ text: "Semestre 1", tone: "neutral" }} note="toutes classes confondues" />
+              <KpiTile tone="violet" icon="grade" label="Moyenne générale" value={s.generalAverage === null ? "—" : `${formatNumber(s.generalAverage)} / 20`} note="toutes classes confondues" />
             )}
           </div>
           <Card>

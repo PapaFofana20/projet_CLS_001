@@ -2,14 +2,13 @@
 
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/Badge";
-import { Card, CardHeader } from "@/components/ui/Card";
+import { Card } from "@/components/ui/Card";
 import { AsyncView } from "@/components/ui/AsyncView";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Icon } from "@/components/ui/Icon";
 import { LinkButton } from "@/components/ui/Button";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { SchoolMark } from "@/components/ui/Brand";
-import { StatCard } from "@/components/ui/StatCard";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useCurrentUser } from "@/context/AuthContext";
 import { useSchool } from "@/context/SchoolContext";
@@ -22,6 +21,7 @@ import { averageTone } from "@/utils/grades";
 import { PAY_STATUS_LABELS, remaining } from "@/utils/payments";
 import { GradeEvolutionCharts } from "./charts";
 import { GreetingSection } from "./GreetingSection";
+import { KpiTile, PanelHeading } from "@/features/admin/adminUi";
 import type { Payment } from "@/types";
 
 /** Espace élève : école, notes et prochaines échéances. */
@@ -64,15 +64,16 @@ export function StudentHome() {
                   </div>
                 </div>
               </Card>
+              <PanelHeading icon="grade" title="Mes résultats" subtitle={`Moyenne par matière${periodLabel ? ` (${periodLabel})` : ""}`} action={<Link to="/app/notes" className="text-sm font-semibold text-forest hover:underline">Détails</Link>} />
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                <StatCard dark icon="grade" label="Moyenne générale" value={d.report?.generalAverage == null ? "—" : `${formatNumber(d.report.generalAverage)} / 20`} note={periodLabel ?? undefined} />
-                <StatCard icon="emoji_events" label="Rang" value={d.report?.rank ? `${d.report.rank}e / ${d.report.classSize}` : "—"} note={d.classRoom.name} />
-                <StatCard icon="event_busy" label="Absences" value={d.report?.meta ? `${d.report.meta.absences} h` : "—"} note={d.report?.meta?.conduct ? `Conduite : ${d.report.meta.conduct}` : "Non renseigné"} />
-                <StatCard icon="payments" label="Reste dû (échu)" value={formatCurrency(d.row.balance)} badge={d.row.balance > 0 ? { text: "À régler", tone: "down" } : { text: "À jour", tone: "up" }} />
+                <KpiTile tone="lime" icon="grade" label="Moyenne générale" value={d.report?.generalAverage == null ? "—" : `${formatNumber(d.report.generalAverage)} / 20`} note={periodLabel ?? undefined} />
+                <KpiTile tone="sky" icon="emoji_events" label="Rang" value={d.report?.rank ? `${d.report.rank}e / ${d.report.classSize}` : "—"} note={d.classRoom.name} />
+                <KpiTile tone="amber" icon="event_busy" label="Absences" value={d.report?.meta ? `${d.report.meta.absences} h` : "—"} note={d.report?.meta?.conduct ? `Conduite : ${d.report.meta.conduct}` : "Non renseigné"} />
+                <KpiTile tone="red" icon="payments" label="Reste dû (échu)" value={formatCurrency(d.row.balance)} note={d.row.balance > 0 ? "À régler" : "À jour"} />
               </div>
               <div className="grid gap-4 xl:grid-cols-2">
                 <Card>
-                  <CardHeader title="Mes notes" subtitle={`Moyenne par matière${periodLabel ? ` (${periodLabel})` : ""}`} action={<Link to="/app/notes" className="text-sm font-semibold text-forest hover:underline">Détails</Link>} />
+                  <PanelHeading icon="grade" title="Mes notes" subtitle={`Moyenne par matière${periodLabel ? ` (${periodLabel})` : ""}`} action={<Link to="/app/notes" className="text-sm font-semibold text-forest hover:underline">Détails</Link>} />
                   <ul className="space-y-3">
                     {(d.report?.lines ?? []).slice(0, 8).map((l) => (
                       <li key={l.subjectId} className="flex items-center gap-3">
@@ -88,7 +89,7 @@ export function StudentHome() {
                   </ul>
                 </Card>
                 <Card>
-                  <CardHeader title="Prochaines échéances" action={<Link to="/app/paiements" className="text-sm font-semibold text-forest hover:underline">Tout voir</Link>} />
+                  <PanelHeading icon="payments" title="Prochaines échéances" subtitle="Échéances de paiement à venir" action={<Link to="/app/paiements" className="text-sm font-semibold text-forest hover:underline">Tout voir</Link>} />
                   {d.payments.length === 0 ? (
                     <p className="text-sm text-neutral-500">Aucun échéancier : les paiements sont gérés dans l'espace parent.</p>
                   ) : (

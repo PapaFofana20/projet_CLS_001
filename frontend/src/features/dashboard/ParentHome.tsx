@@ -13,7 +13,6 @@ import { Input } from "@/components/ui/Input";
 import { LinkButton } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { StatCard } from "@/components/ui/StatCard";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useCurrentUser } from "@/context/AuthContext";
 import { useSchool } from "@/context/SchoolContext";
@@ -30,6 +29,7 @@ import { averageTone } from "@/utils/grades";
 import { STUDENT_STATUS_LABELS } from "@/utils/payments";
 import { GradeEvolutionCharts } from "./charts";
 import { GreetingSection } from "./GreetingSection";
+import { KpiTile, PanelHeading } from "@/features/admin/adminUi";
 import type { Cycle } from "@/types";
 
 // Bareme des notes : sur 10 a l'elementaire, sur 20 ensuite.
@@ -115,22 +115,22 @@ export function ParentHome() {
         {(d) =>
           d && (
             <div className="space-y-4">
+              <PanelHeading icon="grade" title="Résultats de {d.row.firstName}" subtitle={`Moyenne par matière${periodLabel ? ` (${periodLabel})` : ""}`} action={<LinkButton to="/app/notes" variant="ghost" size="sm">Détails</LinkButton>} />
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 {(() => {
                   const scale = getScale(d.classRoom.cycle);
                   return (
                     <>
-                      <StatCard dark icon="grade" label="Moyenne générale" value={d.report?.generalAverage == null ? "—" : `${formatNumber(d.report.generalAverage)} / ${scale}`} note={periodLabel ?? undefined} />
-                      <StatCard icon="emoji_events" label="Rang" value={d.report?.rank ? `${d.report.rank}${d.report.rank === 1 ? "er" : "e"} / ${d.report.classSize}` : "—"} note={d.classRoom.name} />
-                      <StatCard icon="event_busy" label="Absences" value={d.report?.meta ? `${d.report.meta.absences} h` : "—"} note={d.report?.meta?.conduct ? `Conduite : ${d.report.meta.conduct}` : "Non renseigné"} />
-                      <StatCard icon="payments" label="Reste dû (échu)" value={formatCurrency(d.row.balance)} badge={d.row.balance > 0 ? { text: "À régler", tone: "down" } : { text: "À jour", tone: "up" }} />
+                      <KpiTile tone="lime" icon="grade" label="Moyenne générale" value={d.report?.generalAverage == null ? "—" : `${formatNumber(d.report.generalAverage)} / ${scale}`} note={periodLabel ?? undefined} />
+                      <KpiTile tone="sky" icon="emoji_events" label="Rang" value={d.report?.rank ? `${d.report.rank}${d.report.rank === 1 ? "er" : "e"} / ${d.report.classSize}` : "—"} note={d.classRoom.name} />
+                      <KpiTile tone="amber" icon="event_busy" label="Absences" value={d.report?.meta ? `${d.report.meta.absences} h` : "—"} note={d.report?.meta?.conduct ? `Conduite : ${d.report.meta.conduct}` : "Non renseigné"} />
+                      <KpiTile tone="red" icon="payments" label="Reste dû (échu)" value={formatCurrency(d.row.balance)} note={d.row.balance > 0 ? "À régler" : "À jour"} />
                     </>
                   );
                 })()}
               </div>
               <div className="grid gap-4 xl:grid-cols-3">
                 <Card className="xl:col-span-2">
-                  <CardHeader title={`Résultats de ${d.row.firstName}`} subtitle={`Moyenne par matière${periodLabel ? ` (${periodLabel})` : ""}`} action={<LinkButton to="/app/notes" variant="ghost" size="sm">Détails</LinkButton>} />
                   <ul className="space-y-3">
                     {(d.report?.lines ?? []).map((l) => {
                       const scale = getScale(d.classRoom.cycle);

@@ -12,6 +12,7 @@ import { getAdminOverviewStats } from "@/services/admin";
 import type { AdminOverviewStats } from "@/types";
 import { formatCurrency, formatDate, formatNumber } from "@/utils/format";
 import { cn } from "@/utils/cn";
+import { GreetingSection } from "@/features/dashboard/GreetingSection";
 import {
   EntityAvatar,
   HeroBar,
@@ -45,6 +46,7 @@ export default function AdminDashboardPage() {
           </LinkButton>
         }
       />
+      <GreetingSection />
       <AsyncView state={state}>{(s) => <Content s={s} />}</AsyncView>
     </>
   );

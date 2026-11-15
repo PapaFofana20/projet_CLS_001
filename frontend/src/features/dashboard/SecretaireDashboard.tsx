@@ -1,11 +1,10 @@
 // Tableau de bord du secretariat (vue administrative, sans finances).
 
 import { Badge } from "@/components/ui/Badge";
-import { Card, CardHeader } from "@/components/ui/Card";
+import { Card } from "@/components/ui/Card";
 import { AsyncView } from "@/components/ui/AsyncView";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { StatCard } from "@/components/ui/StatCard";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Table, type Column } from "@/components/ui/Table";
 import { useCurrentUser } from "@/context/AuthContext";
@@ -16,6 +15,7 @@ import { listTeacherRows } from "@/services/teacherService";
 import { listStudentRows, type StudentRow } from "@/services/studentService";
 import { getSchoolOverview } from "@/services/schoolService";
 import { GreetingSection } from "./GreetingSection";
+import { KpiTile, PanelHeading } from "@/features/admin/adminUi";
 import type { ClassRoom, Cycle } from "@/types";
 import { formatDate, pluralize } from "@/utils/format";
 
@@ -97,16 +97,17 @@ function Content({ students, classes, teacherCount }: { students: StudentRow[]; 
 
   return (
     <div className="space-y-4">
+      <PanelHeading icon="groups" title="Effectifs et inscriptions" subtitle="Vue administrative de l'école (sans finances)" />
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard dark icon="groups" label="Élèves inscrits" value={String(students.length)} note="année scolaire en cours" />
-        <StatCard icon="meeting_room" label="Classes" value={String(classes.length)} note={byCycle.map((c) => `${CYCLE_LABELS[c.cycle]} ${c.count}`).join(" · ") || "aucune classe"} />
-        <StatCard icon="badge" label="Enseignants" value={String(teacherCount)} note="comptes enseignants enregistrés" />
-        <StatCard icon="person_add" label="Nouvelles inscriptions" value={String(newThisMonth)} note="ce mois-ci" />
+        <KpiTile tone="lime" icon="groups" label="Élèves inscrits" value={String(students.length)} note="année scolaire en cours" />
+        <KpiTile tone="sky" icon="meeting_room" label="Classes" value={String(classes.length)} note={byCycle.map((c) => `${CYCLE_LABELS[c.cycle]} ${c.count}`).join(" · ") || "aucune classe"} />
+        <KpiTile tone="amber" icon="badge" label="Enseignants" value={String(teacherCount)} note="comptes enseignants enregistrés" />
+        <KpiTile tone="lime" icon="person_add" label="Nouvelles inscriptions" value={String(newThisMonth)} note="ce mois-ci" />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
-          <CardHeader title="Effectif par classe" subtitle={`${classes.length} ${pluralize(classes.length, "classe", "classes")}`} />
+          <PanelHeading icon="meeting_room" title="Effectif par classe" subtitle={`${classes.length} ${pluralize(classes.length, "classe", "classes")}`} />
           {classRows.length ? (
             <Table caption="Effectif par classe" columns={classCols} rows={classRows} rowKey={(c) => c.id} />
           ) : (
@@ -115,7 +116,7 @@ function Content({ students, classes, teacherCount }: { students: StudentRow[]; 
         </Card>
 
         <Card>
-          <CardHeader title="Dernières inscriptions" subtitle="Les cinq élèves les plus récemment inscrits" />
+          <PanelHeading icon="person_add" title="Dernières inscriptions" subtitle="Les cinq élèves les plus récemment inscrits" />
           {recent.length ? (
             <Table caption="Dernières inscriptions" columns={recentCols} rows={recent} rowKey={(s) => s.id} />
           ) : (

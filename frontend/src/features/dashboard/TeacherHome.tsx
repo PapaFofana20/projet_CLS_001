@@ -24,6 +24,7 @@ import { formatNumber } from "@/utils/format";
 import { averageTone } from "@/utils/grades";
 import { TeacherGradeEvolutionCharts } from "./charts";
 import { GreetingSection } from "./GreetingSection";
+import { PanelHeading } from "@/features/admin/adminUi";
 
 /** « Mes classes » (professeur) ou « Ma classe » (instituteur : toutes les matières, sans sélecteur de classe). */
 export function TeacherHome() {
@@ -79,6 +80,7 @@ export function TeacherHome() {
                   </Button>
                 </Card>
               )}
+              <PanelHeading icon="groups" title="Mes classes" subtitle="Sélectionnez une classe pour saisir les notes et faire l'appel" />
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 {items.map((c) => (
                   <Card key={`${c.classId}-${c.subjectId}`} hover className="flex flex-col">
