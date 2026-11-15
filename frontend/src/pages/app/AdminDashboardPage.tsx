@@ -11,7 +11,7 @@ import { useAsync } from "@/hooks/useAsync";
 import { getAdminOverviewStats } from "@/services/admin";
 import type { AdminOverviewStats } from "@/types";
 import { formatCurrency, formatDate } from "@/utils/format";
-import { cn } from "@/utils/cn";
+
 import { Table } from "@/components/ui/Table";
 
 // Composant principal de la page.
@@ -45,8 +45,6 @@ function Content({ s }: { s: AdminOverviewStats }) {
     mrr: 0,
     revenueThisMonth: 0,
   };
-  const subTotal = subs.active + subs.expired + subs.none;
-
   // Activité des 24 dernières heures seulement.
   const now = Date.now();
   const cutoff = now - 24 * 60 * 60 * 1000;
@@ -93,14 +91,15 @@ function Content({ s }: { s: AdminOverviewStats }) {
         <StatCard icon="workspace_premium" label="Abonnements payants actifs" value={String(subs.active)} badge={{ text: `${subs.expiringSoon} à renouveler`, tone: subs.expiringSoon > 0 ? "down" : "neutral" }} note={`${subs.expired} expiré(s) · ${subs.none} sans abonnement`} />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      {/* Les deux blocs sont empilés l'un sous l'autre (une colonne), jamais côte à côte. */}
+      <div className="space-y-4">
         <Card className="rounded-3xl shadow-soft border border-neutral-100">
           <CardHeader
             title="Répartition par établissement"
             subtitle="Élèves, classes et enseignants par école"
             action={<Link to="/admin/ecoles" className="text-sm font-medium text-forest">Voir le détail →</Link>}
           />
-          <div className="overflow-x-auto">
+          <div className="overflow-auto max-h-[500px]">
             <Table
               columns={[
                 { key: "name", header: "Établissement", render: (r: { schoolName: string }) => <div className="font-medium">{r.schoolName}</div> },
@@ -128,7 +127,7 @@ function Content({ s }: { s: AdminOverviewStats }) {
 
         <Card className="rounded-3xl shadow-soft border border-neutral-100">
           <CardHeader title="Activité administrative récente" subtitle="Dernières actions réalisées sur la plateforme" />
-          <div className="space-y-3">
+          <div className="space-y-3 max-h-[500px] overflow-y-auto">
             {recent.length === 0 ? (
               <div className="text-center py-8 text-neutral-400 text-sm">
                 <Icon name="history" fill className="text-[32px] mb-2 opacity-40" />
@@ -205,83 +204,29 @@ function Content({ s }: { s: AdminOverviewStats }) {
         </Card>
       </div>
 
-      {/* Section SaaS — Abonnements et revenus réels */}
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Card className="rounded-3xl bg-white shadow-soft">
-          <CardHeader
-            title="Répartition des abonnements"
-            subtitle={`${subs.pendingRequests} demande(s) en attente`}
-            action={<Link to="/admin/abonnements" className="text-sm font-medium">Gérer</Link>}
-          />
-          <div className="space-y-3">
-            {[
-              { label: "Abonnements actifs", value: subs.active, color: "bg-lime" },
-              { label: "Échéance < 30 jours", value: subs.expiringSoon, color: "bg-amber-500" },
-              { label: "Abonnements expirés", value: subs.expired, color: "bg-danger" },
-              { label: "Écoles sans abonnement", value: subs.none, color: "bg-forest/40" },
-            ].map((b) => (
-              <div key={b.label}>
-                <div className="flex justify-between text-sm font-medium text-ink">
-                  <span>{b.label}</span>
-                  <span>
-                    {b.value} école{b.value > 1 ? "s" : ""}
-                  </span>
-                </div>
-                <div className="mt-1.5 h-3 w-full overflow-hidden rounded-full bg-neutral-100">
-                  <div className={cn("h-full rounded-full transition-all", b.color)} style={{ width: `${(b.value / (subTotal || 1)) * 100}%` }} />
-                </div>
-              </div>
-            ))}
+      {/* Section SaaS — Revenus réels des abonnements */}
+      <Card className="rounded-3xl bg-lime-100 shadow-soft border border-lime-200 p-6">
+        <CardHeader
+          title="Revenus réels des abonnements"
+          subtitle="Encaissement et abonnements actifs"
+          action={<Link to="/admin/abonnements" className="text-sm font-medium text-forest">Gérer →</Link>}
+        />
+        <div className="mt-4 space-y-4">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wide text-neutral-500">Encaissé ce mois</p>
+            <p className="mt-1 text-3xl font-extrabold text-ink">{formatCurrency(subs.revenueThisMonth)}</p>
+            <p className="text-xs text-neutral-500">Journal des activations et renouvellements</p>
           </div>
-        </Card>
-
-        <Card className="rounded-3xl bg-gradient-to-br from-ink to-forest text-white shadow-soft">
-          <CardHeader title="Revenus réels des abonnements" />
-          <div className="space-y-4">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wide text-white/50">Encaissé ce mois</p>
-              <p className="mt-1 text-3xl font-extrabold">{formatCurrency(subs.revenueThisMonth)}</p>
-              <p className="text-xs text-white/60">Journal des activations et renouvellements</p>
-            </div>
-            <div className="rounded-2xl bg-white/10 p-3 backdrop-blur">
-              <p className="text-xs font-bold uppercase tracking-wide text-white/50">MRR (abonnements actifs)</p>
-              <p className="mt-1 text-xl font-extrabold">{formatCurrency(subs.mrr)}</p>
-              <p className="mt-0.5 text-[11px] text-white/60">ARR projeté : {formatCurrency(subs.mrr * 12)}</p>
-            </div>
-            <Link to="/admin/finances" className="flex items-center gap-2 text-xs font-semibold text-lime">
-              <Icon name="arrow_forward" className="text-[14px]" /> Voir les finances détaillées
-            </Link>
+          <div className="rounded-2xl bg-white p-4 shadow-sm border border-neutral-100">
+            <p className="text-xs font-bold uppercase tracking-wide text-neutral-500">MRR (abonnements actifs)</p>
+            <p className="mt-1 text-2xl font-extrabold text-ink">{formatCurrency(subs.mrr)}</p>
+            <p className="mt-0.5 text-[11px] text-neutral-500">ARR projeté : {formatCurrency(subs.mrr * 12)}</p>
           </div>
-        </Card>
-
-        <Card className="rounded-3xl bg-mist shadow-soft">
-          <CardHeader title="Demandes d'abonnement" action={<Badge tone={subs.pendingRequests > 0 ? "warning" : "success"}>{subs.pendingRequests} en attente</Badge>} />
-          <div className="space-y-3">
-            {[
-              { label: "Écoles actives", val: s.schools.active, max: Math.max(s.schools.total, 1), color: "bg-forest" },
-              { label: "Abonnements actifs", val: subs.active, max: Math.max(subTotal, 1), color: "bg-lime" },
-              { label: "Renouvellements < 30 j", val: subs.expiringSoon, max: Math.max(subs.active, 1), color: "bg-amber-500" },
-            ].map((m) => (
-              <div key={m.label}>
-                <div className="flex justify-between text-xs font-semibold text-neutral-600">
-                  <span>{m.label}</span>
-                  <span>{m.val}</span>
-                </div>
-                <div className="mt-1 h-2.5 w-full overflow-hidden rounded-full bg-neutral-200">
-                  <div className={cn("h-full rounded-full", m.color)} style={{ width: `${Math.min((m.val / m.max) * 100, 100)}%` }} />
-                </div>
-              </div>
-            ))}
-            <div className="mt-2 rounded-xl bg-forest/5 p-3 text-xs leading-relaxed text-neutral-600">
-              <strong>Montants en attente :</strong> {formatCurrency(subs.pendingAmount)}. Les demandes sont traitées depuis
-              l'onglet Abonnements après encaissement.
-            </div>
-            <Link to="/admin/abonnements" className="inline-flex items-center gap-2 text-xs font-semibold text-forest">
-              <Icon name="assignment" className="text-[14px]" /> Traiter les demandes
-            </Link>
-          </div>
-        </Card>
-      </div>
+          <Link to="/admin/finances" className="inline-flex items-center gap-2 text-xs font-semibold text-forest underline">
+            <Icon name="arrow_forward" className="text-[14px]" /> Voir les finances détaillées
+          </Link>
+        </div>
+      </Card>
     </div>
   );
 }
