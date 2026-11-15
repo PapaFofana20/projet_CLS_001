@@ -51,10 +51,6 @@ export function GreetingSection() {
       aria-label="Bienvenue"
       className="relative mb-6 overflow-hidden rounded-3xl bg-forest text-white shadow-card"
     >
-      {/* Décor discret, esprit SaaS */}
-      <span aria-hidden="true" className="pointer-events-none absolute -right-16 -top-24 size-64 rounded-full bg-lime/20 blur-3xl" />
-      <span aria-hidden="true" className="pointer-events-none absolute -bottom-28 left-1/3 size-56 rounded-full bg-white/10 blur-3xl" />
-
       <div className="relative flex flex-wrap items-start gap-5 p-5 sm:p-6">
         <div className="min-w-0 flex-1">
           <p className="text-xs font-bold uppercase tracking-widest text-lime">{ROLE_LABELS[user.role] ?? ""}</p>
