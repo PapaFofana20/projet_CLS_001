@@ -1,4 +1,5 @@
 // Tableau de bord de supervision de la plateforme côté admin.
+import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { AsyncView } from "@/components/ui/AsyncView";
 import { Card } from "@/components/ui/Card";
@@ -12,7 +13,7 @@ import { getAdminOverviewStats } from "@/services/admin";
 import type { AdminOverviewStats } from "@/types";
 import { formatCurrency, formatDate, formatNumber } from "@/utils/format";
 import { cn } from "@/utils/cn";
-import { GreetingSection } from "@/features/dashboard/GreetingSection";
+import { useAdminAuth } from "@/context/AdminAuthContext";
 import {
   EntityAvatar,
   HeroBar,
@@ -46,7 +47,7 @@ export default function AdminDashboardPage() {
           </LinkButton>
         }
       />
-      <GreetingSection />
+      <AdminGreetingSection />
       <AsyncView state={state}>{(s) => <Content s={s} />}</AsyncView>
     </>
   );
@@ -322,6 +323,44 @@ function Content({ s }: { s: AdminOverviewStats }) {
         </div>
       </div>
     </div>
+  );
+}
+
+// Section de bienvenue pour la console admin : salutation selon l'heure
+// et nom de l'agent connecté (n'utilise pas l'auth scolaire).
+function AdminGreetingSection() {
+  const { agent } = useAdminAuth();
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const t = window.setInterval(() => setNow(new Date()), 60_000);
+    return () => window.clearInterval(t);
+  }, []);
+
+  const hour = now.getHours();
+  const greeting = hour >= 18 || hour < 5 ? "Bonsoir" : "Bonjour";
+  const fullName = `${agent?.firstName ?? ""} ${agent?.lastName ?? ""}`.trim() || "bienvenue";
+
+  return (
+    <section aria-label="Bienvenue" className="relative mb-6 overflow-hidden rounded-3xl bg-forest text-white shadow-card">
+      <span aria-hidden="true" className="pointer-events-none absolute -right-16 -top-24 size-64 rounded-full bg-lime/20 blur-3xl" />
+      <div className="relative flex flex-wrap items-start gap-5 p-5 sm:p-6">
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-bold uppercase tracking-widest text-lime">
+            {agent?.role ?? "agent"}
+          </p>
+          <h2 className="mt-1 text-2xl font-extrabold tracking-tight sm:text-3xl">
+            {greeting}, <span className="text-lime">{fullName}</span>
+          </h2>
+          <p className="mt-1.5 flex items-center gap-x-2 text-sm text-white/80">
+            <Icon name="calendar_month" className="text-[18px] text-lime" />
+            <span className="text-sm">
+              {new Intl.DateTimeFormat("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" }).format(now)}
+            </span>
+          </p>
+        </div>
+      </div>
+    </section>
   );
 }
 
