@@ -4,6 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { useSchool } from "@/context/SchoolContext";
 import { useTeaching } from "@/context/TeachingContext";
+import { usePlatformStatus } from "@/context/PlatformContext";
 import { todayIso } from "@/data/school";
 import type { SessionUser } from "@/types";
 import { formatLongDate } from "@/utils/format";
@@ -20,6 +21,7 @@ export function Topbar({ user, onMenu }: { user: SessionUser; onMenu: () => void
   const navigate = useNavigate();
   const { contexts, active, setActiveKey } = useTeaching();
   const school = useSchool();
+  const { status } = usePlatformStatus();
   const [menu, setMenu] = useState(false);
   const [confirmLogout, setConfirmLogout] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -66,6 +68,16 @@ export function Topbar({ user, onMenu }: { user: SessionUser; onMenu: () => void
                   <Icon name="settings" className="text-[20px]" />
                   {user.role === "directeur" ? "Paramètres" : "Mon profil"}
                 </Link>
+                {status.supportEmail && (
+                  <a
+                    role="menuitem"
+                    href={`mailto:${status.supportEmail}`}
+                    className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-sm font-semibold text-forest hover:bg-lime-soft"
+                  >
+                    <Icon name="support_agent" className="text-[20px]" />
+                    Contacter le support
+                  </a>
+                )}
                 <button role="menuitem" type="button" onClick={handleLogout} className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-sm font-semibold text-danger hover:bg-red-50">
                   <Icon name="logout" className="text-[20px]" />
                   Se déconnecter

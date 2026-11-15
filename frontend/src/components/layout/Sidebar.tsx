@@ -15,7 +15,6 @@ import { Icon } from "@/components/ui/Icon";
 import { useAsync } from "@/hooks/useAsync";
 import { preloadRoute } from "@/lib/routePrefetch";
 import { useModalBehavior } from "@/hooks/useModalBehavior";
-import { ConfirmDialog } from "@/components/ui/Modal";
 
 /** Délai avant affichage de l'info-bulle au survol (au focus clavier : immédiate). */
 const TOOLTIP_DELAY = 300;
@@ -91,17 +90,11 @@ function MenuItem({ item, expanded, onNavigate }: { item: NavItem; expanded: boo
 
 // Contenu du menu (logo, sections, déconnexion), partagé entre desktop et mobile.
 function SidebarContent({ user, pending, expanded, onNavigate, onLogoClick }: { user: SessionUser; pending: number; expanded: boolean; onNavigate?: () => void; onLogoClick?: () => void }) {
-  const { logout } = useAuth();
   const navigate = useNavigate();
   const { headClasses } = useTeaching();
   const school = useSchool();
   const items = navFor(user.role, { isHead: (headClasses || []).length > 0, locked: school?.missing, badges: pending > 0 ? { "/app/eleves/demandes": pending } : {} });
   const sections = Array.from(new Set(items.map((i) => i.section)));
-  const [confirmLogout, setConfirmLogout] = useState(false);
-
-  const handleLogout = () => {
-    setConfirmLogout(true);
-  };
 
   return (
     <div className="flex h-full flex-col text-white">
@@ -135,25 +128,11 @@ function SidebarContent({ user, pending, expanded, onNavigate, onLogoClick }: { 
       </nav>
 
       <div className="m-4 shrink-0">
-        <button type="button" onClick={handleLogout} className={cn("flex min-h-11 items-center justify-center gap-2 rounded-full bg-forest-600 text-sm font-semibold transition hover:bg-forest-500", expanded ? "w-full" : "mx-auto size-11 px-0")}>
-          <Icon name="logout" className={expanded ? "text-[20px]" : "text-[22px]"} />
-          {expanded && "Se déconnecter"}
+        <button type="button" onClick={() => navigate("/app/parametres")} className={cn("flex min-h-11 items-center justify-center gap-2 rounded-full bg-forest-600 text-sm font-semibold transition hover:bg-forest-500", expanded ? "w-full" : "mx-auto size-11 px-0")}>
+          <Icon name="settings" className={expanded ? "text-[20px]" : "text-[22px]"} />
+          {expanded && "Paramètres"}
         </button>
       </div>
-      <ConfirmDialog
-        open={confirmLogout}
-        onCancel={() => setConfirmLogout(false)}
-        title="Se déconnecter"
-        message="Voulez-vous vraiment vous déconnecter ?"
-        confirmLabel="Oui"
-        onConfirm={() => {
-          setConfirmLogout(false);
-          // Déconnexion locale d'abord, navigation ensuite : la page d'accueil
-          // se monte déjà déconnectée (pas de flash « Mon espace »).
-          logout();
-          navigate("/", { replace: true });
-        }}
-      />
     </div>
   );
 }

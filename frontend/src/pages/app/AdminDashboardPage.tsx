@@ -46,6 +46,11 @@ function Content({ s }: { s: AdminOverviewStats }) {
     revenueThisMonth: 0,
   };
   const subTotal = subs.active + subs.expired + subs.none;
+
+  // Activité des 24 dernières heures seulement.
+  const now = Date.now();
+  const cutoff = now - 24 * 60 * 60 * 1000;
+  const recent = s.recentActivity.filter((a) => new Date(a.createdAt).getTime() > cutoff);
   return (
     <div className="space-y-4">
       {/* Bandeau d'actions rapides — autorité admin */}
@@ -88,9 +93,13 @@ function Content({ s }: { s: AdminOverviewStats }) {
         <StatCard icon="workspace_premium" label="Abonnements payants actifs" value={String(subs.active)} badge={{ text: `${subs.expiringSoon} à renouveler`, tone: subs.expiringSoon > 0 ? "down" : "neutral" }} note={`${subs.expired} expiré(s) · ${subs.none} sans abonnement`} />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
-          <CardHeader title="Répartition par établissement" action={<Link to="/admin/ecoles" className="text-sm font-medium">Détail</Link>} />
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card className="rounded-3xl shadow-soft border border-neutral-100">
+          <CardHeader
+            title="Répartition par établissement"
+            subtitle="Élèves, classes et enseignants par école"
+            action={<Link to="/admin/ecoles" className="text-sm font-medium text-forest">Voir le détail →</Link>}
+          />
           <div className="overflow-x-auto">
             <Table
               columns={[
@@ -117,19 +126,22 @@ function Content({ s }: { s: AdminOverviewStats }) {
           </div>
         </Card>
 
-        <Card>
-          <CardHeader title="Activité administrative récente" />
+        <Card className="rounded-3xl shadow-soft border border-neutral-100">
+          <CardHeader title="Activité administrative récente" subtitle="Dernières actions réalisées sur la plateforme" />
           <div className="space-y-3">
-            {s.recentActivity.length === 0 ? (
-              <div className="text-center py-6 text-neutral-500 text-sm">Aucune activité récente.</div>
+            {recent.length === 0 ? (
+              <div className="text-center py-8 text-neutral-400 text-sm">
+                <Icon name="history" fill className="text-[32px] mb-2 opacity-40" />
+                <div>Aucune activité au cours des 24 dernières heures.</div>
+              </div>
             ) : (
               <div className="space-y-2">
-                {s.recentActivity.map((a, i) => (
+                {recent.map((a, i) => (
                   <div key={`${a.createdAt}-${i}`} className="flex items-start gap-3 text-sm">
-                    <span className="shrink-0 text-neutral-400">{formatDate(a.createdAt)}</span>
+                    <span className="shrink-0 w-2.5 h-2.5 rounded-full bg-lime mt-1" />
                     <div className="min-w-0 flex-1">
                       <p className="text-ink font-medium">{a.action?.replace(/_/g, " ") ?? "—"}</p>
-                      <p className="text-xs text-neutral-500">{a.entity} · {a.actorRole || "—"}</p>
+                      <p className="text-xs text-neutral-500">{formatDate(a.createdAt)} · {a.entity} · {a.actorName ?? a.actorRole ?? "—"}</p>
                     </div>
                   </div>
                 ))}
@@ -137,7 +149,10 @@ function Content({ s }: { s: AdminOverviewStats }) {
             )}
           </div>
         </Card>
+      </div>
 
+      {/* Alertes — conservées en dessous, plein largeur */}
+      <div className="mt-6">
         <Card>
           <CardHeader title="Alertes" />
           <div className="space-y-3">
@@ -264,49 +279,6 @@ function Content({ s }: { s: AdminOverviewStats }) {
             <Link to="/admin/abonnements" className="inline-flex items-center gap-2 text-xs font-semibold text-forest">
               <Icon name="assignment" className="text-[14px]" /> Traiter les demandes
             </Link>
-          </div>
-        </Card>
-      </div>
-
-      {/* Section autoritaire : conformité et audit */}
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Card className="lg:col-span-2 bg-lime rounded-3xl shadow-soft">
-          <div className="mb-4">
-            <h3 className="text-lg font-bold text-forest">Supervision — Audit administratif</h3>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-3">
-            <div className="rounded-2xl bg-forest/10 p-4">
-              <p className="text-xs font-bold uppercase tracking-wide text-forest/70">Sessions actives</p>
-              <p className="mt-1 text-2xl font-extrabold text-forest">{s.schools.active}</p>
-              <p className="mt-1 text-xs text-forest/70">Établissements avec abonnement valide</p>
-            </div>
-            <div className="rounded-2xl bg-forest/10 p-4">
-              <p className="text-xs font-bold uppercase tracking-wide text-forest/70">Écoles surveillées</p>
-              <p className="mt-1 text-2xl font-extrabold text-forest">{s.schools.total}</p>
-              <p className="mt-1 text-xs text-forest/70">Sur la plateforme</p>
-            </div>
-            <div className="rounded-2xl bg-forest/10 p-4">
-              <p className="text-xs font-bold uppercase tracking-wide text-forest/70">Plateforme</p>
-              <p className="mt-1 text-2xl font-extrabold text-forest">Active</p>
-              <p className="mt-1 text-xs text-forest/70">RLS · JWT · Audit journalisé</p>
-            </div>
-          </div>
-        </Card>
-        <Card className="rounded-3xl bg-white shadow-soft">
-          <CardHeader title="Contrôle d'accès" />
-          <div className="space-y-3">
-            <div className="flex items-center justify-between rounded-xl bg-forest/5 px-4 py-3">
-              <div className="flex items-center gap-3"><span className="grid size-8 place-items-center rounded-full bg-forest text-lime"><Icon name="verified_user" fill className="text-[14px]" /></span><span className="text-sm font-semibold text-ink">Agents autorisés</span></div>
-              <Badge tone="success">Actif</Badge>
-            </div>
-            <div className="flex items-center justify-between rounded-xl bg-mist px-4 py-3">
-              <div className="flex items-center gap-3"><span className="grid size-8 place-items-center rounded-full bg-ink text-lime"><Icon name="security" fill className="text-[14px]" /></span><span className="text-sm font-semibold text-ink">JWT vérifié</span></div>
-              <Badge tone="lime">Oui</Badge>
-            </div>
-            <div className="flex items-center justify-between rounded-xl bg-lime-soft px-4 py-3">
-              <div className="flex items-center gap-3"><span className="grid size-8 place-items-center rounded-full bg-forest text-white"><Icon name="history" fill className="text-[14px]" /></span><span className="text-sm font-semibold text-ink">Audit actif</span></div>
-              <Badge tone="dark">Oui</Badge>
-            </div>
           </div>
         </Card>
       </div>

@@ -310,6 +310,7 @@ export interface AdminOverviewStats {
     createdAt: string;
     schoolId: string | null;
     actorRole: string | null;
+    actorName: string | null;
   }>;
   subscriptions: {
     active: number;

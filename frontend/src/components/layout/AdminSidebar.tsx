@@ -2,7 +2,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
-import { useAdminAuth } from "@/context/AdminAuthContext";
 import { SIDEBAR_COLLAPSED, SIDEBAR_EXPANDED, useSidebar } from "@/context/SidebarContext";
 import { Icon } from "@/components/ui/Icon";
 import { Logo, LogoMark } from "@/components/ui/Brand";
@@ -10,7 +9,6 @@ import { cn } from "@/utils/cn";
 import { preloadRoute } from "@/lib/routePrefetch";
 import type { AdminAgent } from "@/types";
 import { adminNavFor } from "@/routes/adminNavigation";
-import { ConfirmDialog } from "@/components/ui/Modal";
 
 const TOOLTIP_DELAY = 300;
 
@@ -86,38 +84,23 @@ function MenuItem({ item, expanded, onNavigate }: { item: any; expanded: boolean
 
 // Contenu de la sidebar admin (logo, sections, déconnexion), partagé desktop/mobile.
 function SidebarContent({ agent, expanded, onNavigate, onLogoClick }: { agent: AdminAgent; expanded: boolean; onNavigate?: () => void; onLogoClick?: () => void }) {
-  const { logout } = useAdminAuth();
   const navigate = useNavigate();
   const items = adminNavFor(agent.role);
   const sections = Array.from(new Set(items.map((i) => i.section)));
-  const [confirmLogout, setConfirmLogout] = useState(false);
-
-  const handleLogout = () => {
-    setConfirmLogout(true);
-  };
 
   const bottomContent = (
-    <div className="m-4 shrink-0 rounded-2xl bg-black/25 p-4">
-      <p className="text-xs font-bold uppercase tracking-wider text-lime">Agent Classora</p>
-      <p className="mt-1 text-lg font-extrabold">{agent.matricule}</p>
-      <div className="mt-3 border-t border-white/10 pt-3">
-        <p className="text-xs text-white/70">{agent.firstName} {agent.lastName}</p>
-        <p className="mt-1 text-xs text-white/50 capitalize">{agent.role}</p>
-      </div>
-      <button type="button" onClick={handleLogout} className="mt-4 flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-forest-600 text-sm font-semibold transition hover:bg-forest-500">
-        <Icon name="logout" className="text-[20px]" />
-        Se déconnecter
+    <div className="m-4 shrink-0">
+      <button type="button" onClick={() => navigate("/admin/parametres")} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-forest-600 text-sm font-semibold transition hover:bg-forest-500">
+        <Icon name="settings" className="text-[20px]" />
+        Paramètres
       </button>
     </div>
   );
 
   const collapsedContent = (
-    <div className="flex flex-col items-center gap-3">
-      <span className="grid size-10 place-items-center rounded-xl bg-lime text-sm font-extrabold text-forest" aria-label={agent.matricule}>
-        {agent.matricule.slice(-4)}
-      </span>
-      <button type="button" onClick={handleLogout} aria-label="Se déconnecter" className="grid size-11 place-items-center rounded-full text-white/85 transition hover:bg-white/10">
-        <Icon name="logout" />
+    <div className="m-4 shrink-0">
+      <button type="button" onClick={() => navigate("/admin/parametres")} aria-label="Paramètres" className="flex min-h-11 items-center justify-center gap-2 rounded-full bg-forest-600 text-sm font-semibold transition hover:bg-forest-500 mx-auto size-11 px-0">
+        <Icon name="settings" className="text-[20px]" />
       </button>
     </div>
   );
@@ -165,20 +148,6 @@ function SidebarContent({ agent, expanded, onNavigate, onLogoClick }: { agent: A
 
       {expanded ? bottomContent : collapsedContent}
 
-      <ConfirmDialog
-        open={confirmLogout}
-        onCancel={() => setConfirmLogout(false)}
-        title="Se déconnecter"
-        message="Voulez-vous vraiment vous déconnecter ?"
-        confirmLabel="Oui"
-        onConfirm={() => {
-          setConfirmLogout(false);
-          navigate("/", { replace: true });
-          // logout() est asynchrone (signOut Supabase) : sans ce void explicite,
-          // un échec silencieux laisserait la session Auth ouverte.
-          void logout();
-        }}
-      />
     </div>
   );
 }
