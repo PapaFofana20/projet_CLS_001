@@ -1,8 +1,7 @@
 // Analyses de croissance et d'adoption de la plateforme.
 import { PageHeader } from "@/components/ui/PageHeader";
 import { AsyncView } from "@/components/ui/AsyncView";
-import { Card, CardHeader } from "@/components/ui/Card";
-import { StatCard } from "@/components/ui/StatCard";
+import { Card } from "@/components/ui/Card";
 import { Table } from "@/components/ui/Table";
 import { Badge } from "@/components/ui/Badge";
 import { LinkButton } from "@/components/ui/Button";
@@ -11,8 +10,20 @@ import { useAsync } from "@/hooks/useAsync";
 import { getAdminAnalytics } from "@/services/admin";
 import type { AdminAnalyticsData } from "@/types";
 import { CycleShareChart, GrowthChart } from "@/features/admin/charts";
-import { formatCurrency, formatNumber } from "@/utils/format";
+import { formatCurrency, formatDate, formatNumber } from "@/utils/format";
 import { cn } from "@/utils/cn";
+import {
+  HeroBar,
+  HeroCard,
+  HeroLegend,
+  KpiTile,
+  MonoChip,
+  Notice,
+  PanelHeading,
+  StatusDot,
+} from "@/features/admin/adminUi";
+
+const CYCLE_BAR_CLASSES = ["bg-lime", "bg-sky-300/90", "bg-amber-300/90"];
 
 // Composant principal de la page.
 export default function AdminAnalyticsPage() {
@@ -44,56 +55,76 @@ function Content({ data }: { data: AdminAnalyticsData }) {
   const totalCitySchools = data.byCity.reduce((sum, c) => sum + c.schools, 0) || 1;
   const totalStudents = data.byCity.reduce((sum, c) => sum + c.students, 0) || 1;
   const payingShare = s.totalSchools > 0 ? Math.round((s.payingSchools / s.totalSchools) * 100) : 0;
+  const totalCycleSchools = data.byCycle.reduce((sum, c) => sum + c.schools, 0) || 1;
 
   return (
     <div className="space-y-4">
       {s.totalSchools === 0 && (
-        <div className="flex items-start gap-3 rounded-2xl border border-sky-100 bg-sky-50 p-4 text-sm text-sky-900">
-          <Icon name="info" fill className="mt-0.5 text-[22px] text-sky-700" />
-          <div>
-            <p className="font-bold">Aucun établissement enregistré pour le moment.</p>
-            <p className="mt-1 leading-relaxed">
-              Les indicateurs de croissance, de conversion et de répartition se rempliront dès les premières inscriptions. Les formules
-              et leurs tarifs sont déjà disponibles ci-dessous.
-            </p>
-          </div>
-        </div>
+        <Notice tone="info">
+          <span className="font-bold">Aucun établissement enregistré pour le moment.</span> Les indicateurs de croissance, de conversion et de
+          répartition se rempliront dès les premières inscriptions. Les formules et leurs tarifs sont déjà disponibles ci-dessous.
+        </Notice>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        <StatCard
-          dark
-          icon="school"
-          label="Établissements"
-          value={String(s.totalSchools)}
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+        <HeroCard
+          eyebrow="Croissance du réseau"
+          icon="insights"
+          value={formatNumber(s.totalSchools)}
           badge={
-            s.schoolsGrowthPct === 0
-              ? { text: "stable", tone: "neutral" }
-              : { text: `${s.schoolsGrowthPct > 0 ? "+" : ""}${s.schoolsGrowthPct} %`, tone: s.schoolsGrowthPct > 0 ? "up" : "down" }
+            <Badge tone={s.schoolsGrowthPct > 0 ? "success" : s.schoolsGrowthPct < 0 ? "danger" : "neutral"}>
+              {s.schoolsGrowthPct === 0 ? "stable" : `${s.schoolsGrowthPct > 0 ? "+" : ""}${s.schoolsGrowthPct} %`}
+            </Badge>
           }
-          note={`${s.activeSchools} actif(s) · ${s.newSchoolsThisMonth} nouveau(x) ce mois`}
-        />
-        <StatCard icon="groups" label="Élèves inscrits" value={s.totalStudents.toLocaleString("fr-FR")} note={`${formatNumber(s.averageStudentsPerSchool, 0)} élèves en moyenne par école`} />
-        <StatCard icon="workspace_premium" label="Taux de conversion" value={`${s.conversionRate} %`} note={`${s.payingSchools} école(s) sur ${s.totalSchools} ont une formule`} />
-        <StatCard icon="payments" label="MRR" value={formatCurrency(s.mrr)} note="Abonnements valides aujourd'hui" />
-        <StatCard icon="person_remove" label="Taux d'attrition" value={`${s.churnRate} %`} note="Abonnements expirés sur le total enregistré" />
+          label={`${formatNumber(s.activeSchools)} établissement(s) actif(s) · ${formatNumber(s.newSchoolsThisMonth)} nouveau(x) ce mois`}
+          footnote={`Données au ${formatDate(data.generatedAt)}`}
+        >
+          <HeroBar
+            segments={data.byCycle.map((cycle, index) => ({
+              pct: (cycle.schools / totalCycleSchools) * 100,
+              className: CYCLE_BAR_CLASSES[index % CYCLE_BAR_CLASSES.length],
+            }))}
+          />
+          <HeroLegend
+            items={data.byCycle.map((cycle, index) => ({
+              dot: CYCLE_BAR_CLASSES[index % CYCLE_BAR_CLASSES.length].replace(/\/\d+$/, ""),
+              label: `${cycle.label} · ${cycle.schools}`,
+            }))}
+            trailing={
+              <>
+                <Icon name="trending_up" className="text-[14px]" />
+                {formatNumber(s.averageStudentsPerSchool, 0)} élèves / école
+              </>
+            }
+          />
+        </HeroCard>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <KpiTile tone="sky" icon="groups" label="Élèves inscrits" value={formatNumber(s.totalStudents)} note="Toutes écoles confondues" />
+          <KpiTile tone="lime" icon="workspace_premium" label="Taux de conversion" value={`${s.conversionRate} %`} note={`${s.payingSchools} école(s) sur ${s.totalSchools}`} />
+          <KpiTile tone="amber" icon="payments" label="MRR" value={formatCurrency(s.mrr)} note="Abonnements valides aujourd'hui" valueClassName="text-lg" />
+          <KpiTile tone="red" icon="person_remove" label="Taux d'attrition" value={`${s.churnRate} %`} note="Abonnements expirés sur le total" />
+        </div>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
-          <CardHeader
+          <PanelHeading
+            icon="insights"
             title="Croissance sur 12 mois"
             subtitle="Nouvelles écoles et nouveaux élèves par mois, parc cumulé en courbe."
             action={<Badge tone="lime">{s.newSchoolsLastMonth} → {s.newSchoolsThisMonth} écoles</Badge>}
           />
-          <GrowthChart data={data.growth} />
+          <div className="mt-4">
+            <GrowthChart data={data.growth} />
+          </div>
         </Card>
 
         <Card>
-          <CardHeader title="Ce mois-ci" subtitle="Comparaison avec le mois précédent." />
-          <div className="space-y-3">
+          <PanelHeading icon="calendar_month" title="Ce mois-ci" subtitle="Comparaison avec le mois précédent." />
+          <div className="mt-4 space-y-2">
             <MetricRow icon="add_business" label="Nouvelles écoles" value={String(s.newSchoolsThisMonth)} delta={s.newSchoolsThisMonth - s.newSchoolsLastMonth} />
-            <MetricRow icon="person_add" label="Nouveaux élèves" value={s.studentsThisMonth.toLocaleString("fr-FR")} delta={s.studentsThisMonth - s.studentsLastMonth} />
+            <MetricRow icon="person_add" label="Nouveaux élèves" value={formatNumber(s.studentsThisMonth)} delta={s.studentsThisMonth - s.studentsLastMonth} />
             <MetricRow icon="meeting_room" label="Classes" value={String(s.totalClasses)} />
             <MetricRow icon="badge" label="Enseignants" value={String(s.totalTeachers)} />
             <MetricRow icon="family_restroom" label="Parents" value={String(s.totalParents)} />
@@ -114,54 +145,61 @@ function Content({ data }: { data: AdminAnalyticsData }) {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-5">
-        <Card className="lg:col-span-3">
-          <CardHeader title="Répartition géographique" subtitle="Top 10 des villes par nombre d'établissements." />
-          {data.byCity.length === 0 ? (
-            <p className="py-8 text-center text-sm text-neutral-500">Aucune ville renseignée.</p>
-          ) : (
-            <Table
-              caption="Répartition des établissements par ville"
-              rows={data.byCity}
-              rowKey={(c) => c.city}
-              columns={[
-                {
-                  key: "city",
-                  header: "Ville",
-                  render: (c) => (
-                    <div className="flex items-center gap-2">
-                      <Icon name="location_on" className="text-[18px] text-forest/60" />
-                      <span className="font-semibold text-ink">{c.city}</span>
-                    </div>
-                  ),
-                },
-                { key: "schools", header: "Écoles", align: "right", render: (c) => <span className="tabular-nums">{c.schools}</span> },
-                { key: "students", header: "Élèves", align: "right", render: (c) => <span className="tabular-nums">{c.students.toLocaleString("fr-FR")}</span> },
-                {
-                  key: "share",
-                  header: "Poids",
-                  align: "right",
-                  render: (c) => (
-                    <div className="flex min-w-28 items-center justify-end gap-2">
-                      <div className="h-1.5 w-16 overflow-hidden rounded-full bg-mist">
-                        <div className="h-full rounded-full bg-leaf" style={{ width: `${(c.schools / totalCitySchools) * 100}%` }} />
+        <Card className="lg:col-span-3" padded={false}>
+          <div className="px-4 pt-5 sm:px-6">
+            <PanelHeading icon="location_on" title="Répartition géographique" subtitle="Top 10 des villes par nombre d'établissements." />
+          </div>
+          <div className="px-4 py-4 sm:px-6">
+            {data.byCity.length === 0 ? (
+              <p className="py-8 text-center text-sm text-neutral-500">Aucune ville renseignée.</p>
+            ) : (
+              <Table
+                stagger
+                caption="Répartition des établissements par ville"
+                rows={data.byCity}
+                rowKey={(c) => c.city}
+                columns={[
+                  {
+                    key: "city",
+                    header: "Ville",
+                    render: (c) => (
+                      <div className="flex items-center gap-2">
+                        <span className="grid size-8 shrink-0 place-items-center rounded-xl bg-lime-soft text-forest">
+                          <Icon name="location_on" fill className="text-[16px]" />
+                        </span>
+                        <span className="font-semibold text-ink">{c.city}</span>
                       </div>
-                      <span className="w-10 text-right text-xs font-semibold text-neutral-600">
-                        {Math.round((c.schools / totalCitySchools) * 100)} %
-                      </span>
-                    </div>
-                  ),
-                },
-              ]}
-            />
-          )}
-          <p className="mt-3 text-xs text-neutral-500">
-            {totalStudents.toLocaleString("fr-FR")} élèves rattachés aux villes affichées.
-          </p>
+                    ),
+                  },
+                  { key: "schools", header: "Écoles", align: "right", render: (c) => <span className="tabular-nums">{c.schools}</span> },
+                  { key: "students", header: "Élèves", align: "right", className: "hidden sm:table-cell", render: (c) => <span className="tabular-nums">{formatNumber(c.students)}</span> },
+                  {
+                    key: "share",
+                    header: "Poids",
+                    align: "right",
+                    render: (c) => (
+                      <div className="flex min-w-28 items-center justify-end gap-2">
+                        <div className="h-1.5 w-16 overflow-hidden rounded-full bg-mist">
+                          <div className="h-full rounded-full bg-leaf" style={{ width: `${(c.schools / totalCitySchools) * 100}%` }} />
+                        </div>
+                        <span className="w-10 text-right text-xs font-semibold text-neutral-600">
+                          {Math.round((c.schools / totalCitySchools) * 100)} %
+                        </span>
+                      </div>
+                    ),
+                  },
+                ]}
+              />
+            )}
+            <p className="mt-3 text-xs text-neutral-500">{formatNumber(totalStudents)} élèves rattachés aux villes affichées.</p>
+          </div>
         </Card>
 
         <Card className="lg:col-span-2">
-          <CardHeader title="Répartition par cycle" subtitle="Écoles proposant chaque niveau." />
-          <CycleShareChart data={data.byCycle} />
+          <PanelHeading icon="school" title="Répartition par cycle" subtitle="Écoles proposant chaque niveau." />
+          <div className="mt-4">
+            <CycleShareChart data={data.byCycle} />
+          </div>
           <div className="mt-3 grid grid-cols-3 gap-2">
             {data.byCycle.map((c) => (
               <div key={c.cycle} className="rounded-xl bg-mist p-3 text-center">
@@ -175,11 +213,11 @@ function Content({ data }: { data: AdminAnalyticsData }) {
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
-          <CardHeader title="Adoption des formules" subtitle="Part des écoles payantes par formule." />
+          <PanelHeading icon="sell" title="Adoption des formules" subtitle="Part des écoles payantes par formule." />
           {data.byPlan.length === 0 ? (
             <p className="py-8 text-center text-sm text-neutral-500">Aucune formule configurée.</p>
           ) : (
-            <div className="space-y-4">
+            <div className="mt-4 space-y-4">
               {data.byPlan.map((plan) => (
                 <div key={plan.planId}>
                   <div className="flex items-center justify-between gap-3">
@@ -205,47 +243,56 @@ function Content({ data }: { data: AdminAnalyticsData }) {
           </div>
         </Card>
 
-        <Card>
-          <CardHeader
-            title="Établissements les plus importants"
-            subtitle="Classement par effectif d'élèves."
-            action={<LinkButton to="/admin/ecoles" variant="ghost" size="sm" icon="arrow_forward">Tout voir</LinkButton>}
-          />
-          {data.topSchools.length === 0 ? (
-            <p className="py-8 text-center text-sm text-neutral-500">Aucun établissement enregistré.</p>
-          ) : (
-            <Table
-              caption="Principaux établissements par effectif"
-              rows={data.topSchools}
-              rowKey={(school) => school.schoolId}
-              columns={[
-                {
-                  key: "school",
-                  header: "Établissement",
-                  render: (school) => (
-                    <div className="min-w-0">
-                      <LinkButton to={`/admin/ecoles/${school.schoolId}`} variant="ghost" size="sm" icon="school" className="px-0">
-                        {school.schoolName}
-                      </LinkButton>
-                      <p className="text-xs text-neutral-500">{school.matricule || "Sans matricule"}</p>
-                    </div>
-                  ),
-                },
-                { key: "students", header: "Élèves", align: "right", render: (school) => <span className="tabular-nums">{school.students}</span> },
-                { key: "classes", header: "Classes", align: "right", render: (school) => <span className="tabular-nums">{school.classes}</span> },
-                {
-                  key: "status",
-                  header: "Abonnement",
-                  align: "center",
-                  render: (school) => (
-                    <Badge tone={school.subscriptionStatus === "ACTIF" ? "success" : "neutral"}>
-                      {school.subscriptionStatus === "ACTIF" ? "Actif" : "Inactif"}
-                    </Badge>
-                  ),
-                },
-              ]}
+        <Card padded={false}>
+          <div className="px-4 pt-5 sm:px-6">
+            <PanelHeading
+              icon="emoji_events"
+              title="Établissements les plus importants"
+              subtitle="Classement par effectif d'élèves."
+              action={<LinkButton to="/admin/ecoles" variant="ghost" size="sm" icon="arrow_forward">Tout voir</LinkButton>}
             />
-          )}
+          </div>
+          <div className="px-4 py-4 sm:px-6">
+            {data.topSchools.length === 0 ? (
+              <p className="py-8 text-center text-sm text-neutral-500">Aucun établissement enregistré.</p>
+            ) : (
+              <Table
+                stagger
+                caption="Principaux établissements par effectif"
+                rows={data.topSchools}
+                rowKey={(school) => school.schoolId}
+                columns={[
+                  {
+                    key: "school",
+                    header: "Établissement",
+                    render: (school) => (
+                      <div className="min-w-0">
+                        <LinkButton to={`/admin/ecoles/${school.schoolId}`} variant="ghost" size="sm" icon="school" className="px-0">
+                          {school.schoolName}
+                        </LinkButton>
+                        <div className="mt-0.5">
+                          <MonoChip>{school.matricule || "Sans matricule"}</MonoChip>
+                        </div>
+                      </div>
+                    ),
+                  },
+                  { key: "students", header: "Élèves", align: "right", render: (school) => <span className="tabular-nums">{formatNumber(school.students)}</span> },
+                  { key: "classes", header: "Classes", align: "right", className: "hidden sm:table-cell", render: (school) => <span className="tabular-nums">{school.classes}</span> },
+                  {
+                    key: "status",
+                    header: "Abonnement",
+                    align: "center",
+                    render: (school) => (
+                      <Badge tone={school.subscriptionStatus === "ACTIF" ? "success" : "neutral"}>
+                        <StatusDot tone={school.subscriptionStatus === "ACTIF" ? "success" : "neutral"} />
+                        {school.subscriptionStatus === "ACTIF" ? "Actif" : "Inactif"}
+                      </Badge>
+                    ),
+                  },
+                ]}
+              />
+            )}
+          </div>
         </Card>
       </div>
     </div>

@@ -2,8 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { AsyncView } from "@/components/ui/AsyncView";
-import { Card, CardHeader } from "@/components/ui/Card";
-import { StatCard } from "@/components/ui/StatCard";
+import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button, LinkButton } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
@@ -16,6 +15,7 @@ import { getAdminSettings, purgeAdminAudit, updateAdminSettings } from "@/servic
 import type { AdminSettingsData, PlatformSettings } from "@/types";
 import { formatDateTime, isValidEmail, isValidSnPhone } from "@/utils/format";
 import { cn } from "@/utils/cn";
+import { HeroCard, KpiTile, Notice, PanelHeading, StatusDot } from "@/features/admin/adminUi";
 
 const SQL_FILE = "backend/supabase/migrations/20260101000031_platform_settings.sql";
 
@@ -137,80 +137,123 @@ function SettingsForm({
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          dark
-          icon="how_to_reg"
-          label="Inscriptions publiques"
-          value={draft.registrationOpen ? "Ouvertes" : "Fermées"}
-          note={draft.registrationOpen ? "Les directeurs peuvent créer un compte" : "Aucune nouvelle école ne peut s'inscrire"}
-        />
-        <StatCard
-          icon="construction"
-          label="Mode maintenance"
-          value={draft.maintenanceMode ? "Actif" : "Inactif"}
-          note={draft.maintenanceMode ? "Bandeau affiché sur l'application" : "Aucune interruption annoncée"}
-        />
-        <StatCard icon="timer" label="Déconnexion admin" value={`${draft.sessionTimeoutMinutes} min`} note="Après inactivité dans la console" />
-        <StatCard icon="history" label="Conservation audit" value={`${draft.auditRetentionDays} j`} note="Durée par défaut avant purge" />
-      </div>
-
       {!data.migrationApplied && (
-        <div className="flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950 sm:flex-row sm:items-start">
-          <Icon name="database" fill className="mt-0.5 text-[22px] text-amber-700" />
-          <div className="min-w-0 flex-1">
-            <p className="font-bold">La table de paramètres n'existe pas encore en production.</p>
-            <p className="mt-1 leading-relaxed">
-              Les valeurs ci-dessous sont les valeurs par défaut du code (lecture seule). Pour activer l'enregistrement, exécutez la
-              migration dans le SQL Editor Supabase :
-            </p>
-            <code className="mt-2 block break-all rounded-lg bg-white/70 px-3 py-2 font-mono text-xs">{SQL_FILE}</code>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <Button size="sm" icon={copied ? "check" : "content_copy"} onClick={copyPath}>
-                {copied ? "Chemin copié" : "Copier le chemin"}
-              </Button>
-              <Button size="sm" variant="outline" icon="refresh" onClick={() => state.reload()}>
-                Vérifier à nouveau
-              </Button>
-              <LinkButton to="/admin/supervision/audit" size="sm" variant="ghost" icon="history">
-                Voir le journal
-              </LinkButton>
-            </div>
+        <Notice tone="warning">
+          <p className="font-bold">La table de paramètres n'existe pas encore en production.</p>
+          <p className="mt-1 leading-relaxed">
+            Les valeurs ci-dessous sont les valeurs par défaut du code (lecture seule). Pour activer l'enregistrement, exécutez la
+            migration dans le SQL Editor Supabase :
+          </p>
+          <code className="mt-2 block break-all rounded-lg bg-white/70 px-3 py-2 font-mono text-xs">{SQL_FILE}</code>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button size="sm" icon={copied ? "check" : "content_copy"} onClick={copyPath}>
+              {copied ? "Chemin copié" : "Copier le chemin"}
+            </Button>
+            <Button size="sm" variant="outline" icon="refresh" onClick={() => state.reload()}>
+              Vérifier à nouveau
+            </Button>
+            <LinkButton to="/admin/supervision/audit" size="sm" variant="ghost" icon="history">
+              Voir le journal
+            </LinkButton>
           </div>
-        </div>
+        </Notice>
       )}
 
       {!data.canEdit && (
-        <div className="flex items-start gap-2 rounded-2xl border border-sky-100 bg-sky-50 px-4 py-3 text-sm text-sky-900">
-          <Icon name="lock" fill className="mt-0.5 text-[20px] text-sky-700" />
-          <span>Seul un superadministrateur peut modifier ces paramètres. La lecture reste disponible pour tous les agents.</span>
-        </div>
+        <Notice tone="info">
+          Seul un superadministrateur peut modifier ces paramètres. La lecture reste disponible pour tous les agents.
+        </Notice>
       )}
 
       {notice && (
-        <div className="flex items-start gap-2 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-900" role="status">
-          <Icon name="check_circle" fill className="mt-0.5 text-[20px] text-emerald-600" />
-          <span className="flex-1">{notice}</span>
-          <button type="button" onClick={() => setNotice("")} aria-label="Fermer le message" className="text-emerald-700">
-            <Icon name="close" className="text-[20px]" />
-          </button>
-        </div>
+        <Notice onClose={() => setNotice("")}>{notice}</Notice>
       )}
 
       {error && (
-        <div className="flex items-start gap-2 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-danger" role="alert">
-          <Icon name="error" fill className="mt-0.5 text-[20px]" />
-          <span className="flex-1">{error}</span>
-          <button type="button" onClick={() => setError("")} aria-label="Fermer le message" className="text-danger">
-            <Icon name="close" className="text-[20px]" />
-          </button>
-        </div>
+        <Notice tone="error" onClose={() => setError("")}>{error}</Notice>
       )}
 
+      {/* Identité de la plateforme */}
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+        <HeroCard
+          eyebrow="Identité de la plateforme"
+          icon="tune"
+          value={draft.platformName || "Classora"}
+          valueClassName="text-2xl sm:text-3xl"
+          badge={
+            <Badge tone={draft.maintenanceMode ? "warning" : data.migrationApplied ? "success" : "neutral"}>
+              <StatusDot tone={draft.maintenanceMode ? "warning" : data.migrationApplied ? "success" : "neutral"} />
+              {draft.maintenanceMode ? "Maintenance" : data.migrationApplied ? "En ligne" : "Lecture seule"}
+            </Badge>
+          }
+          label={`Année scolaire ${draft.schoolYear} · support ${draft.supportEmail}`}
+          footnote={
+            data.updatedAt
+              ? `Dernière modification le ${formatDateTime(data.updatedAt)}${data.updatedByName ? ` par ${data.updatedByName}` : ""}`
+              : "Valeurs par défaut du code, jamais modifiées"
+          }
+        >
+          <div className="grid gap-2 sm:grid-cols-3">
+            <HeroFlag
+              icon="how_to_reg"
+              label="Inscriptions"
+              value={draft.registrationOpen ? "Ouvertes" : "Fermées"}
+              tone={draft.registrationOpen ? "lime" : "muted"}
+            />
+            <HeroFlag
+              icon="construction"
+              label="Maintenance"
+              value={draft.maintenanceMode ? "Active" : "Inactive"}
+              tone={draft.maintenanceMode ? "amber" : "muted"}
+            />
+            <HeroFlag
+              icon="call"
+              label="Support"
+              value={draft.supportPhone.trim() || "E-mail uniquement"}
+              tone="muted"
+            />
+          </div>
+        </HeroCard>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <KpiTile
+            tone={draft.registrationOpen ? "lime" : "red"}
+            icon="how_to_reg"
+            label="Inscriptions publiques"
+            value={draft.registrationOpen ? "Ouvertes" : "Fermées"}
+            note={draft.registrationOpen ? "Les directeurs peuvent créer un compte" : "Aucune nouvelle école ne peut s'inscrire"}
+            valueClassName="text-xl"
+          />
+          <KpiTile
+            tone={draft.maintenanceMode ? "amber" : "sky"}
+            icon="construction"
+            label="Mode maintenance"
+            value={draft.maintenanceMode ? "Actif" : "Inactif"}
+            note={draft.maintenanceMode ? "Bandeau affiché sur l'application" : "Aucune interruption annoncée"}
+            valueClassName="text-xl"
+          />
+          <KpiTile
+            tone="violet"
+            icon="timer"
+            label="Déconnexion admin"
+            value={`${draft.sessionTimeoutMinutes} min`}
+            note="Après inactivité dans la console"
+          />
+          <KpiTile
+            tone="neutral"
+            icon="history"
+            label="Conservation audit"
+            value={`${draft.auditRetentionDays} j`}
+            note="Durée par défaut avant purge"
+          />
+        </div>
+      </div>
+
+      {/* Réglages */}
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
-          <CardHeader title="Identité de la plateforme" subtitle="Nom affiché dans la console et l'espace public." />
-          <div className="space-y-4">
+          <PanelHeading icon="badge" title="Identité de la plateforme" subtitle="Nom affiché dans la console et l'espace public." />
+          <div className="mt-5 space-y-4">
             <Input
               label="Nom de la plateforme"
               required
@@ -233,8 +276,8 @@ function SettingsForm({
         </Card>
 
         <Card>
-          <CardHeader title="Support" subtitle="Coordonnées affichées aux établissements." />
-          <div className="space-y-4">
+          <PanelHeading icon="support_agent" title="Support" subtitle="Coordonnées affichées aux établissements." />
+          <div className="mt-5 space-y-4">
             <Input
               label="E-mail du support"
               type="email"
@@ -257,8 +300,12 @@ function SettingsForm({
         </Card>
 
         <Card>
-          <CardHeader title="Inscriptions & maintenance" subtitle="Ces interrupteurs agissent immédiatement sur l'accès des écoles." />
-          <div className="space-y-5">
+          <PanelHeading
+            icon="settings"
+            title="Inscriptions & maintenance"
+            subtitle="Ces interrupteurs agissent immédiatement sur l'accès des écoles."
+          />
+          <div className="mt-5 space-y-5">
             <Switch
               id="registration-open"
               label="Inscriptions ouvertes"
@@ -297,8 +344,12 @@ function SettingsForm({
         </Card>
 
         <Card>
-          <CardHeader title="Sessions & journal d'audit" subtitle="Sécurité de la console et conservation des traces." />
-          <div className="space-y-4">
+          <PanelHeading
+            icon="security"
+            title="Sessions & journal d'audit"
+            subtitle="Sécurité de la console et conservation des traces."
+          />
+          <div className="mt-5 space-y-4">
             <Input
               label="Déconnexion automatique après inactivité (minutes)"
               type="number"
@@ -322,7 +373,7 @@ function SettingsForm({
               hint="Entre 30 et 3 650 jours. Sert de valeur par défaut à la purge."
             />
             {data.canEdit && (
-              <div className="rounded-2xl border border-red-100 bg-red-50/60 p-3">
+              <div className="rounded-2xl border border-red-100 bg-red-50/60 p-4">
                 <p className="text-sm font-semibold text-ink">Purger le journal maintenant</p>
                 <p className="mt-1 text-xs leading-relaxed text-neutral-600">
                   Supprime définitivement les événements antérieurs à la durée de conservation enregistrée. L'opération est elle-même
@@ -337,10 +388,15 @@ function SettingsForm({
         </Card>
       </div>
 
+      {/* Effets et traçabilité */}
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
-          <CardHeader title="Effets concrets de ces réglages" subtitle="Chaque paramètre est appliqué par le serveur, sans redéploiement." />
-          <ul className="grid gap-2 text-sm text-neutral-700 sm:grid-cols-2">
+          <PanelHeading
+            icon="task_alt"
+            title="Effets concrets de ces réglages"
+            subtitle="Chaque paramètre est appliqué par le serveur, sans redéploiement."
+          />
+          <ul className="mt-4 grid gap-2 text-sm text-neutral-700 sm:grid-cols-2">
             <Effect icon="how_to_reg" text={draft.registrationOpen ? "Les inscriptions directeurs sont ouvertes." : "Les inscriptions directeurs sont refusées par l'API."} />
             <Effect icon="construction" text={draft.maintenanceMode ? "Un bandeau de maintenance est affiché aux écoles." : "Aucun bandeau de maintenance n'est affiché."} />
             <Effect icon="timer" text={`La console admin se déconnecte après ${draft.sessionTimeoutMinutes} min d'inactivité.`} />
@@ -351,30 +407,35 @@ function SettingsForm({
         </Card>
 
         <Card>
-          <CardHeader title="Traçabilité" />
-          <dl className="space-y-3 text-sm">
-            <div>
+          <PanelHeading icon="history" title="Traçabilité" subtitle="Origine et dernière écriture des paramètres." />
+          <dl className="mt-4 space-y-3 text-sm">
+            <div className="flex items-start justify-between gap-3 border-b border-neutral-100 pb-3">
               <dt className="text-[11px] font-bold uppercase tracking-wide text-neutral-500">Dernière modification</dt>
-              <dd className="mt-0.5 text-ink">{data.updatedAt ? formatDateTime(data.updatedAt) : "Valeurs par défaut du code"}</dd>
+              <dd className="text-right text-ink">{data.updatedAt ? formatDateTime(data.updatedAt) : "Valeurs par défaut du code"}</dd>
             </div>
-            <div>
+            <div className="flex items-start justify-between gap-3 border-b border-neutral-100 pb-3">
               <dt className="text-[11px] font-bold uppercase tracking-wide text-neutral-500">Auteur</dt>
-              <dd className="mt-0.5 text-ink">{data.updatedByName ?? "—"}</dd>
+              <dd className="text-right text-ink">{data.updatedByName ?? "—"}</dd>
             </div>
-            <div>
+            <div className="flex items-start justify-between gap-3">
               <dt className="text-[11px] font-bold uppercase tracking-wide text-neutral-500">Table de stockage</dt>
-              <dd className="mt-0.5">
-                <Badge tone={data.migrationApplied ? "success" : "warning"}>{data.migrationApplied ? "platform_settings active" : "Migration en attente"}</Badge>
+              <dd>
+                <Badge tone={data.migrationApplied ? "success" : "warning"}>
+                  <StatusDot tone={data.migrationApplied ? "success" : "warning"} />
+                  {data.migrationApplied ? "platform_settings active" : "Migration en attente"}
+                </Badge>
               </dd>
             </div>
           </dl>
-          <p className="mt-4 text-xs leading-relaxed text-neutral-500">
-            Chaque enregistrement est journalisé (<code>platform_settings_updated</code>) avec l'auteur et les champs modifiés.
+          <p className="mt-4 rounded-2xl bg-mist p-3 text-xs leading-relaxed text-neutral-500">
+            Chaque enregistrement est journalisé (<code className="font-semibold text-forest">platform_settings_updated</code>) avec
+            l'auteur et les champs modifiés.
           </p>
         </Card>
       </div>
 
-      <div className="sticky bottom-4 z-10 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-neutral-100 bg-white/95 p-4 shadow-soft backdrop-blur">
+      {/* Barre d'enregistrement collante */}
+      <div className="sticky bottom-4 z-10 flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-neutral-100 bg-white/95 p-4 shadow-soft backdrop-blur">
         <div className="flex items-center gap-2 text-sm">
           <span className={cn("size-2 rounded-full", dirty ? "bg-amber-500" : "bg-emerald-500")} />
           <span className="font-medium text-neutral-700">
@@ -409,6 +470,36 @@ function SettingsForm({
         onConfirm={purge}
         onCancel={() => setPurgeOpen(false)}
       />
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+
+/** Petit drapeau d'état lisible sur le fond forêt du bandeau. */
+function HeroFlag({
+  icon,
+  label,
+  value,
+  tone,
+}: {
+  icon: string;
+  label: string;
+  value: string;
+  tone: "lime" | "amber" | "muted";
+}) {
+  const palette = {
+    lime: "bg-lime text-forest",
+    amber: "bg-amber-300 text-amber-950",
+    muted: "bg-white/10 text-white",
+  } as const;
+  return (
+    <div className={cn("rounded-2xl px-3 py-2", palette[tone])}>
+      <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide opacity-75">
+        <Icon name={icon} className="text-[14px]" />
+        {label}
+      </p>
+      <p className="mt-0.5 truncate text-sm font-bold">{value}</p>
     </div>
   );
 }

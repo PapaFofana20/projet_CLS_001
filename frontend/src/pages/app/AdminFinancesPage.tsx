@@ -3,8 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { AsyncView } from "@/components/ui/AsyncView";
-import { Card, CardHeader } from "@/components/ui/Card";
-import { StatCard } from "@/components/ui/StatCard";
+import { Card } from "@/components/ui/Card";
 import { Table } from "@/components/ui/Table";
 import { Pagination } from "@/components/ui/Pagination";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
@@ -23,6 +22,13 @@ import { eventLabel, methodLabel } from "@/features/admin/labels";
 import { RevenueChart } from "@/features/admin/charts";
 import { formatCurrency, formatDate, formatDateTime } from "@/utils/format";
 import { cn } from "@/utils/cn";
+import {
+  HeroCard,
+  KpiTile,
+  Notice,
+  PanelHeading,
+  StatusDot,
+} from "@/features/admin/adminUi";
 
 type TabID = "vue" | "transactions" | "factures";
 
@@ -82,46 +88,70 @@ export default function AdminFinancesPage() {
           // Compatibilité avec une API plus ancienne (avant l'ajout de `events`).
           const allEvents = s.events ?? s.recentEvents ?? [];
           const invoices = allEvents.filter((e) => e.amountPaid > 0);
+          const maxMonthly = Math.max(...s.monthly.map((m) => m.revenue), 1);
 
           return (
             <div className="space-y-4">
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-                <StatCard
-                  dark
+              <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+                <HeroCard
+                  eyebrow="Encaissements"
                   icon="payments"
-                  label="Encaissé ce mois"
                   value={formatCurrency(s.summary.revenueThisMonth)}
+                  valueClassName="text-3xl sm:text-4xl"
                   badge={
-                    monthDelta === null
-                      ? { text: "1er mois", tone: "neutral" }
-                      : { text: `${monthDelta > 0 ? "+" : ""}${monthDelta} %`, tone: monthDelta >= 0 ? "up" : "down" }
+                    <Badge tone={monthDelta === null ? "neutral" : monthDelta >= 0 ? "success" : "danger"}>
+                      {monthDelta === null ? "1er mois" : `${monthDelta > 0 ? "+" : ""}${monthDelta} %`}
+                    </Badge>
                   }
-                  note={`Mois précédent : ${formatCurrency(s.summary.revenueLastMonth)}`}
-                />
-                <StatCard
-                  icon="trending_up"
-                  label="MRR (abonnements actifs)"
-                  value={formatCurrency(s.summary.mrr)}
-                  note={`ARR projeté : ${formatCurrency(s.summary.arr)}`}
-                />
-                <StatCard
-                  icon="savings"
-                  label="Encaissé depuis le lancement"
-                  value={formatCurrency(s.summary.revenueTotal)}
-                  note={`${s.summary.paidActivations} encaissement(s) · ${s.summary.payingSchools} école(s) payante(s)`}
-                />
-                <StatCard
-                  icon="hourglass_top"
-                  label="Demandes en attente"
-                  value={formatCurrency(s.summary.pendingRequestsAmount)}
-                  note={`${s.summary.pendingRequests} demande(s) à traiter`}
-                />
-                <StatCard
-                  icon="report"
-                  label="MRR à risque"
-                  value={formatCurrency(s.summary.atRiskMrr)}
-                  note={`${s.summary.expiredSubscriptions} abonnement(s) expiré(s)`}
-                />
+                  label={`encaissés ce mois · mois précédent : ${formatCurrency(s.summary.revenueLastMonth)}`}
+                  footnote={`Données au ${formatDate(s.generatedAt)}`}
+                >
+                  <div className="flex h-16 items-end gap-1.5" aria-hidden="true">
+                    {s.monthly.map((month, index) => (
+                      <span
+                        key={month.key}
+                        title={`${month.label} · ${formatCurrency(month.revenue)}`}
+                        className={cn(
+                          "flex-1 rounded-t-md transition-[height] duration-500",
+                          index === s.monthly.length - 1 ? "bg-lime" : "bg-white/20",
+                        )}
+                        style={{ height: `${Math.max(6, Math.round((month.revenue / maxMonthly) * 100))}%` }}
+                      />
+                    ))}
+                  </div>
+                  <div className="mt-2 flex items-center justify-between text-[11px] font-semibold text-white/50">
+                    <span>{s.monthly[0]?.label ?? "—"}</span>
+                    <span className="text-lime">{s.monthly[s.monthly.length - 1]?.label ?? "—"}</span>
+                  </div>
+                </HeroCard>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <KpiTile tone="lime" icon="trending_up" label="MRR" value={formatCurrency(s.summary.mrr)} note={`ARR projeté : ${formatCurrency(s.summary.arr)}`} valueClassName="text-lg" />
+                  <KpiTile
+                    tone="sky"
+                    icon="savings"
+                    label="Depuis le lancement"
+                    value={formatCurrency(s.summary.revenueTotal)}
+                    note={`${s.summary.paidActivations} encaissement(s) · ${s.summary.payingSchools} école(s)`}
+                    valueClassName="text-lg"
+                  />
+                  <KpiTile
+                    tone="amber"
+                    icon="hourglass_top"
+                    label="Demandes en attente"
+                    value={formatCurrency(s.summary.pendingRequestsAmount)}
+                    note={`${s.summary.pendingRequests} demande(s) à traiter`}
+                    valueClassName="text-lg"
+                  />
+                  <KpiTile
+                    tone="red"
+                    icon="report"
+                    label="MRR à risque"
+                    value={formatCurrency(s.summary.atRiskMrr)}
+                    note={`${s.summary.expiredSubscriptions} abonnement(s) expiré(s)`}
+                    valueClassName="text-lg"
+                  />
+                </div>
               </div>
 
               <Tabs
@@ -162,26 +192,24 @@ function OverviewTab({ data, onOpen }: { data: AdminFinancesData; onOpen: (event
   return (
     <div className="space-y-4">
       {data.summary.revenueTotal === 0 && (
-        <div className="flex items-start gap-3 rounded-2xl border border-sky-100 bg-sky-50 p-4 text-sm text-sky-900">
-          <Icon name="info" fill className="mt-0.5 text-[22px] text-sky-700" />
-          <div>
-            <p className="font-bold">Aucun encaissement enregistré pour le moment.</p>
-            <p className="mt-1 leading-relaxed">
-              Les graphiques et tableaux se rempliront automatiquement dès la première activation d'abonnement depuis l'onglet
-              Abonnements. Les formules et leurs tarifs réels sont déjà affichés ci-dessous.
-            </p>
-          </div>
-        </div>
+        <Notice tone="info">
+          <span className="font-bold">Aucun encaissement enregistré pour le moment.</span> Les graphiques et tableaux se rempliront
+          automatiquement dès la première activation d'abonnement depuis l'onglet Abonnements. Les formules et leurs tarifs réels sont déjà
+          affichés ci-dessous.
+        </Notice>
       )}
 
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
-          <CardHeader
+          <PanelHeading
+            icon="insights"
             title="Revenus encaissés sur 12 mois"
             subtitle="Montants réellement perçus lors des activations et renouvellements."
             action={<Badge tone="lime">{formatCurrency(data.monthly.reduce((sum, m) => sum + m.revenue, 0))} sur la période</Badge>}
           />
-          <RevenueChart data={data.monthly} />
+          <div className="mt-4">
+            <RevenueChart data={data.monthly} />
+          </div>
           <div className="mt-4 grid gap-3 sm:grid-cols-3">
             <MiniStat label="Ce mois" value={formatCurrency(data.summary.revenueThisMonth)} icon="payments" />
             <MiniStat label="Cumul annuel" value={formatCurrency(data.summary.revenueYtd)} icon="calendar_month" />
@@ -190,11 +218,11 @@ function OverviewTab({ data, onOpen }: { data: AdminFinancesData; onOpen: (event
         </Card>
 
         <Card>
-          <CardHeader title="Moyens de paiement" subtitle="Répartition des encaissements enregistrés." />
+          <PanelHeading icon="account_balance_wallet" title="Moyens de paiement" subtitle="Répartition des encaissements enregistrés." />
           {data.byMethod.length === 0 ? (
             <p className="py-8 text-center text-sm text-neutral-500">Aucun encaissement enregistré.</p>
           ) : (
-            <div className="space-y-4">
+            <div className="mt-4 space-y-4">
               {data.byMethod.map((method) => (
                 <div key={method.method}>
                   <div className="flex items-center justify-between gap-3 text-sm">
@@ -222,55 +250,63 @@ function OverviewTab({ data, onOpen }: { data: AdminFinancesData; onOpen: (event
       </div>
 
       <div className="grid gap-4 lg:grid-cols-5">
-        <Card className="lg:col-span-3">
-          <CardHeader title="Performance par formule" subtitle="Activations, base active et revenus rattachés à chaque formule." />
-          {data.byPlan.length === 0 ? (
-            <p className="py-8 text-center text-sm text-neutral-500">Aucune formule configurée.</p>
-          ) : (
-            <Table
-              caption="Performance financière par formule"
-              rows={data.byPlan}
-              rowKey={(p) => p.planId}
-              columns={[
-                {
-                  key: "plan",
-                  header: "Formule",
-                  render: (p) => (
-                    <div>
-                      <p className="font-semibold text-ink">{p.name}</p>
-                      <p className="text-xs text-neutral-500">{formatCurrency(p.monthlyPrice)} / mois</p>
-                    </div>
-                  ),
-                },
-                { key: "active", header: "Actives", align: "right", render: (p) => <span className="tabular-nums">{p.activeSubscriptions}</span> },
-                { key: "activations", header: "Activations", align: "right", render: (p) => <span className="tabular-nums">{p.activations}</span> },
-                { key: "revenue", header: "Encaissé", align: "right", render: (p) => <span className="font-semibold tabular-nums">{formatCurrency(p.revenue)}</span> },
-                {
-                  key: "share",
-                  header: "Part du CA",
-                  align: "right",
-                  render: (p) => (
-                    <div className="min-w-24">
-                      <p className="text-xs font-semibold text-neutral-600">
-                        {totalPlanRevenue > 0 ? Math.round((p.revenue / totalPlanRevenue) * 100) : 0} %
-                      </p>
-                      <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-mist">
-                        <div className="h-full rounded-full bg-forest" style={{ width: `${totalPlanRevenue > 0 ? (p.revenue / totalPlanRevenue) * 100 : 0}%` }} />
+        <Card className="lg:col-span-3" padded={false}>
+          <div className="px-4 pt-5 sm:px-6">
+            <PanelHeading icon="sell" title="Performance par formule" subtitle="Activations, base active et revenus rattachés à chaque formule." />
+          </div>
+          <div className="px-4 py-4 sm:px-6">
+            {data.byPlan.length === 0 ? (
+              <p className="py-8 text-center text-sm text-neutral-500">Aucune formule configurée.</p>
+            ) : (
+              <Table
+                stagger
+                caption="Performance financière par formule"
+                rows={data.byPlan}
+                rowKey={(p) => p.planId}
+                columns={[
+                  {
+                    key: "plan",
+                    header: "Formule",
+                    render: (p) => (
+                      <div>
+                        <p className="font-semibold text-ink">{p.name}</p>
+                        <p className="text-xs text-neutral-500">{formatCurrency(p.monthlyPrice)} / mois</p>
                       </div>
-                    </div>
-                  ),
-                },
-              ]}
-            />
-          )}
+                    ),
+                  },
+                  { key: "active", header: "Actives", align: "right", render: (p) => <span className="tabular-nums">{p.activeSubscriptions}</span> },
+                  { key: "activations", header: "Activations", align: "right", className: "hidden sm:table-cell", render: (p) => <span className="tabular-nums">{p.activations}</span> },
+                  { key: "revenue", header: "Encaissé", align: "right", render: (p) => <span className="font-semibold tabular-nums">{formatCurrency(p.revenue)}</span> },
+                  {
+                    key: "share",
+                    header: "Part du CA",
+                    align: "right",
+                    className: "hidden lg:table-cell",
+                    render: (p) => (
+                      <div className="min-w-24">
+                        <p className="text-xs font-semibold text-neutral-600">
+                          {totalPlanRevenue > 0 ? Math.round((p.revenue / totalPlanRevenue) * 100) : 0} %
+                        </p>
+                        <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-mist">
+                          <div className="h-full rounded-full bg-forest" style={{ width: `${totalPlanRevenue > 0 ? (p.revenue / totalPlanRevenue) * 100 : 0}%` }} />
+                        </div>
+                      </div>
+                    ),
+                  },
+                ]}
+              />
+            )}
+          </div>
         </Card>
 
         <Card className="lg:col-span-2">
-          <CardHeader title="Derniers mouvements" subtitle="Journal des activations et renouvellements." />
+          <PanelHeading icon="swap_horiz" title="Derniers mouvements" subtitle="Journal des activations et renouvellements." />
           {data.recentEvents.length === 0 ? (
-            <EmptyState icon="receipt_long" title="Aucun mouvement" text="Les encaissements apparaîtront dès la première activation." />
+            <div className="mt-4">
+              <EmptyState icon="receipt_long" title="Aucun mouvement" text="Les encaissements apparaîtront dès la première activation." />
+            </div>
           ) : (
-            <div className="space-y-2">
+            <div className="mt-4 space-y-2">
               {data.recentEvents.slice(0, 6).map((event) => (
                 <button
                   key={event.id}
@@ -296,8 +332,8 @@ function OverviewTab({ data, onOpen }: { data: AdminFinancesData; onOpen: (event
       </div>
 
       <Card>
-        <CardHeader title="Lecture des indicateurs" />
-        <p className="text-sm leading-relaxed text-neutral-600">
+        <PanelHeading icon="info" title="Lecture des indicateurs" />
+        <p className="mt-3 text-sm leading-relaxed text-neutral-600">
           Le chiffre d'affaires provient exclusivement du journal <code>subscription_events</code> : chaque activation ou prolongation y
           inscrit le montant réellement encaissé, le moyen de paiement et sa référence. Le MRR est la projection mensuelle des formules
           encore valides aujourd'hui, l'ARR sa projection sur 12 mois. Aucune estimation n'est calculée à partir d'un tarif théorique.
@@ -349,17 +385,21 @@ function TransactionsTab({ data, onOpen }: { data: AdminFinancesData; onOpen: (e
   }, [events, method, search, type]);
 
   const rows = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const hasFilters = Boolean(search) || Boolean(method) || Boolean(type);
 
   return (
-    <Card>
-      <CardHeader
-        title="Journal des transactions"
-        subtitle="Chaque ligne correspond à un encaissement réel enregistré par le support."
-        action={data.eventsTruncated ? <Badge tone="warning">1 000 derniers mouvements</Badge> : <Badge tone="neutral">{events.length} mouvement(s)</Badge>}
-      />
-      <div className="mb-4 flex flex-wrap items-end gap-3">
+    <Card padded={false} className="overflow-hidden">
+      <div className="flex flex-wrap items-start justify-between gap-3 px-4 pt-5 sm:px-6">
+        <PanelHeading
+          icon="swap_horiz"
+          title="Journal des transactions"
+          subtitle="Chaque ligne correspond à un encaissement réel enregistré par le support."
+        />
+        {data.eventsTruncated ? <Badge tone="warning">1 000 derniers mouvements</Badge> : <Badge tone="neutral">{events.length} mouvement(s)</Badge>}
+      </div>
+      <div className="mt-4 flex flex-wrap items-center gap-3 border-b border-neutral-100 px-4 pb-4 sm:px-6">
         <Input
-          label="Rechercher"
+          aria-label="Rechercher une transaction"
           placeholder="École, matricule, formule, référence…"
           icon="search"
           value={search}
@@ -367,10 +407,10 @@ function TransactionsTab({ data, onOpen }: { data: AdminFinancesData; onOpen: (e
             setSearch(e.target.value);
             setPage(1);
           }}
-          className="w-full sm:w-72"
+          className="w-full sm:max-w-sm"
         />
         <Select
-          label="Moyen de paiement"
+          aria-label="Filtrer par moyen de paiement"
           value={method}
           onChange={(e) => {
             setMethod(e.target.value);
@@ -381,7 +421,7 @@ function TransactionsTab({ data, onOpen }: { data: AdminFinancesData; onOpen: (e
           className="w-full sm:w-48"
         />
         <Select
-          label="Type de mouvement"
+          aria-label="Filtrer par type de mouvement"
           value={type}
           onChange={(e) => {
             setType(e.target.value);
@@ -391,53 +431,77 @@ function TransactionsTab({ data, onOpen }: { data: AdminFinancesData; onOpen: (e
           compact
           className="w-full sm:w-52"
         />
+        {hasFilters && (
+          <Button
+            variant="ghost"
+            size="sm"
+            icon="filter_alt_off"
+            onClick={() => {
+              setSearch("");
+              setMethod("");
+              setType("");
+              setPage(1);
+            }}
+          >
+            Réinitialiser
+          </Button>
+        )}
       </div>
 
-      {rows.length === 0 ? (
-        <EmptyState icon="search_off" title="Aucune transaction" text="Aucun mouvement ne correspond à ces filtres." />
-      ) : (
-        <>
-          <Table
-            caption="Transactions d'abonnement"
-            rows={rows}
-            rowKey={(e) => e.id}
-            onRowClick={onOpen}
-            columns={[
-              { key: "date", header: "Date", render: (e) => <span className="whitespace-nowrap text-xs text-neutral-600">{formatDateTime(e.createdAt)}</span> },
-              {
-                key: "school",
-                header: "Établissement",
-                render: (e) => (
-                  <div className="min-w-0">
-                    <p className="truncate font-semibold text-ink">{e.schoolName}</p>
-                    <p className="text-xs text-neutral-500">{e.matricule || "Sans matricule"}</p>
-                  </div>
-                ),
-              },
-              {
-                key: "type",
-                header: "Type",
-                align: "center",
-                render: (e) => <Badge tone={EVENT_TONES[e.eventType] ?? "neutral"}>{eventLabel(e.eventType)}</Badge>,
-              },
-              { key: "plan", header: "Formule", render: (e) => <span className="text-sm">{e.planName}</span> },
-              {
-                key: "amount",
-                header: "Montant",
-                align: "right",
-                render: (e) => <span className="font-extrabold tabular-nums text-forest">{formatCurrency(e.amountPaid)}</span>,
-              },
-              { key: "method", header: "Moyen", render: (e) => <span className="text-sm">{methodLabel(e.method)}</span> },
-              {
-                key: "ref",
-                header: "Référence",
-                render: (e) => <span className="font-mono text-xs text-neutral-500">{e.paymentRef || "—"}</span>,
-              },
-            ]}
-          />
-          <Pagination page={page} pageSize={PAGE_SIZE} total={filtered.length} onChange={setPage} />
-        </>
-      )}
+      <div className="px-4 py-4 sm:px-6">
+        {rows.length === 0 ? (
+          <EmptyState icon="search_off" title="Aucune transaction" text="Aucun mouvement ne correspond à ces filtres." />
+        ) : (
+          <>
+            <Table
+              stagger
+              caption="Transactions d'abonnement"
+              rows={rows}
+              rowKey={(e) => e.id}
+              onRowClick={onOpen}
+              columns={[
+                { key: "date", header: "Date", className: "hidden sm:table-cell", render: (e) => <span className="whitespace-nowrap text-xs text-neutral-600">{formatDateTime(e.createdAt)}</span> },
+                {
+                  key: "school",
+                  header: "Établissement",
+                  render: (e) => (
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold text-ink">{e.schoolName}</p>
+                      <p className="mt-0.5 text-xs text-neutral-500">{e.matricule || "Sans matricule"}</p>
+                    </div>
+                  ),
+                },
+                {
+                  key: "type",
+                  header: "Type",
+                  align: "center",
+                  render: (e) => (
+                    <Badge tone={EVENT_TONES[e.eventType] ?? "neutral"}>
+                      <StatusDot tone={e.eventType === "purchase" ? "success" : e.eventType === "expiration_warning" ? "danger" : "neutral"} />
+                      {eventLabel(e.eventType)}
+                    </Badge>
+                  ),
+                },
+                { key: "plan", header: "Formule", className: "hidden md:table-cell", render: (e) => <span className="text-sm">{e.planName}</span> },
+                {
+                  key: "amount",
+                  header: "Montant",
+                  align: "right",
+                  render: (e) => <span className="font-extrabold tabular-nums text-forest">{formatCurrency(e.amountPaid)}</span>,
+                },
+                { key: "method", header: "Moyen", className: "hidden lg:table-cell", render: (e) => <span className="text-sm">{methodLabel(e.method)}</span> },
+                {
+                  key: "ref",
+                  header: "Référence",
+                  className: "hidden xl:table-cell",
+                  render: (e) => <span className="font-mono text-xs text-neutral-500">{e.paymentRef || "—"}</span>,
+                },
+              ]}
+            />
+            <Pagination page={page} pageSize={PAGE_SIZE} total={filtered.length} onChange={setPage} />
+          </>
+        )}
+      </div>
     </Card>
   );
 }
@@ -466,15 +530,18 @@ function InvoicesTab({
   const total = filtered.reduce((sum, invoice) => sum + invoice.amountPaid, 0);
 
   return (
-    <Card>
-      <CardHeader
-        title="Factures & reçus"
-        subtitle="Pièces justificatives générées à partir des encaissements confirmés."
-        action={<Badge tone="lime">{formatCurrency(total)} facturé</Badge>}
-      />
-      <div className="mb-4 flex flex-wrap items-end gap-3">
+    <Card padded={false} className="overflow-hidden">
+      <div className="flex flex-wrap items-start justify-between gap-3 px-4 pt-5 sm:px-6">
+        <PanelHeading
+          icon="receipt_long"
+          title="Factures & reçus"
+          subtitle="Pièces justificatives générées à partir des encaissements confirmés."
+        />
+        <Badge tone="lime">{formatCurrency(total)} facturé</Badge>
+      </div>
+      <div className="mt-4 flex flex-wrap items-center gap-3 border-b border-neutral-100 px-4 pb-4 sm:px-6">
         <Input
-          label="Rechercher une pièce"
+          aria-label="Rechercher une pièce"
           placeholder="Numéro, école ou matricule…"
           icon="search"
           value={search}
@@ -482,61 +549,65 @@ function InvoicesTab({
             setSearch(e.target.value);
             setPage(1);
           }}
-          className="w-full sm:w-80"
+          className="w-full sm:max-w-sm"
         />
-        <p className="pb-3 text-xs text-neutral-500">
+        <p className="text-xs text-neutral-500">
           {invoices.length} reçu(s) disponible(s){truncated ? " — journal plafonné aux 1 000 derniers mouvements." : "."}
         </p>
       </div>
 
-      {rows.length === 0 ? (
-        <EmptyState icon="receipt_long" title="Aucune pièce" text="Les reçus apparaissent dès qu'un encaissement est enregistré." />
-      ) : (
-        <>
-          <Table
-            caption="Factures et reçus d'abonnement"
-            rows={rows}
-            rowKey={(e) => e.id}
-            onRowClick={onOpen}
-            columns={[
-              { key: "number", header: "N° de pièce", render: (e) => <span className="font-mono text-xs font-semibold text-forest">{receiptNumber(e)}</span> },
-              { key: "date", header: "Date", render: (e) => <span className="whitespace-nowrap text-xs text-neutral-600">{formatDate(e.createdAt)}</span> },
-              {
-                key: "school",
-                header: "Établissement",
-                render: (e) => (
-                  <div className="min-w-0">
-                    <p className="truncate font-semibold text-ink">{e.schoolName}</p>
-                    <p className="text-xs text-neutral-500">{e.matricule || "Sans matricule"}</p>
-                  </div>
-                ),
-              },
-              { key: "plan", header: "Formule", render: (e) => <span className="text-sm">{e.planName}</span> },
-              {
-                key: "period",
-                header: "Période couverte",
-                render: (e) => (
-                  <span className="whitespace-nowrap text-xs text-neutral-600">
-                    {formatDate(e.startsAt)} → {formatDate(e.endsAt)}
-                  </span>
-                ),
-              },
-              { key: "amount", header: "Montant", align: "right", render: (e) => <span className="font-extrabold tabular-nums text-forest">{formatCurrency(e.amountPaid)}</span> },
-              {
-                key: "actions",
-                header: "",
-                align: "right",
-                render: (e) => (
-                  <Button size="sm" variant="outline" icon="visibility" onClick={() => onOpen(e)}>
-                    Voir
-                  </Button>
-                ),
-              },
-            ]}
-          />
-          <Pagination page={page} pageSize={PAGE_SIZE} total={filtered.length} onChange={setPage} />
-        </>
-      )}
+      <div className="px-4 py-4 sm:px-6">
+        {rows.length === 0 ? (
+          <EmptyState icon="receipt_long" title="Aucune pièce" text="Les reçus apparaissent dès qu'un encaissement est enregistré." />
+        ) : (
+          <>
+            <Table
+              stagger
+              caption="Factures et reçus d'abonnement"
+              rows={rows}
+              rowKey={(e) => e.id}
+              onRowClick={onOpen}
+              columns={[
+                { key: "number", header: "N° de pièce", render: (e) => <span className="whitespace-nowrap font-mono text-xs font-semibold text-forest">{receiptNumber(e)}</span> },
+                { key: "date", header: "Date", className: "hidden sm:table-cell", render: (e) => <span className="whitespace-nowrap text-xs text-neutral-600">{formatDate(e.createdAt)}</span> },
+                {
+                  key: "school",
+                  header: "Établissement",
+                  render: (e) => (
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold text-ink">{e.schoolName}</p>
+                      <p className="mt-0.5 text-xs text-neutral-500">{e.matricule || "Sans matricule"}</p>
+                    </div>
+                  ),
+                },
+                { key: "plan", header: "Formule", className: "hidden md:table-cell", render: (e) => <span className="text-sm">{e.planName}</span> },
+                {
+                  key: "period",
+                  header: "Période couverte",
+                  className: "hidden lg:table-cell",
+                  render: (e) => (
+                    <span className="whitespace-nowrap text-xs text-neutral-600">
+                      {formatDate(e.startsAt)} → {formatDate(e.endsAt)}
+                    </span>
+                  ),
+                },
+                { key: "amount", header: "Montant", align: "right", render: (e) => <span className="font-extrabold tabular-nums text-forest">{formatCurrency(e.amountPaid)}</span> },
+                {
+                  key: "actions",
+                  header: "",
+                  align: "right",
+                  render: (e) => (
+                    <Button size="sm" variant="outline" icon="visibility" onClick={() => onOpen(e)}>
+                      Voir
+                    </Button>
+                  ),
+                },
+              ]}
+            />
+            <Pagination page={page} pageSize={PAGE_SIZE} total={filtered.length} onChange={setPage} />
+          </>
+        )}
+      </div>
     </Card>
   );
 }

@@ -2,8 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { AsyncView } from "@/components/ui/AsyncView";
-import { Card, CardHeader } from "@/components/ui/Card";
-import { StatCard } from "@/components/ui/StatCard";
+import { Card } from "@/components/ui/Card";
 import { Table } from "@/components/ui/Table";
 import { Pagination } from "@/components/ui/Pagination";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
@@ -12,14 +11,25 @@ import { Icon } from "@/components/ui/Icon";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Modal } from "@/components/ui/Modal";
+import { Tabs } from "@/components/ui/Tabs";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useAsync } from "@/hooks/useAsync";
 import { useAdminAuth } from "@/context/AdminAuthContext";
 import { listAdminAudit, purgeAdminAudit } from "@/services/admin";
 import type { AdminAuditRow } from "@/types";
 import { actionLabel, roleLabel } from "@/features/admin/labels";
-import { formatDateTime } from "@/utils/format";
+import { formatDate, formatDateTime } from "@/utils/format";
 import { cn } from "@/utils/cn";
+import {
+  HeroBar,
+  HeroCard,
+  HeroLegend,
+  KpiTile,
+  MonoChip,
+  Notice,
+  PanelHeading,
+  StatusDot,
+} from "@/features/admin/adminUi";
 
 type Period = 7 | 30 | 90;
 
@@ -123,158 +133,213 @@ export default function AdminAuditPage() {
       />
 
       {notice && (
-        <div className="mb-4 flex items-start gap-2 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-900" role="status">
-          <Icon name="check_circle" fill className="text-[20px] text-emerald-600" />
-          <span className="flex-1">{notice}</span>
-          <button type="button" onClick={() => setNotice("")} aria-label="Fermer le message" className="text-emerald-700">
-            <Icon name="close" className="text-[20px]" />
-          </button>
-        </div>
+        <Notice className="mb-4" onClose={() => setNotice("")}>
+          {notice}
+        </Notice>
       )}
 
       <AsyncView state={state}>
-        {(data) => (
-          <div className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <StatCard dark icon="history" label="Événements sur la période" value={data.total.toLocaleString("fr-FR")} note={`${data.periodDays} derniers jours`} />
-              <StatCard icon="category" label="Actions distinctes" value={String(data.actionCounts.length)} note="Échantillon des 1 000 derniers événements" />
-              <StatCard icon="event_repeat" label="Action la plus fréquente" value={actionLabel(data.actionCounts[0]?.action)} note={data.actionCounts[0] ? `${data.actionCounts[0].count} occurrence(s)` : "Aucune action"} />
-              <StatCard icon="shield" label="Conservation configurée" value={`${data.retentionDays} j`} note="Durée par défaut avant purge" />
-            </div>
+        {(data) => {
+          const topActions = data.actionCounts.slice(0, 3);
+          const topTotal = topActions.reduce((sum, a) => sum + a.count, 0) || 1;
+          const barClasses = ["bg-lime", "bg-sky-300/90", "bg-amber-300/90"];
 
-            <Card>
-              <CardHeader
-                title="Événements"
-                subtitle="Filtrez par action, période ou recherchez une entité."
-                action={<Badge tone="neutral">{data.total} résultat(s)</Badge>}
-              />
-
-              <div className="mb-4 flex flex-wrap items-end gap-3">
-                <div className="flex w-full items-end gap-2 sm:w-auto">
-                  <Input
-                    label="Rechercher"
-                    placeholder="Action, entité ou rôle…"
-                    icon="search"
-                    value={searchInput}
-                    onChange={(e) => setSearchInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") applySearch();
-                    }}
-                    className="w-full sm:w-64"
+          return (
+            <div className="space-y-4">
+              <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+                <HeroCard
+                  eyebrow="Journal d'audit"
+                  icon="history"
+                  value={data.total.toLocaleString("fr-FR")}
+                  badge={<Badge tone="neutral">{data.periodDays} derniers jours</Badge>}
+                  label={`événement${data.total > 1 ? "s" : ""} journalisé${data.total > 1 ? "s" : ""} sur la période`}
+                  footnote={`Données au ${formatDate(data.generatedAt)}`}
+                >
+                  <HeroBar
+                    segments={topActions.map((a, index) => ({
+                      pct: (a.count / topTotal) * 100,
+                      className: barClasses[index % barClasses.length],
+                    }))}
                   />
-                  <Button icon="search" onClick={applySearch}>
-                    Filtrer
-                  </Button>
+                  <HeroLegend
+                    items={topActions.map((a, index) => ({
+                      dot: barClasses[index % barClasses.length].replace(/\/\d+$/, ""),
+                      label: `${actionLabel(a.action)} · ${a.count}`,
+                    }))}
+                    trailing={
+                      <>
+                        <Icon name="category" className="text-[14px]" />
+                        {data.actionCounts.length} actions distinctes
+                      </>
+                    }
+                  />
+                </HeroCard>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <KpiTile tone="sky" icon="category" label="Actions distinctes" value={data.actionCounts.length} note="Sur les 1 000 derniers événements" />
+                  <KpiTile
+                    tone="amber"
+                    icon="event_repeat"
+                    label="Action la plus fréquente"
+                    value={data.actionCounts[0] ? actionLabel(data.actionCounts[0].action) : "Aucune"}
+                    note={data.actionCounts[0] ? `${data.actionCounts[0].count} occurrence(s)` : "Aucune action"}
+                    valueClassName="text-sm leading-snug"
+                  />
+                  <KpiTile tone="lime" icon="shield" label="Conservation" value={`${data.retentionDays} j`} note="Durée par défaut avant purge" />
+                  <KpiTile tone="violet" icon="date_range" label="Période analysée" value={`${data.periodDays} j`} note="Filtre actif sur le journal" />
                 </div>
-                <Select
-                  label="Action"
-                  value={action}
-                  onChange={(e) => {
-                    setAction(e.target.value);
-                    setPage(1);
-                  }}
-                  options={actionOptions}
-                  compact
-                  className="w-full sm:w-64"
-                />
-                <Select
-                  label="Période"
-                  value={String(days)}
-                  onChange={(e) => {
-                    setDays(Number(e.target.value) as Period);
-                    setPage(1);
-                  }}
-                  options={[
-                    { value: "7", label: "7 derniers jours" },
-                    { value: "30", label: "30 derniers jours" },
-                    { value: "90", label: "90 derniers jours" },
-                  ]}
-                  compact
-                  className="w-full sm:w-48"
-                />
-                {(search || action) && (
-                  <Button
-                    variant="ghost"
-                    icon="filter_alt_off"
-                    onClick={() => {
-                      setSearch("");
-                      setSearchInput("");
-                      setAction("");
-                      setPage(1);
-                    }}
-                  >
-                    Réinitialiser
-                  </Button>
-                )}
               </div>
 
-              {data.rows.length === 0 ? (
-                <EmptyState icon="history_toggle_off" title="Aucun événement" text="Aucune action journalisée ne correspond à ces critères." />
-              ) : (
-                <>
-                  <Table
-                    caption="Journal d'audit administratif"
-                    rows={data.rows}
-                    rowKey={(row) => row.id}
-                    onRowClick={setDetail}
-                    columns={[
-                      {
-                        key: "date",
-                        header: "Date",
-                        render: (row) => <span className="whitespace-nowrap text-xs text-neutral-600">{formatDateTime(row.createdAt)}</span>,
-                      },
-                      {
-                        key: "action",
-                        header: "Action",
-                        render: (row) => (
-                          <div className="flex items-center gap-2">
-                            <Badge tone={actionTone(row.action)}>{actionLabel(row.action)}</Badge>
-                          </div>
-                        ),
-                      },
-                      {
-                        key: "actor",
-                        header: "Acteur",
-                        render: (row) => (
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-semibold text-ink">{row.actorName ?? "Système"}</p>
-                            <p className="text-xs text-neutral-500">{roleLabel(row.actorRole)}</p>
-                          </div>
-                        ),
-                      },
-                      {
-                        key: "school",
-                        header: "Établissement",
-                        render: (row) => <span className="text-sm text-neutral-700">{row.schoolName ?? "—"}</span>,
-                      },
-                      {
-                        key: "entity",
-                        header: "Entité",
-                        render: (row) => (
-                          <div className="min-w-0">
-                            <p className="text-sm">{row.entity}</p>
-                            <p className="truncate font-mono text-[11px] text-neutral-400">{row.entityId ?? "—"}</p>
-                          </div>
-                        ),
-                      },
-                      {
-                        key: "details",
-                        header: "",
-                        align: "right",
-                        render: () => (
-                          <span className="inline-flex items-center gap-1 text-xs font-semibold text-forest">
-                            Détails <Icon name="chevron_right" className="text-[16px]" />
-                          </span>
-                        ),
-                      },
+              <Card padded={false} className="overflow-hidden">
+                <div className="flex flex-wrap items-start justify-between gap-3 px-4 pt-5 sm:px-6">
+                  <PanelHeading icon="receipt_long" title="Événements" subtitle="Filtrez par action, période ou recherchez une entité." />
+                  <Badge tone="neutral">{data.total} résultat(s)</Badge>
+                </div>
+
+                <div className="mt-4 space-y-3 border-b border-neutral-100 px-4 pb-4 sm:px-6">
+                  <Tabs
+                    label="Choisir la période du journal"
+                    value={String(days)}
+                    onChange={(id) => {
+                      setDays(Number(id) as Period);
+                      setPage(1);
+                    }}
+                    items={[
+                      { id: "7", label: "7 jours", icon: "event" },
+                      { id: "30", label: "30 jours", icon: "date_range" },
+                      { id: "90", label: "90 jours", icon: "calendar_month" },
                     ]}
                   />
-                  <Pagination page={data.page} pageSize={data.pageSize} total={data.total} onChange={setPage} />
-                </>
-              )}
-            </Card>
-          </div>
-        )}
+                  <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex w-full items-center gap-2 sm:w-auto">
+                      <Input
+                        aria-label="Rechercher dans le journal"
+                        placeholder="Action, entité ou rôle…"
+                        icon="search"
+                        value={searchInput}
+                        onChange={(e) => setSearchInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") applySearch();
+                        }}
+                        className="w-full sm:w-64"
+                      />
+                      <Button icon="search" onClick={applySearch}>
+                        Filtrer
+                      </Button>
+                    </div>
+                    <Select
+                      aria-label="Filtrer par action"
+                      value={action}
+                      onChange={(e) => {
+                        setAction(e.target.value);
+                        setPage(1);
+                      }}
+                      options={actionOptions}
+                      compact
+                      className="w-full sm:w-64"
+                    />
+                    {(search || action) && (
+                      <Button
+                        variant="ghost"
+                        icon="filter_alt_off"
+                        onClick={() => {
+                          setSearch("");
+                          setSearchInput("");
+                          setAction("");
+                          setPage(1);
+                        }}
+                      >
+                        Réinitialiser
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="px-4 py-4 sm:px-6">
+                  {data.rows.length === 0 ? (
+                    <EmptyState icon="history_toggle_off" title="Aucun événement" text="Aucune action journalisée ne correspond à ces critères." />
+                  ) : (
+                    <>
+                      <Table
+                        stagger
+                        caption="Journal d'audit administratif"
+                        rows={data.rows}
+                        rowKey={(row) => row.id}
+                        onRowClick={setDetail}
+                        columns={[
+                          {
+                            key: "date",
+                            header: "Date",
+                            render: (row) => <span className="whitespace-nowrap text-xs text-neutral-600">{formatDateTime(row.createdAt)}</span>,
+                          },
+                          {
+                            key: "action",
+                            header: "Action",
+                            render: (row) => (
+                              <Badge tone={actionTone(row.action)}>
+                                <StatusDot
+                                  tone={
+                                    actionTone(row.action) === "success"
+                                      ? "success"
+                                      : actionTone(row.action) === "danger"
+                                        ? "danger"
+                                        : actionTone(row.action) === "warning"
+                                          ? "warning"
+                                          : "neutral"
+                                  }
+                                />
+                                {actionLabel(row.action)}
+                              </Badge>
+                            ),
+                          },
+                          {
+                            key: "actor",
+                            header: "Acteur",
+                            render: (row) => (
+                              <div className="min-w-0">
+                                <p className="truncate text-sm font-semibold text-ink">{row.actorName ?? "Système"}</p>
+                                <p className="text-xs text-neutral-500">{roleLabel(row.actorRole)}</p>
+                              </div>
+                            ),
+                          },
+                          {
+                            key: "school",
+                            header: "Établissement",
+                            className: "hidden lg:table-cell",
+                            render: (row) => <span className="text-sm text-neutral-700">{row.schoolName ?? "—"}</span>,
+                          },
+                          {
+                            key: "entity",
+                            header: "Entité",
+                            render: (row) => (
+                              <div className="min-w-0">
+                                <p className="text-sm">{row.entity}</p>
+                                <div className="mt-0.5">
+                                  <MonoChip>{row.entityId ?? "—"}</MonoChip>
+                                </div>
+                              </div>
+                            ),
+                          },
+                          {
+                            key: "details",
+                            header: "",
+                            align: "right",
+                            render: () => (
+                              <span className="inline-flex items-center gap-1 text-xs font-semibold text-forest">
+                                Détails <Icon name="chevron_right" className="text-[16px]" />
+                              </span>
+                            ),
+                          },
+                        ]}
+                      />
+                      <Pagination page={data.page} pageSize={data.pageSize} total={data.total} onChange={setPage} />
+                    </>
+                  )}
+                </div>
+              </Card>
+            </div>
+          );
+        }}
       </AsyncView>
 
       <AuditDetailModal row={detail} onClose={() => setDetail(null)} />

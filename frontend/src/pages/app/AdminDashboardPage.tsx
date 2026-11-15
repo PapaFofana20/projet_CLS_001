@@ -1,18 +1,35 @@
 // Tableau de bord de supervision de la plateforme côté admin.
 import { PageHeader } from "@/components/ui/PageHeader";
 import { AsyncView } from "@/components/ui/AsyncView";
-import { Card, CardHeader } from "@/components/ui/Card";
-import { StatCard } from "@/components/ui/StatCard";
+import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Icon } from "@/components/ui/Icon";
 import { Link } from "react-router-dom";
 import { LinkButton } from "@/components/ui/Button";
+import { Table } from "@/components/ui/Table";
 import { useAsync } from "@/hooks/useAsync";
 import { getAdminOverviewStats } from "@/services/admin";
 import type { AdminOverviewStats } from "@/types";
-import { formatCurrency, formatDate } from "@/utils/format";
+import { formatCurrency, formatDate, formatNumber } from "@/utils/format";
+import { cn } from "@/utils/cn";
+import {
+  EntityAvatar,
+  HeroBar,
+  HeroCard,
+  HeroLegend,
+  KpiTile,
+  MonoChip,
+  PanelHeading,
+  StatusDot,
+} from "@/features/admin/adminUi";
 
-import { Table } from "@/components/ui/Table";
+// État d'abonnement d'une école → libellé et ton du badge.
+const SUB_STATUS: Record<string, { label: string; tone: "success" | "warning" | "danger" | "neutral" }> = {
+  ACTIF: { label: "Actif", tone: "success" },
+  EXPIRE: { label: "Expiré", tone: "warning" },
+  AUCUN: { label: "Sans abonnement", tone: "neutral" },
+  INACTIF: { label: "Inactif", tone: "danger" },
+};
 
 // Composant principal de la page.
 export default function AdminDashboardPage() {
@@ -49,184 +66,309 @@ function Content({ s }: { s: AdminOverviewStats }) {
   const now = Date.now();
   const cutoff = now - 24 * 60 * 60 * 1000;
   const recent = s.recentActivity.filter((a) => new Date(a.createdAt).getTime() > cutoff);
+  const activePct = s.schools.total > 0 ? Math.round((s.schools.active / s.schools.total) * 100) : 0;
+  const suspendedPct = s.schools.total > 0 ? 100 - activePct : 0;
+
   return (
     <div className="space-y-4">
-      {/* Bandeau d'actions rapides — autorité admin */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Link to="/admin/ecoles" className="group relative overflow-hidden rounded-3xl bg-forest p-5 text-white shadow-soft transition-transform hover:-translate-y-0.5">
-          <div className="flex items-center gap-3">
-            <span className="grid size-10 place-items-center rounded-xl bg-white/10"><Icon name="school" fill className="text-[22px] text-lime" /></span>
-            <div><p className="text-xs font-bold uppercase tracking-wide text-white/60">Établissements</p><p className="text-lg font-extrabold">{s.schools.total} écoles</p></div>
-          </div>
-          <div className="mt-3 flex items-center gap-2 text-xs font-semibold text-lime"><Icon name="arrow_forward" className="text-[14px]" /> Voir la répartition</div>
-        </Link>
-        <Link to="/admin/agents" className="group relative overflow-hidden rounded-3xl bg-lime p-5 text-forest shadow-soft transition-transform hover:-translate-y-0.5">
-          <div className="flex items-center gap-3">
-            <span className="grid size-10 place-items-center rounded-xl bg-forest/10"><Icon name="verified_user" fill className="text-[22px] text-forest" /></span>
-            <div><p className="text-xs font-bold uppercase tracking-wide text-forest/70">Agents</p><p className="text-lg font-extrabold">Administration</p></div>
-          </div>
-          <div className="mt-3 flex items-center gap-2 text-xs font-semibold text-forest"><Icon name="arrow_forward" className="text-[14px]" /> Gérer les accès</div>
-        </Link>
-        <Link to="/admin/ecoles" className="group relative overflow-hidden rounded-3xl bg-mist p-5 text-ink shadow-soft transition-transform hover:-translate-y-0.5">
-          <div className="flex items-center gap-3">
-            <span className="grid size-10 place-items-center rounded-xl bg-forest/10"><Icon name="warning" fill className="text-[22px] text-danger" /></span>
-            <div><p className="text-xs font-bold uppercase tracking-wide text-neutral-500">Alertes</p><p className="text-lg font-extrabold">{s.schools.suspended} inactive{Number(s.schools.suspended) > 1 ? 's' : ''}</p></div>
-          </div>
-          <div className="mt-3 flex items-center gap-2 text-xs font-semibold text-forest"><Icon name="arrow_forward" className="text-[14px]" /> Vérifier</div>
-        </Link>
-        <Card className="rounded-3xl bg-gradient-to-br from-forest/10 to-lime/20 p-5 shadow-soft">
-          <div className="flex items-center gap-3">
-            <span className="grid size-10 place-items-center rounded-xl bg-forest text-lime"><Icon name="security" fill className="text-[22px]" /></span>
-            <div><p className="text-xs font-bold uppercase tracking-wide text-forest-500">Intégrité</p><p className="text-lg font-extrabold text-ink">Plateforme active</p></div>
-          </div>
-          <div className="mt-2 text-xs font-medium text-neutral-600">RLS actives · JWT vérifié · Audit journalisé</div>
-        </Card>
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        <StatCard dark icon="school" label="Écoles totales" value={String(s.schools.total)} badge={{ text: `${s.schools.active} actives`, tone: "up" }} note={`${s.schools.suspended} inactive${s.schools.suspended > 1 ? "s" : ""}`} />
-        <StatCard icon="groups" label="Élèves inscrits" value={String(s.people.totalStudents)} note="toutes écoles confondues" />
-        <StatCard icon="meeting_room" label="Classes" value={String(s.people.totalClasses)} note="établissements actifs" />
-        <StatCard icon="badge" label="Enseignants" value={String(s.people.totalTeachers)} note="professeurs et instituteurs" />
-        <StatCard icon="workspace_premium" label="Abonnements payants actifs" value={String(subs.active)} badge={{ text: `${subs.expiringSoon} à renouveler`, tone: subs.expiringSoon > 0 ? "down" : "neutral" }} note={`${subs.expired} expiré(s) · ${subs.none} sans abonnement`} />
-      </div>
-
-      {/* Les deux blocs sont empilés l'un sous l'autre (une colonne), jamais côte à côte. */}
-      <div className="space-y-4">
-        <Card className="rounded-3xl shadow-soft border border-neutral-100">
-          <CardHeader
-            title="Répartition par établissement"
-            subtitle="Élèves, classes et enseignants par école"
-            action={<Link to="/admin/ecoles" className="text-sm font-medium text-forest">Voir le détail →</Link>}
+      {/* Bandeau de synthèse : réseau + effectifs */}
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+        <HeroCard
+          eyebrow="Plateforme Classora"
+          icon="school"
+          value={formatNumber(s.schools.total)}
+          label={`établissement${s.schools.total > 1 ? "s" : ""} enregistré${s.schools.total > 1 ? "s" : ""} sur le réseau`}
+          footnote={`Données au ${formatDate(s.generatedAt)}`}
+        >
+          <HeroBar
+            segments={[
+              { pct: activePct, className: "bg-lime" },
+              { pct: suspendedPct, className: "bg-red-300/80" },
+            ]}
           />
-          <div className="overflow-auto max-h-[500px]">
-            <Table
-              columns={[
-                { key: "name", header: "Établissement", render: (r: { schoolName: string }) => <div className="font-medium">{r.schoolName}</div> },
-                { key: "matricule", header: "Matricule", render: (r: { matricule: string }) => <span className="text-xs text-neutral-500 tabular-nums">{r.matricule}</span> },
-                { key: "students", header: "Élèves", align: "right", render: (r: { studentCount: number }) => <span className="tabular-nums">{r.studentCount}</span> },
-                { key: "classes", header: "Classes", align: "right", render: (r: { classCount: number }) => <span className="tabular-nums">{r.classCount}</span> },
-                { key: "teachers", header: "Enseignants", align: "right", render: (r: { teacherCount: number }) => <span className="tabular-nums">{r.teacherCount}</span> },
-                {
-                  key: "status",
-                  header: "Statut",
-                  align: "center",
-                  render: (r: { status: string }) => (
-                    <Badge tone={r.status === "ACTIF" ? "success" : "danger"}>
-                      {r.status === "ACTIF" ? "Actif" : "Inactif"}
-                    </Badge>
-                  ),
-                },
-              ]}
-              rows={s.bySchool as unknown as { schoolName: string; matricule: string; studentCount: number; classCount: number; teacherCount: number; status: string }[]}
-              rowKey={(r: { schoolName: string; matricule: string; studentCount: number; classCount: number; teacherCount: number; status: string }) => r.schoolName}
-              caption="Statistiques par établissement scolaire"
+          <HeroLegend
+            items={[
+              { dot: "bg-lime", label: `${formatNumber(s.schools.active)} actif${s.schools.active > 1 ? "s" : ""}` },
+              { dot: "bg-red-300", label: `${formatNumber(s.schools.suspended)} suspendu${s.schools.suspended > 1 ? "s" : ""}` },
+            ]}
+            trailing={
+              <>
+                <Icon name="trending_up" className="text-[14px]" />
+                {activePct} % opérationnels
+              </>
+            }
+          />
+        </HeroCard>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <KpiTile tone="sky" icon="groups" label="Élèves inscrits" value={formatNumber(s.people.totalStudents)} note="Toutes écoles confondues" />
+          <KpiTile tone="amber" icon="meeting_room" label="Classes" value={formatNumber(s.people.totalClasses)} note="Établissements actifs" />
+          <KpiTile tone="lime" icon="badge" label="Enseignants" value={formatNumber(s.people.totalTeachers)} note="Professeurs et instituteurs" />
+          <KpiTile
+            tone={subs.expiringSoon > 0 ? "red" : "violet"}
+            icon="workspace_premium"
+            label="Abonnements actifs"
+            value={formatNumber(subs.active)}
+            note={`${subs.expiringSoon} à renouveler · ${subs.expired} expiré(s)`}
+          />
+        </div>
+      </div>
+
+      {/* Accès rapides */}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <QuickLink to="/admin/ecoles" icon="school" label="Établissements" value={`${formatNumber(s.schools.total)} écoles`} note="Voir la répartition" tone="forest" />
+        <QuickLink to="/admin/abonnements" icon="workspace_premium" label="Abonnements" value={`${formatNumber(subs.active)} actifs`} note="Formules et échéances" tone="lime" />
+        <QuickLink to="/admin/agents" icon="verified_user" label="Agents" value="Administration" note="Gérer les accès" tone="white" />
+        <QuickLink
+          to="/admin/ecoles?status=SUSPENDUE"
+          icon="warning"
+          label="Alertes"
+          value={`${formatNumber(s.schools.suspended)} inactive${s.schools.suspended > 1 ? "s" : ""}`}
+          note="Vérifier les écoles"
+          tone="mist"
+        />
+      </div>
+
+      {/* Répartition et activité */}
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
+        <Card padded={false} className="overflow-hidden">
+          <div className="px-4 pt-5 sm:px-6">
+            <PanelHeading
+              icon="domain"
+              title="Répartition par établissement"
+              subtitle="Élèves, classes et enseignants par école"
+              action={<Badge tone="neutral">{s.bySchool.length} école(s)</Badge>}
             />
           </div>
-        </Card>
-
-        <Card className="rounded-3xl shadow-soft border border-neutral-100">
-          <CardHeader title="Activité administrative récente" subtitle="Dernières actions réalisées sur la plateforme" />
-          <div className="space-y-3 max-h-[500px] overflow-y-auto">
-            {recent.length === 0 ? (
-              <div className="text-center py-8 text-neutral-400 text-sm">
-                <Icon name="history" fill className="text-[32px] mb-2 opacity-40" />
-                <div>Aucune activité au cours des 24 dernières heures.</div>
-              </div>
+          <div className="mt-4 max-h-[540px] overflow-auto px-4 pb-4 sm:px-6">
+            {s.bySchool.length === 0 ? (
+              <p className="py-10 text-center text-sm text-neutral-500">Aucun établissement enregistré pour le moment.</p>
             ) : (
-              <div className="space-y-2">
-                {recent.map((a, i) => (
-                  <div key={`${a.createdAt}-${i}`} className="flex items-start gap-3 text-sm">
-                    <span className="shrink-0 w-2.5 h-2.5 rounded-full bg-lime mt-1" />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-ink font-medium">{a.action?.replace(/_/g, " ") ?? "—"}</p>
-                      <p className="text-xs text-neutral-500">{formatDate(a.createdAt)} · {a.entity} · {a.actorName ?? a.actorRole ?? "—"}</p>
-                    </div>
+              <Table
+                stagger
+                columns={[
+                  {
+                    key: "name",
+                    header: "Établissement",
+                    render: (r: AdminOverviewStats["bySchool"][number]) => {
+                      const status = SUB_STATUS[r.status] ?? SUB_STATUS.AUCUN;
+                      return (
+                        <div className="flex min-w-0 items-center gap-3">
+                          <EntityAvatar name={r.schoolName} active={r.status === "ACTIF"} />
+                          <div className="min-w-0">
+                            <Link
+                              to={`/admin/ecoles/${r.schoolId}`}
+                              className="block truncate font-semibold text-ink underline-offset-4 hover:text-forest hover:underline"
+                            >
+                              {r.schoolName}
+                            </Link>
+                            <div className="mt-1 flex items-center gap-2">
+                              <MonoChip>{r.matricule || "—"}</MonoChip>
+                              <Badge tone={status.tone} className="px-2 py-0.5 text-[10px]">
+                                <StatusDot tone={status.tone === "success" ? "success" : status.tone === "danger" ? "danger" : status.tone === "warning" ? "warning" : "neutral"} />
+                                {status.label}
+                              </Badge>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    },
+                  },
+                  { key: "students", header: "Élèves", align: "right", render: (r: AdminOverviewStats["bySchool"][number]) => <span className="tabular-nums">{formatNumber(r.studentCount)}</span> },
+                  { key: "classes", header: "Classes", align: "right", className: "hidden sm:table-cell", render: (r: AdminOverviewStats["bySchool"][number]) => <span className="tabular-nums">{formatNumber(r.classCount)}</span> },
+                  { key: "teachers", header: "Enseignants", align: "right", className: "hidden md:table-cell", render: (r: AdminOverviewStats["bySchool"][number]) => <span className="tabular-nums">{formatNumber(r.teacherCount)}</span> },
+                ]}
+                rows={s.bySchool}
+                rowKey={(r: AdminOverviewStats["bySchool"][number]) => r.schoolId}
+                caption="Statistiques par établissement scolaire"
+              />
+            )}
+          </div>
+        </Card>
+
+        <div className="space-y-4">
+          <Card padded={false} className="overflow-hidden">
+            <div className="px-4 pt-5 sm:px-5">
+              <PanelHeading
+                icon="history"
+                title="Activité récente"
+                subtitle="Dernières actions sur 24 h"
+                action={<Badge tone={recent.length > 0 ? "lime" : "neutral"}>{recent.length}</Badge>}
+              />
+            </div>
+            <div className="mt-4 max-h-[300px] overflow-y-auto px-4 pb-5 sm:px-5">
+              {recent.length === 0 ? (
+                <div className="flex flex-col items-center justify-center rounded-2xl bg-mist/60 px-4 py-8 text-center">
+                  <span className="grid size-11 place-items-center rounded-full bg-white text-forest shadow-card">
+                    <Icon name="history" className="text-[22px]" />
+                  </span>
+                  <p className="mt-3 text-sm font-semibold text-ink">Aucune activité récente</p>
+                  <p className="mt-1 text-xs text-neutral-500">Les actions de la console apparaîtront ici.</p>
+                </div>
+              ) : (
+                <ul className="space-y-2">
+                  {recent.map((a, i) => (
+                    <li key={`${a.createdAt}-${i}`} className="flex items-start gap-3 rounded-xl px-2 py-1.5 transition hover:bg-mist/70">
+                      <span className="mt-1.5 size-2 shrink-0 rounded-full bg-lime ring-4 ring-lime-soft" aria-hidden="true" />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold capitalize text-ink">{a.action?.replace(/_/g, " ") ?? "—"}</p>
+                        <p className="mt-0.5 text-[11px] text-neutral-500">
+                          {formatDate(a.createdAt)} · {a.entity} · {a.actorName ?? a.actorRole ?? "—"}
+                        </p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </Card>
+
+          <Card padded={false} className="overflow-hidden">
+            <div className="px-4 pt-5 sm:px-5">
+              <PanelHeading icon="notifications_active" title="Alertes" subtitle="Points à surveiller" />
+            </div>
+            <div className="mt-4 space-y-2 px-4 pb-5 sm:px-5">
+              {s.schools.suspended > 0 && (
+                <Link to="/admin/ecoles?status=SUSPENDUE" className="flex items-start gap-3 rounded-2xl border border-red-100 bg-red-50/70 p-3">
+                  <span className="grid size-8 shrink-0 place-items-center rounded-full bg-white text-danger">
+                    <Icon name="warning" fill className="text-[18px]" />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-red-900">{s.schools.suspended} établissement(s) inactif(s)</p>
+                    <p className="text-xs text-neutral-600">Abonnement expiré ou absent, ou inscriptions fermées.</p>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </Card>
-      </div>
-
-      {/* Alertes — conservées en dessous, plein largeur */}
-      <div className="mt-6">
-        <Card>
-          <CardHeader title="Alertes" />
-          <div className="space-y-3">
-            {s.schools.suspended > 0 && (
-              <div className="flex items-start gap-3 rounded-xl p-3 bg-red-50">
-                <Icon name="warning" fill className="text-[20px] text-danger shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium text-danger">{s.schools.suspended} établissement(s) inactif(s)</p>
-                  <p className="text-xs text-neutral-500">Abonnement expiré ou absent, ou inscriptions fermées.</p>
+                </Link>
+              )}
+              {s.people.totalStudents === 0 && (
+                <div className="flex items-start gap-3 rounded-2xl border border-amber-100 bg-amber-50/70 p-3">
+                  <span className="grid size-8 shrink-0 place-items-center rounded-full bg-white text-amber-700">
+                    <Icon name="info" fill className="text-[18px]" />
+                  </span>
+                  <div>
+                    <p className="text-sm font-semibold text-amber-900">Aucun élève recensé</p>
+                    <p className="text-xs text-neutral-600">Aucun élève actif sur la plateforme.</p>
+                  </div>
                 </div>
-              </div>
-            )}
-            {s.people.totalStudents === 0 && (
-              <div className="flex items-start gap-3 rounded-xl p-3 bg-amber-50">
-                <Icon name="info" fill className="text-[20px] text-amber-800 shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium text-amber-800">Aucun élève recensé</p>
-                  <p className="text-xs text-neutral-500">Aucun élève actif sur la plateforme.</p>
+              )}
+              {subs.pendingRequests > 0 && (
+                <Link to="/admin/abonnements" className="flex items-start gap-3 rounded-2xl border border-amber-100 bg-amber-50/70 p-3">
+                  <span className="grid size-8 shrink-0 place-items-center rounded-full bg-white text-amber-700">
+                    <Icon name="assignment" fill className="text-[18px]" />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-amber-900">{subs.pendingRequests} demande(s) d'abonnement</p>
+                    <p className="text-xs text-neutral-600">{formatCurrency(subs.pendingAmount)} à encaisser · cliquez pour traiter.</p>
+                  </div>
+                </Link>
+              )}
+              {subs.expiringSoon > 0 && (
+                <Link to="/admin/abonnements" className="flex items-start gap-3 rounded-2xl border border-amber-100 bg-amber-50/70 p-3">
+                  <span className="grid size-8 shrink-0 place-items-center rounded-full bg-white text-amber-700">
+                    <Icon name="schedule" fill className="text-[18px]" />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-amber-900">{subs.expiringSoon} échéance(s) sous 30 jours</p>
+                    <p className="text-xs text-neutral-600">Anticipez les renouvellements pour éviter les suspensions.</p>
+                  </div>
+                </Link>
+              )}
+              {s.schools.suspended === 0 && s.people.totalStudents > 0 && subs.pendingRequests === 0 && subs.expiringSoon === 0 && (
+                <div className="flex items-start gap-3 rounded-2xl border border-emerald-100 bg-emerald-50/70 p-3">
+                  <span className="grid size-8 shrink-0 place-items-center rounded-full bg-white text-emerald-600">
+                    <Icon name="check_circle" fill className="text-[18px]" />
+                  </span>
+                  <div>
+                    <p className="text-sm font-semibold text-emerald-900">Tout va bien</p>
+                    <p className="text-xs text-neutral-600">Aucune alerte critique.</p>
+                  </div>
                 </div>
-              </div>
-            )}
-            {subs.pendingRequests > 0 && (
-              <Link to="/admin/abonnements" className="flex items-start gap-3 rounded-xl p-3 bg-amber-50">
-                <Icon name="assignment" fill className="text-[20px] text-amber-800 shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium text-amber-800">{subs.pendingRequests} demande(s) d'abonnement</p>
-                  <p className="text-xs text-neutral-500">{formatCurrency(subs.pendingAmount)} à encaisser · cliquez pour traiter.</p>
-                </div>
-              </Link>
-            )}
-            {subs.expiringSoon > 0 && (
-              <Link to="/admin/abonnements" className="flex items-start gap-3 rounded-xl p-3 bg-amber-50">
-                <Icon name="schedule" fill className="text-[20px] text-amber-800 shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium text-amber-800">{subs.expiringSoon} échéance(s) sous 30 jours</p>
-                  <p className="text-xs text-neutral-500">Anticipez les renouvellements pour éviter les suspensions.</p>
-                </div>
-              </Link>
-            )}
-            {s.schools.suspended === 0 && s.people.totalStudents > 0 && subs.pendingRequests === 0 && subs.expiringSoon === 0 && (
-              <div className="flex items-start gap-3 rounded-xl p-3 bg-emerald-50">
-                <Icon name="check_circle" fill className="text-[20px] text-emerald-800 shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium text-emerald-800">Tout va bien</p>
-                  <p className="text-xs text-neutral-500">Aucune alerte critique.</p>
-                </div>
-              </div>
-            )}
-          </div>
-        </Card>
-      </div>
-
-      {/* Section SaaS — Revenus réels des abonnements */}
-      <Card className="rounded-3xl bg-lime-100 shadow-soft border border-lime-200 p-6">
-        <CardHeader
-          title="Revenus réels des abonnements"
-          subtitle="Encaissement et abonnements actifs"
-          action={<Link to="/admin/abonnements" className="text-sm font-medium text-forest">Gérer →</Link>}
-        />
-        <div className="mt-4 space-y-4">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wide text-neutral-500">Encaissé ce mois</p>
-            <p className="mt-1 text-3xl font-extrabold text-ink">{formatCurrency(subs.revenueThisMonth)}</p>
-            <p className="text-xs text-neutral-500">Journal des activations et renouvellements</p>
-          </div>
-          <div className="rounded-2xl bg-white p-4 shadow-sm border border-neutral-100">
-            <p className="text-xs font-bold uppercase tracking-wide text-neutral-500">MRR (abonnements actifs)</p>
-            <p className="mt-1 text-2xl font-extrabold text-ink">{formatCurrency(subs.mrr)}</p>
-            <p className="mt-0.5 text-[11px] text-neutral-500">ARR projeté : {formatCurrency(subs.mrr * 12)}</p>
-          </div>
-          <Link to="/admin/finances" className="inline-flex items-center gap-2 text-xs font-semibold text-forest underline">
-            <Icon name="arrow_forward" className="text-[14px]" /> Voir les finances détaillées
-          </Link>
+              )}
+            </div>
+          </Card>
         </div>
-      </Card>
+      </div>
+
+      {/* Revenus réels des abonnements */}
+      <div className="relative overflow-hidden rounded-3xl border border-lime-200 bg-lime-soft p-5 shadow-card sm:p-6">
+        <div className="pointer-events-none absolute -right-10 -top-10 size-40 rounded-full bg-white/40 blur-2xl" aria-hidden="true" />
+        <div className="relative flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-forest/60">Revenus réels des abonnements</p>
+            <p className="mt-2 text-3xl font-extrabold tabular-nums text-forest sm:text-4xl">{formatCurrency(subs.revenueThisMonth)}</p>
+            <p className="mt-1 text-sm text-forest/70">encaissés ce mois · journal des activations et renouvellements</p>
+          </div>
+          <LinkButton to="/admin/finances" variant="dark" icon="account_balance_wallet">
+            Voir les finances
+          </LinkButton>
+        </div>
+        <div className="relative mt-5 grid gap-3 sm:grid-cols-3">
+          <div className="rounded-2xl bg-white/80 p-4">
+            <p className="text-[11px] font-bold uppercase tracking-wide text-neutral-500">MRR</p>
+            <p className="mt-1 text-xl font-extrabold tabular-nums text-forest">{formatCurrency(subs.mrr)}</p>
+            <p className="text-[11px] text-neutral-500">Abonnements actifs</p>
+          </div>
+          <div className="rounded-2xl bg-white/80 p-4">
+            <p className="text-[11px] font-bold uppercase tracking-wide text-neutral-500">ARR projeté</p>
+            <p className="mt-1 text-xl font-extrabold tabular-nums text-forest">{formatCurrency(subs.mrr * 12)}</p>
+            <p className="text-[11px] text-neutral-500">Projection sur 12 mois</p>
+          </div>
+          <div className="rounded-2xl bg-white/80 p-4">
+            <p className="text-[11px] font-bold uppercase tracking-wide text-neutral-500">À encaisser</p>
+            <p className="mt-1 text-xl font-extrabold tabular-nums text-forest">{formatCurrency(subs.pendingAmount)}</p>
+            <p className="text-[11px] text-neutral-500">{subs.pendingRequests} demande(s) en attente</p>
+          </div>
+        </div>
+      </div>
     </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+
+const QUICK_TONES = {
+  forest: { box: "bg-forest text-white", chip: "bg-white/10 text-lime", label: "text-white/60", note: "text-lime" },
+  lime: { box: "bg-lime text-forest", chip: "bg-forest/10 text-forest", label: "text-forest/70", note: "text-forest" },
+  white: { box: "bg-white text-ink", chip: "bg-lime-soft text-forest", label: "text-neutral-500", note: "text-forest" },
+  mist: { box: "bg-mist text-ink", chip: "bg-white text-forest", label: "text-neutral-500", note: "text-forest" },
+} as const;
+
+function QuickLink({
+  to,
+  icon,
+  label,
+  value,
+  note,
+  tone,
+}: {
+  to: string;
+  icon: string;
+  label: string;
+  value: string;
+  note: string;
+  tone: keyof typeof QUICK_TONES;
+}) {
+  const palette = QUICK_TONES[tone];
+  return (
+    <Link
+      to={to}
+      className={cn(
+        "group relative overflow-hidden rounded-2xl p-4 shadow-card transition-transform duration-300 hover:-translate-y-0.5 hover:shadow-soft",
+        palette.box,
+      )}
+    >
+      <div className="pointer-events-none absolute -right-6 -top-6 size-20 rounded-full bg-white/10 blur-xl" aria-hidden="true" />
+      <div className="flex items-center gap-3">
+        <span className={cn("grid size-10 shrink-0 place-items-center rounded-xl", palette.chip)}>
+          <Icon name={icon} fill className="text-[22px]" />
+        </span>
+        <div className="min-w-0">
+          <p className={cn("text-[11px] font-bold uppercase tracking-wide", palette.label)}>{label}</p>
+          <p className="truncate text-base font-extrabold">{value}</p>
+        </div>
+      </div>
+      <p className={cn("mt-3 flex items-center gap-1.5 text-xs font-semibold", palette.note)}>
+        <Icon name="arrow_forward" className="text-[14px]" /> {note}
+      </p>
+    </Link>
   );
 }
