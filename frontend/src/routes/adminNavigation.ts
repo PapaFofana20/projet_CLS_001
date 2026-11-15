@@ -15,8 +15,6 @@ export interface AdminNavItem {
 const ADMIN_NAV: AdminNavItem[] = [
   { to: "/admin", label: "Tableau de bord", icon: "dashboard", section: "Pilotage" },
   { to: "/admin/ecoles", label: "Tous les établissements", icon: "school", section: "Établissements" },
-  { to: "/admin/ecoles?status=ACTIF", label: "Écoles actives", icon: "check_circle", section: "Établissements" },
-  { to: "/admin/ecoles?status=SUSPENDUE", label: "Écoles suspendues", icon: "block", section: "Établissements" },
   { to: "/admin/agents", label: "Agents administratifs", icon: "badge", section: "Utilisateurs et accès", superAdminOnly: true },
   { to: "/admin/abonnements", label: "Abonnements", icon: "workspace_premium", section: "Abonnements" },
   { to: "/admin/finances", label: "Finances", icon: "account_balance_wallet", section: "Finances", adminOrSuper: true },
@@ -24,7 +22,6 @@ const ADMIN_NAV: AdminNavItem[] = [
   { to: "/admin/supervision/audit", label: "Journal d'audit", icon: "history", section: "Supervision", adminOrSuper: true },
   { to: "/admin/supervision/securite", label: "Sécurité", icon: "security", section: "Supervision", adminOrSuper: true },
   { to: "/admin/parametres", label: "Paramètres généraux", icon: "settings", section: "Configuration" },
-  { to: "/admin/timetables", label: "Emploi du temps", icon: "calendar_month", section: "Configuration" },
 ];
 
 // Renvoie les liens admin visibles pour ce rôle d'agent.
