@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/Card";
 import { Icon } from "@/components/ui/Icon";
 import { ConfirmDialog } from "@/components/ui/Modal";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { PanelHeading } from "@/features/admin/adminUi";
 import { SkeletonCards, SkeletonTable } from "@/components/ui/Skeleton";
 import { useCurrentUser } from "@/context/AuthContext";
 import { useFeature } from "@/utils/features";
@@ -387,15 +388,16 @@ export default function TimetableViewPage() {
           </Card>
 
           <Card>
-            <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-              <div>
-                <h2 className="text-lg font-bold text-ink">Maquette de l'emploi du temps</h2>
-                <p className="text-sm text-neutral-500">Du lundi au samedi · 08:00 – 19:00</p>
-              </div>
-              {isDirector && timetable.status === "published" && (
-                <Badge tone="success">Visible par les classes</Badge>
-              )}
-            </div>
+            <PanelHeading
+              icon="event_busy"
+              title="Maquette de l'emploi du temps"
+              subtitle="Du lundi au samedi · 08:00 – 19:00"
+              action={
+                isDirector && timetable.status === "published" ? (
+                  <Badge tone="success">Visible par les classes</Badge>
+                ) : undefined
+              }
+            />
 
             <TimetableGrid
               courses={courses}

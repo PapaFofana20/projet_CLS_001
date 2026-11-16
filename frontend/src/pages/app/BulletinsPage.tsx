@@ -1,6 +1,7 @@
 // Bulletins des élèves, imprimables, selon le cycle de la classe.
 import { useEffect, useState } from "react";
 import { AsyncView } from "@/components/ui/AsyncView";
+import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -23,6 +24,7 @@ import { bulletinClasses, getClassReportCards, updateReportMeta } from "@/servic
 import { getSchoolOverview } from "@/services/schoolService";
 import type { ReportCardData } from "@/types";
 import { formatNumber } from "@/utils/format";
+import { averageTone } from "@/utils/grades";
 
 function MetaEditor({ card, onSaved }: { card: ReportCardData; onSaved: () => void }) {
   const user = useCurrentUser();
@@ -187,6 +189,24 @@ export default function BulletinsPage() {
                   <EmptyState icon="description" title="Pas de bulletin" text="Aucun élève dans cette classe pour cette période." />
                 ) : (
                   <>
+                    {/* Bandeau élève / parent : ses propres résultats, sur le modèle de la console admin. */}
+                    {(isParent || isStudent) && current && (
+                      <div className="no-print grid gap-4 sm:grid-cols-3">
+                        <HeroCard
+                          eyebrow="Moyenne générale"
+                          icon="grade"
+                          value={current.generalAverage === null ? "—" : formatNumber(current.generalAverage)}
+                          label={`sur ${current.classRoom.cycle === "elementaire" ? 10 : 20}`}
+                          badge={
+                            current.generalAverage == null
+                              ? null
+                              : <Badge tone={averageTone(current.generalAverage)} className="px-2 py-0.5 text-[10px]">{formatNumber(current.generalAverage)}</Badge>
+                          }
+                        />
+                        <KpiTile icon="leaderboard" label="Rang" value={current.rank ?? "—"} note={`sur ${current.classSize}`} tone="sky" />
+                        <KpiTile icon="description" label="Période" value={current.period.label} tone="neutral" />
+                      </div>
+                    )}
                     {current.classRoom.cycle === "elementaire" ? (
                       <ElementaryReport card={current} schoolName={overview.settings.name} exam={levels.find((l) => l.id === current.classRoom.levelId)?.exam} />
                     ) : (

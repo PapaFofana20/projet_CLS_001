@@ -9,9 +9,9 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Icon } from "@/components/ui/Icon";
 import { Modal } from "@/components/ui/Modal";
 import { SkeletonTable } from "@/components/ui/Skeleton";
-import { StatCard } from "@/components/ui/StatCard";
 import { Table, type Column } from "@/components/ui/Table";
 import { Tabs } from "@/components/ui/Tabs";
+import { KpiTile } from "@/features/admin/adminUi";
 import { useCurrentUser } from "@/context/AuthContext";
 import { useChild } from "@/context/ChildContext";
 import { todayIso } from "@/data/school";
@@ -60,9 +60,26 @@ export function ParentPayments({ schoolName, self = false }: { schoolName: strin
       {() => (
         <div className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-3">
-            <StatCard dark icon="warning" label="Reste à payer (échu)" value={formatCurrency(sum(overdue.map(remaining)))} note={`${overdue.length} échéance${overdue.length > 1 ? "s" : ""} en retard`} />
-            <StatCard icon="task_alt" label="Déjà payé" value={formatCurrency(sum(mine.map((p) => p.paidAmount)))} />
-            <StatCard icon="event" label="Prochaine échéance" value={next ? formatDate(next.dueDate) : "—"} note={next ? `${next.label} · ${formatCurrency(next.amount)}` : "Tout est à jour"} />
+            <KpiTile
+              icon="warning"
+              label="Reste à payer (échu)"
+              value={formatCurrency(sum(overdue.map(remaining)))}
+              note={`${overdue.length} échéance${overdue.length > 1 ? "s" : ""} en retard`}
+              tone="red"
+            />
+            <KpiTile
+              icon="task_alt"
+              label="Déjà payé"
+              value={formatCurrency(sum(mine.map((p) => p.paidAmount)))}
+              tone="lime"
+            />
+            <KpiTile
+              icon="event"
+              label="Prochaine échéance"
+              value={next ? formatDate(next.dueDate) : "—"}
+              note={next ? `${next.label} · ${formatCurrency(next.amount)}` : "Tout est à jour"}
+              tone="neutral"
+            />
           </div>
           {children.length > 1 && !self && <p className="flex items-center gap-2 rounded-2xl bg-lime-soft p-4 text-sm font-medium text-forest"><Icon name="family_restroom" className="text-[20px]" />Réduction fratrie de 10 % appliquée sur la mensualité à partir du 2e élève inscrit dans l'école.</p>}
           <Tabs label="Paiements" value={tab} onChange={setTab} items={[{ id: "echeancier", label: "Échéancier", icon: "calendar_month" }, { id: "historique", label: "Historique et reçus", icon: "receipt_long" }]} />

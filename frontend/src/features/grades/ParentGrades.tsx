@@ -2,10 +2,10 @@
 
 import { AsyncView } from "@/components/ui/AsyncView";
 import { Badge } from "@/components/ui/Badge";
-import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import { Table, type Column } from "@/components/ui/Table";
+import { KpiTile, PanelCard } from "@/features/admin/adminUi";
 import { useCurrentUser } from "@/context/AuthContext";
 import { useChild } from "@/context/ChildContext";
 import { useAsync } from "@/hooks/useAsync";
@@ -61,31 +61,35 @@ export function ParentGrades({ period }: { period: string }) {
         return (
           <div className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-3">
-              <Card dark>
-                <p className="text-xs font-semibold uppercase text-white/70">Moyenne générale</p>
-                <p className="text-3xl font-extrabold text-lime">
-                  {card.generalAverage === null ? "—" : formatNumber(card.generalAverage)} <span className="text-base text-white/60">/ {elem ? 10 : 20}</span>
-                </p>
-              </Card>
-              <Card>
-                <p className="text-xs font-semibold uppercase text-neutral-500">Rang</p>
-                <p className="text-3xl font-extrabold">
-                  {card.rank ?? "—"}
-                  <span className="text-base text-neutral-400"> / {card.classSize}</span>
-                </p>
-              </Card>
-              <Card>
-                <p className="text-xs font-semibold uppercase text-neutral-500">Moyenne de la classe</p>
-                <p className="text-3xl font-extrabold">{card.classAverage === null ? "—" : formatNumber(card.classAverage)} <span className="text-base text-neutral-400">/ {elem ? 10 : 20}</span></p>
-              </Card>
+              <KpiTile
+                icon="grade"
+                label="Moyenne générale"
+                value={card.generalAverage === null ? "—" : formatNumber(card.generalAverage)}
+                note={`sur ${elem ? 10 : 20}`}
+                tone="lime"
+              />
+              <KpiTile
+                icon="leaderboard"
+                label="Rang"
+                value={card.rank ?? "—"}
+                note={`sur ${card.classSize}`}
+                tone="sky"
+              />
+              <KpiTile
+                icon="analytics"
+                label="Moyenne de la classe"
+                value={card.classAverage === null ? "—" : formatNumber(card.classAverage)}
+                note={`sur ${elem ? 10 : 20}`}
+                tone="neutral"
+              />
             </div>
-            <Card padded={false} className="p-2">
-              <div className="px-4 pt-4">
-                <h2 className="text-lg font-bold">{title}</h2>
-                <p className="text-sm text-neutral-500">{elem ? "Cycle élémentaire : notes de composition par matière." : "Moyenne de matière = (moyenne des devoirs + composition) / 2."}</p>
-              </div>
+            <PanelCard
+              icon="grade"
+              title={title}
+              subtitle={elem ? "Cycle élémentaire : notes de composition par matière." : "Moyenne de matière = (moyenne des devoirs + composition) / 2."}
+            >
               <Table caption="Notes par matière" columns={cols} rows={card.lines} rowKey={(l) => l.subjectId} />
-            </Card>
+            </PanelCard>
           </div>
         );
       }}
