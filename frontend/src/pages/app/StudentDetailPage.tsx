@@ -203,10 +203,10 @@ function Detail({ d, onPaymentsChanged }: { d: StudentDetail; onPaymentsChanged:
         </HeroCard>
 
         <div className="grid gap-3 sm:grid-cols-2">
-          <KpiTile tone="sky" icon="cake" label="Âge" value={`${ageFrom(r.birthDate, todayIso())} ans`} note={formatDate(r.birthDate)} />
+          <KpiTile tone="sky" icon="person" label="Âge" value={`${ageFrom(r.birthDate, todayIso())} ans`} note={formatDate(r.birthDate)} />
           <KpiTile tone="lime" icon="meeting_room" label="Classe" value={d.classRoom.name} note={CYCLE_LABELS[r.cycle]} valueClassName="text-lg" />
           {d.report ? (
-            <KpiTile tone="violet" icon="analytics" label="Moyenne générale" value={d.report.generalAverage === null ? "—" : formatNumber(d.report.generalAverage)} note={`Rang ${d.report.rank ?? "—"} sur ${d.report.classSize}`} />
+            <KpiTile tone="violet" icon="trending_up" label="Moyenne générale" value={d.report.generalAverage === null ? "—" : formatNumber(d.report.generalAverage)} note={`Rang ${d.report.rank ?? "—"} sur ${d.report.classSize}`} />
           ) : (
             <KpiTile tone="neutral" icon="trending_up" label="Moyenne" value="—" note="Pas de bulletin" />
           )}
@@ -292,7 +292,7 @@ function Detail({ d, onPaymentsChanged }: { d: StudentDetail; onPaymentsChanged:
             </div>
           </Card>
           <Card>
-            <PanelHeading icon="diversity_3" title="Frères et sœurs" subtitle={`${d.siblings.length} élève(s) de la même famille`} />
+            <PanelHeading icon="family_restroom" title="Frères et sœurs" subtitle={`${d.siblings.length} élève(s) de la même famille`} />
             <div className="mt-4">
             {d.siblings.length === 0 ? (
               <p className="text-sm text-neutral-500">Aucun frère ou sœur dans l'école.</p>

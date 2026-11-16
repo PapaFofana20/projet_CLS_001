@@ -79,7 +79,7 @@ export function StaffCredentialsModal({ open, credentials, school, kind = "creat
           <Button variant="outline" icon="print" onClick={() => window.print()}>
             Imprimer
           </Button>
-          <Button variant="ghost" icon="content_copy" onClick={() => void copy()}>
+          <Button variant="ghost" icon="save" onClick={() => void copy()}>
             Copier les identifiants
           </Button>
           <Button variant="dark" icon="send" onClick={() => void whatsapp()}>

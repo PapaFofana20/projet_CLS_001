@@ -170,7 +170,7 @@ export default function StudentsPage() {
 
       <Card className="mb-4">
         <PanelHeading
-          icon="filter_alt"
+          icon="filter_alt_off"
           title="Rechercher et filtrer"
           subtitle={`${filtered.length} ${pluralize(filtered.length, "élève", "élèves")} affiché${filtered.length > 1 ? "s" : ""} · page ${page}`}
           action={activeFilters > 0 ? <Badge tone="lime">{activeFilters} filtre(s)</Badge> : undefined}

@@ -221,7 +221,7 @@ function Content({ d, onReload }: { d: Loaded; onReload: () => void }) {
 
       <Card>
         <PanelHeading
-          icon="fact_check"
+          icon="check_circle"
           title="Feuille d'appel"
           subtitle="Cochez les absents et retards : l'enregistrement est automatique."
           action={saving ? <Badge tone="warning">Enregistrement…</Badge> : savedAt ? <Badge tone="success">Enregistré à {savedAt}</Badge> : undefined}

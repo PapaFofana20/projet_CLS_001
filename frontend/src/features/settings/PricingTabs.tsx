@@ -223,9 +223,9 @@ export function FeesTab({ overview, onSaved }: TabProps) {
             </HeroCard>
             <div className="grid gap-3 sm:grid-cols-2">
               <KpiTile tone="lime" icon="sell" label="Tarif moyen" value={formatCurrency(avg)} note="Par an, par élève" valueClassName="text-lg" />
-              <KpiTile tone="sky" icon="arrow_upward" label="Tarif le plus élevé" value={formatCurrency(max)} note="Niveau supérieur" valueClassName="text-lg" />
+              <KpiTile tone="sky" icon="trending_up" label="Tarif le plus élevé" value={formatCurrency(max)} note="Niveau supérieur" valueClassName="text-lg" />
               <KpiTile tone="amber" icon="percent" label="Réduction fratrie" value={`${discount || 0} %`} note="Familles nombreuses" />
-              <KpiTile tone="violet" icon="restaurant" label="Cantine" value={formatCurrency(Number(annex.cantine))} note="Par mois" valueClassName="text-lg" />
+              <KpiTile tone="violet" icon="payments" label="Cantine" value={formatCurrency(Number(annex.cantine))} note="Par mois" valueClassName="text-lg" />
             </div>
           </div>
         );

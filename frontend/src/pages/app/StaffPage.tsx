@@ -270,7 +270,7 @@ export default function StaffPage() {
 
       <Card className="mb-4">
         <PanelHeading
-          icon="filter_alt"
+          icon="filter_alt_off"
           title="Rechercher et filtrer"
           subtitle={`${tab === "comptes" ? filteredStaff.length : filteredTeachers.length} ${pluralize(tab === "comptes" ? filteredStaff.length : filteredTeachers.length, "résultat", "résultats")}`}
           action={role ? <Badge tone="lime">1 filtre</Badge> : undefined}

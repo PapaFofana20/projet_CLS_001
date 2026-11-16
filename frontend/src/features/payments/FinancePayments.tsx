@@ -221,7 +221,7 @@ export function FinancePayments({ schoolName, canAct }: { schoolName: string; ca
               <Icon name="forum" className="text-[18px]" /> WhatsApp
             </a>
           ) : <span className="text-xs text-neutral-500">Nº invalide</span>}
-          <Button size="sm" variant="outline" icon="content_copy" aria-label={`Copier le message pour ${d.parentName}`} onClick={() => void copyMessage(d)} />
+          <Button size="sm" variant="outline" icon="save" aria-label={`Copier le message pour ${d.parentName}`} onClick={() => void copyMessage(d)} />
           <Button size="sm" variant="outline" icon="visibility" aria-label={`Aperçu de la relance pour ${d.parentName}`} onClick={() => setPreview(d)} />
         </div>
       ), shrink: 0 },

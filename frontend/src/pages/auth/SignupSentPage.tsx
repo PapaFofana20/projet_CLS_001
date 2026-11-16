@@ -62,7 +62,7 @@ export default function SignupSentPage() {
               <span className="flex-1 font-mono text-2xl font-bold tracking-widest text-ink bg-white px-4 py-3 rounded-xl border border-neutral-200 text-center select-all">
                 {childCode}
               </span>
-              <Button variant="outline" icon="content_copy" onClick={copyCode} aria-label="Copier le code">
+              <Button variant="outline" icon="save" onClick={copyCode} aria-label="Copier le code">
                 Copier
               </Button>
             </div>

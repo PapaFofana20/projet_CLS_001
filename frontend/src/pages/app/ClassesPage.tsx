@@ -110,7 +110,7 @@ export default function ClassesPage() {
                 <div className="grid gap-3 sm:grid-cols-2">
                   <KpiTile tone="lime" icon="meeting_room" label="Classes" value={classes.length} note="Tous cycles confondus" />
                   <KpiTile tone="sky" icon="groups" label="Élèves affectés" value={seated} note={`${totalCapacity} places au total`} />
-                  <KpiTile tone={freeSeats > 0 ? "amber" : "neutral"} icon="event_seat" label="Places libres" value={freeSeats} note={`Remplissage à ${fillRate} %`} />
+                  <KpiTile tone={freeSeats > 0 ? "amber" : "neutral"} icon="meeting_room" label="Places libres" value={freeSeats} note={`Remplissage à ${fillRate} %`} />
                   <KpiTile tone={headAssigned < classes.length ? "violet" : "neutral"} icon="verified_user" label="Titulaires désignés" value={`${headAssigned}/${classes.length}`} note="Enseignant principal" />
                 </div>
               </div>

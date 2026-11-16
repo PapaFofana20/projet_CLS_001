@@ -146,7 +146,7 @@ function SettingsForm({
           </p>
           <code className="mt-2 block break-all rounded-lg bg-white/70 px-3 py-2 font-mono text-xs">{SQL_FILE}</code>
           <div className="mt-3 flex flex-wrap gap-2">
-            <Button size="sm" icon={copied ? "check" : "content_copy"} onClick={copyPath}>
+            <Button size="sm" icon={copied ? "check" : "save"} onClick={copyPath}>
               {copied ? "Chemin copié" : "Copier le chemin"}
             </Button>
             <Button size="sm" variant="outline" icon="refresh" onClick={() => state.reload()}>

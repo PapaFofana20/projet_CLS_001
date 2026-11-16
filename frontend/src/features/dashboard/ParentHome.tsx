@@ -174,7 +174,7 @@ export function ParentHome() {
               </ContentCard>
               <ContentCard
                 heading={
-                  <PanelHeading icon="link" title="Accès rapides" />
+                  <PanelHeading icon="open_in_new" title="Accès rapides" />
                 }
               >
                 <div className="grid gap-2">
