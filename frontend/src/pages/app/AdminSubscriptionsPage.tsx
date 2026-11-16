@@ -506,7 +506,7 @@ function RequestsTab({
               {pending.map((request) => (
                 <div
                   key={request.id}
-                  className="flex flex-wrap items-center gap-4 rounded-2xl border border-neutral-100 bg-mist/50 p-4 transition hover:border-lime hover:bg-lime-pale/40"
+                  className="flex flex-wrap items-center gap-4 rounded-2xl border border-neutral-100 bg-mist/50 p-4"
                 >
                   <EntityAvatar name={request.schoolName} />
                   <div className="min-w-0 flex-1">

@@ -135,7 +135,7 @@ export default function SubscriptionPage() {
                       void navigator.clipboard.writeText(EMAIL_SUPPORT);
                       toast("Adresse du support copiée. Contactez-nous pour passer à Premium.");
                     }}
-                    className="bg-lime text-forest hover:bg-lime/90"
+                    className="bg-lime text-forest"
                   >
                     Passer à Premium
                   </Button>

@@ -175,7 +175,7 @@ export default function BulletinsPage() {
 
                     <div className="grid gap-3 sm:grid-cols-2">
                       <KpiTile tone="lime" icon="description" label="Bulletins" value={data.length} note="Élèves évalués" />
-                      <KpiTile tone="sky" icon="analytics" label="Moyenne de classe" value={classAverage === null ? "—" : formatNumber(classAverage)} note="Toutes matières" />
+                      <KpiTile tone="sky" icon="trending_up" label="Moyenne de classe" value={classAverage === null ? "—" : formatNumber(classAverage)} note="Toutes matières" />
                       <KpiTile tone={belowTen > 0 ? "red" : "neutral"} icon="warning" label="Sous la moyenne" value={`${belowTen} / ${data.length}`} note="Moyenne < 10" />
                       <KpiTile tone="violet" icon="military_tech" label="Meilleure moyenne" value={bestAvg === null ? "—" : formatNumber(bestAvg)} note="Major de classe" />
                     </div>
@@ -203,7 +203,7 @@ export default function BulletinsPage() {
                               : <Badge tone={averageTone(current.generalAverage)} className="px-2 py-0.5 text-[10px]">{formatNumber(current.generalAverage)}</Badge>
                           }
                         />
-                        <KpiTile icon="leaderboard" label="Rang" value={current.rank ?? "—"} note={`sur ${current.classSize}`} tone="sky" />
+                        <KpiTile icon="emoji_events" label="Rang" value={current.rank ?? "—"} note={`sur ${current.classSize}`} tone="sky" />
                         <KpiTile icon="description" label="Période" value={current.period.label} tone="neutral" />
                       </div>
                     )}

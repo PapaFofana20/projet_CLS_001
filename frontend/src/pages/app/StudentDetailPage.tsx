@@ -208,7 +208,7 @@ function Detail({ d, onPaymentsChanged }: { d: StudentDetail; onPaymentsChanged:
           {d.report ? (
             <KpiTile tone="violet" icon="analytics" label="Moyenne générale" value={d.report.generalAverage === null ? "—" : formatNumber(d.report.generalAverage)} note={`Rang ${d.report.rank ?? "—"} sur ${d.report.classSize}`} />
           ) : (
-            <KpiTile tone="neutral" icon="analytics" label="Moyenne" value="—" note="Pas de bulletin" />
+            <KpiTile tone="neutral" icon="trending_up" label="Moyenne" value="—" note="Pas de bulletin" />
           )}
           {d.payments.length > 0 ? (
             <KpiTile
@@ -300,7 +300,7 @@ function Detail({ d, onPaymentsChanged }: { d: StudentDetail; onPaymentsChanged:
               <ul className="space-y-2">
                 {d.siblings.map((s) => (
                   <li key={s.id}>
-                    <Link to={`/app/eleves/${s.id}`} className="flex min-h-12 items-center gap-3 rounded-xl bg-mist px-3 hover:bg-lime-soft">
+                    <Link to={`/app/eleves/${s.id}`} className="flex min-h-12 items-center gap-3 rounded-xl bg-mist px-3">
                       <Avatar name={`${s.firstName} ${s.lastName}`} size={34} />
                       <span className="text-sm font-semibold">{s.firstName} {s.lastName}</span>
                       <Badge tone="lime" className="ml-auto">{s.className}</Badge>

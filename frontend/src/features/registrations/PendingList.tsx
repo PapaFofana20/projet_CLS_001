@@ -57,7 +57,7 @@ export function PendingList({ pending, history, onApprove, onReject, busy, limit
       header: <span className="sr-only">Sélection</span>,
       render: (r) =>
         r.status === "EN_ATTENTE" ? (
-          <label className="grid size-11 cursor-pointer place-items-center rounded-full hover:bg-mist">
+          <label className="grid size-11 cursor-pointer place-items-center rounded-full">
             <input
               type="checkbox"
               className="size-5 accent-forest"

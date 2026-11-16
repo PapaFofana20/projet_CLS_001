@@ -125,7 +125,7 @@ export function StudentCsvImport({ overview, onImported }: Props) {
         <Button variant="outline" icon="download" onClick={downloadCsvTemplate}>Modèle CSV</Button>
       </div>
 
-      <label className={cn("flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed p-8 text-center", "border-forest/30 hover:bg-lime-pale/60")}>
+      <label className={cn("flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed p-8 text-center", "border-forest/30")}>
         <Icon name="upload_file" className="text-[40px] text-forest" />
         <span className="text-sm font-semibold">{fileName || "Choisir un fichier .csv"}</span>
         <span className="text-xs text-neutral-500">500 lignes max · séparateur , ou ; · UTF-8</span>

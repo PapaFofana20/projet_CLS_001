@@ -296,7 +296,7 @@ export function TimetableGrid({ courses, editable, subjects, teachers, onCreate,
                             type="button"
                             onClick={() => openCreate(day, toTime(slotStart))}
                             aria-label={`Ajouter un cours ${DAY_LABELS[day]} à ${toTime(slotStart)}`}
-                            className="timetable-cell flex h-full w-full items-center justify-center text-transparent transition hover:bg-lime-pale hover:text-forest/50 focus-visible:bg-lime-pale focus-visible:text-forest/60 focus-visible:outline-none"
+                            className="timetable-cell flex h-full w-full items-center justify-center text-transparent focus-visible:bg-lime-pale focus-visible:text-forest/60 focus-visible:outline-none"
                           >
                             <Icon name="add" className="text-[18px]" />
                           </button>

@@ -264,7 +264,7 @@ export default function StaffPage() {
           <KpiTile tone="lime" icon="key" label="Comptes d'accès" value={staff.length} note="Tous rôles confondus" />
           <KpiTile tone="sky" icon="school" label="Enseignants" value={teachers.length} note={`${withoutAccount} sans accès`} />
           <KpiTile tone={pendingPassword > 0 ? "amber" : "neutral"} icon="password" label="Mot de passe temporaire" value={pendingPassword} note="À changer par l'utilisateur" />
-          <KpiTile tone="violet" icon="person_check" label="Titulaires" value={teachers.filter((t) => t.headOf.length > 0).length} note="Classes dirigées" />
+          <KpiTile tone="violet" icon="verified_user" label="Titulaires" value={teachers.filter((t) => t.headOf.length > 0).length} note="Classes dirigées" />
         </div>
       </div>
 

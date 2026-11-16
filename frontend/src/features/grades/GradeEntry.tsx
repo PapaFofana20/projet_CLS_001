@@ -153,7 +153,7 @@ function Sheet({ sheet, period }: { sheet: GradeSheet; period: string }) {
         </HeroCard>
 
         <div className="grid gap-3 sm:grid-cols-2">
-          <KpiTile tone="lime" icon="analytics" label="Moyenne de classe" value={classAvg === null ? "—" : `${formatNumber(classAvg)}/${cycle === "elementaire" ? 10 : 20}`} note="Matière et période" valueClassName="text-lg" />
+          <KpiTile tone="lime" icon="trending_up" label="Moyenne de classe" value={classAvg === null ? "—" : `${formatNumber(classAvg)}/${cycle === "elementaire" ? 10 : 20}`} note="Matière et période" valueClassName="text-lg" />
           <KpiTile tone={completion < 50 ? "amber" : "sky"} icon="edit_note" label="Notes saisies" value={`${completion} %`} note={`${sheet.students.length} élèves à noter`} />
           <KpiTile tone="neutral" icon="groups" label="Élèves" value={sheet.students.length} note={sheet.classRoom.name} />
           <KpiTile tone={status === "error" ? "red" : "violet"} icon="cloud_done" label="État" value={status === "saving" ? "En cours" : status === "saved" ? savedAt : status === "error" ? "Échec" : sheet.editable ? "Auto" : "Verrouillé"} note={sheet.editable ? "Sauvegarde automatique" : "Modification impossible"} />

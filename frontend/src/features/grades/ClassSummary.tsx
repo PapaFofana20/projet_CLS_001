@@ -55,7 +55,7 @@ function Summary({ cards, title }: { cards: ReportCardData[]; title: string }) {
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
         <HeroCard
           eyebrow={`Synthèse · ${cards[0].classRoom.name}`}
-          icon="analytics"
+          icon="trending_up"
           value={cards[0].classAverage === null ? "—" : formatNumber(cards[0].classAverage)}
           label={`moyenne de classe${cycle !== "elementaire" ? " pondérée" : ""} · ${cards.length} élève${cards.length > 1 ? "s" : ""}`}
           footnote={`Meilleure moyenne ${best === null ? "—" : formatNumber(best)} · plus faible ${worst === null ? "—" : formatNumber(worst)}`}
@@ -81,7 +81,7 @@ function Summary({ cards, title }: { cards: ReportCardData[]; title: string }) {
         </HeroCard>
 
         <div className="grid gap-3 sm:grid-cols-2">
-          <KpiTile tone="lime" icon="analytics" label="Moyenne de classe" value={cards[0].classAverage === null ? "—" : formatNumber(cards[0].classAverage)} note="Toutes matières" />
+          <KpiTile tone="lime" icon="trending_up" label="Moyenne de classe" value={cards[0].classAverage === null ? "—" : formatNumber(cards[0].classAverage)} note="Toutes matières" />
           <KpiTile tone="sky" icon="military_tech" label="Meilleure moyenne" value={best === null ? "—" : formatNumber(best)} note="Major de classe" />
           <KpiTile tone={worst !== null && worst < 10 ? "red" : "neutral"} icon="support" label="Plus faible" value={worst === null ? "—" : formatNumber(worst)} note="Élève à accompagner" />
           <KpiTile tone={belowTen > 0 ? "amber" : "neutral"} icon="warning" label="Sous la moyenne" value={`${belowTen} / ${cards.length}`} note="Moyenne générale < 10" />

@@ -211,7 +211,7 @@ function Content({ s }: { s: AdminOverviewStats }) {
               ) : (
                 <ul className="space-y-2">
                   {recent.map((a, i) => (
-                    <li key={`${a.createdAt}-${i}`} className="flex items-start gap-3 rounded-xl px-2 py-1.5 transition hover:bg-mist/70">
+                    <li key={`${a.createdAt}-${i}`} className="flex items-start gap-3 rounded-xl px-2 py-1.5">
                       <span className="mt-1.5 size-2 shrink-0 rounded-full bg-lime ring-4 ring-lime-soft" aria-hidden="true" />
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-semibold capitalize text-ink">{a.action?.replace(/_/g, " ") ?? "—"}</p>
@@ -393,7 +393,7 @@ function QuickLink({
     <Link
       to={to}
       className={cn(
-        "group relative overflow-hidden rounded-2xl p-4 shadow-card transition-transform duration-300 hover:-translate-y-0.5 hover:shadow-soft",
+        "group relative overflow-hidden rounded-2xl p-4 shadow-card",
         palette.box,
       )}
     >

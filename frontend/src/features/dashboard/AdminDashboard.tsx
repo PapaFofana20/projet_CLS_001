@@ -242,7 +242,7 @@ function Content({ s, finance }: { s: AdminStats; finance: boolean }) {
             <ul className="space-y-3">
               {s.alerts.map((a) => (
                 <li key={a.id}>
-                  <Link to={a.to} className="flex items-start gap-3 rounded-xl p-2 transition hover:bg-mist">
+                  <Link to={a.to} className="flex items-start gap-3 rounded-xl p-2">
                     <span className={`grid size-9 shrink-0 place-items-center rounded-full ${a.tone === "danger" ? "bg-red-100 text-danger" : a.tone === "warning" ? "bg-amber-100 text-amber-800" : "bg-lime-soft text-forest"}`}>
                       <Icon name={a.tone === "info" ? "info" : "warning"} fill className="text-[20px]" />
                     </span>

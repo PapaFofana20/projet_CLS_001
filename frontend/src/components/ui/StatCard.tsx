@@ -14,7 +14,7 @@ interface Props {
 /** Carte KPI du dashboard (carte foncée mise en avant + cartes blanches). */
 export function StatCard({ icon, label, value, note, badge, dark }: Props) {
   return (
-    <div className={cn("@container relative min-w-0 overflow-hidden rounded-2xl p-5 shadow-card transition-transform duration-300 hover:-translate-y-1 hover:shadow-soft", dark ? "bg-forest text-white" : "bg-white")}>
+    <div className={cn("@container relative min-w-0 overflow-hidden rounded-2xl p-5 shadow-card", dark ? "bg-forest text-white" : "bg-white")}>
       <div className="pointer-events-none absolute -right-4 top-0 h-full w-1/2 opacity-30 [background-image:radial-gradient(currentColor_1.5px,transparent_1.5px)] [background-size:16px_16px]" aria-hidden="true" />
       <div className="relative flex items-start justify-between">
         <span className={cn("grid size-11 place-items-center rounded-xl", dark ? "bg-white text-forest" : "bg-neutral-200 text-forest")}>

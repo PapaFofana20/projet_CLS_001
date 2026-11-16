@@ -271,7 +271,7 @@ function MiniKpi({
   iconClassName: string;
 }) {
   return (
-    <div className={cn("relative overflow-hidden rounded-2xl p-4 shadow-card transition-transform duration-300 hover:-translate-y-0.5 hover:shadow-soft", className)}>
+    <div className={cn("relative overflow-hidden rounded-2xl p-4 shadow-card", className)}>
       <div className="flex items-center gap-2">
         <span className={cn("grid size-8 shrink-0 place-items-center rounded-lg", iconClassName)}>
           <Icon name={icon} fill className="text-[18px]" />
@@ -570,7 +570,7 @@ function Content({
                                 to={`/admin/ecoles/${r.id}`}
                                 title="Ouvrir la fiche de l'établissement"
                                 aria-label={`Ouvrir la fiche de ${r.name}`}
-                                className={cn(ACTION_BTN, "hover:bg-white hover:text-forest hover:shadow-card")}
+                                className={cn(ACTION_BTN)}
                               >
                                 <Icon name="visibility" className="text-[20px]" />
                               </Link>

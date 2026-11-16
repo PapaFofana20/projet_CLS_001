@@ -37,7 +37,7 @@ export function KpiTile({ icon, label, value, note, tone = "lime", valueClassNam
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded-2xl p-4 shadow-card transition-transform duration-300 hover:-translate-y-0.5 hover:shadow-soft",
+        "relative overflow-hidden rounded-2xl p-4 shadow-card",
         palette.box,
       )}
     >

@@ -209,7 +209,7 @@ export function FinancePayments({ schoolName, canAct }: { schoolName: string; ca
   ];
 
   const debtorCols: Column<Debtor>[] = [
-    { key: "c", header: <span className="sr-only">Sélection</span>, render: (d) => <label className="grid size-11 cursor-pointer place-items-center rounded-full hover:bg-mist"><input type="checkbox" className="size-5 accent-forest" aria-label={`Sélectionner ${d.studentName}`} checked={picked.includes(d.studentId)} onChange={() => setPicked((p) => (p.includes(d.studentId) ? p.filter((x) => x !== d.studentId) : [...p, d.studentId]))} /></label>, shrink: 0 },
+    { key: "c", header: <span className="sr-only">Sélection</span>, render: (d) => <label className="grid size-11 cursor-pointer place-items-center rounded-full"><input type="checkbox" className="size-5 accent-forest" aria-label={`Sélectionner ${d.studentName}`} checked={picked.includes(d.studentId)} onChange={() => setPicked((p) => (p.includes(d.studentId) ? p.filter((x) => x !== d.studentId) : [...p, d.studentId]))} /></label>, shrink: 0 },
     { key: "s", header: "Élève", render: (d) => <span><strong>{d.studentName}</strong><span className="block text-xs text-neutral-500">{d.className}</span></span>, noTruncate: true },
     { key: "p", header: "Parent", render: (d) => <span>{d.parentName}<span className="block text-xs text-neutral-500">{d.parentPhone}</span></span>, noTruncate: true },
     { key: "n", header: "Échéances", align: "center", render: (d) => d.count, numeric: true },

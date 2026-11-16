@@ -100,7 +100,7 @@ export default function ClassesPage() {
                     items={byCycle.map((c) => ({ dot: cycleDot(c.cycle), label: `${CYCLE_LABELS[c.cycle]} · ${c.count}` }))}
                     trailing={
                       <>
-                        <Icon name="person_check" className="text-[14px]" />
+                        <Icon name="verified_user" className="text-[14px]" />
                         {headAssigned}/{classes.length} titulaires
                       </>
                     }
@@ -111,7 +111,7 @@ export default function ClassesPage() {
                   <KpiTile tone="lime" icon="meeting_room" label="Classes" value={classes.length} note="Tous cycles confondus" />
                   <KpiTile tone="sky" icon="groups" label="Élèves affectés" value={seated} note={`${totalCapacity} places au total`} />
                   <KpiTile tone={freeSeats > 0 ? "amber" : "neutral"} icon="event_seat" label="Places libres" value={freeSeats} note={`Remplissage à ${fillRate} %`} />
-                  <KpiTile tone={headAssigned < classes.length ? "violet" : "neutral"} icon="person_check" label="Titulaires désignés" value={`${headAssigned}/${classes.length}`} note="Enseignant principal" />
+                  <KpiTile tone={headAssigned < classes.length ? "violet" : "neutral"} icon="verified_user" label="Titulaires désignés" value={`${headAssigned}/${classes.length}`} note="Enseignant principal" />
                 </div>
               </div>
 

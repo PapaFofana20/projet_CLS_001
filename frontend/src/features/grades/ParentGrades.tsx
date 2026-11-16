@@ -69,14 +69,14 @@ export function ParentGrades({ period }: { period: string }) {
                 tone="lime"
               />
               <KpiTile
-                icon="leaderboard"
+                icon="emoji_events"
                 label="Rang"
                 value={card.rank ?? "—"}
                 note={`sur ${card.classSize}`}
                 tone="sky"
               />
               <KpiTile
-                icon="analytics"
+                icon="trending_up"
                 label="Moyenne de la classe"
                 value={card.classAverage === null ? "—" : formatNumber(card.classAverage)}
                 note={`sur ${elem ? 10 : 20}`}

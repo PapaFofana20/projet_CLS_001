@@ -313,7 +313,7 @@ function OverviewTab({ data, onOpen }: { data: AdminFinancesData; onOpen: (event
                   key={event.id}
                   type="button"
                   onClick={() => onOpen(event)}
-                  className="flex w-full items-center gap-3 rounded-2xl border border-neutral-100 p-3 text-left transition hover:border-lime hover:bg-lime-pale/40"
+                  className="flex w-full items-center gap-3 rounded-2xl border border-neutral-100 p-3 text-left"
                 >
                   <span className="grid size-9 shrink-0 place-items-center rounded-full bg-mist text-forest">
                     <Icon name={event.eventType === "renewal" ? "autorenew" : "add_card"} className="text-[18px]" />

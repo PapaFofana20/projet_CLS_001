@@ -119,7 +119,7 @@ export function ParentHome() {
         {children.map((c) => {
           const active = c.id === activeChild?.id;
           return (
-            <button key={c.id} type="button" onClick={() => setActiveChildId(c.id)} aria-pressed={active} className={`flex items-center gap-4 rounded-2xl p-5 text-left shadow-card transition-transform hover:-translate-y-1 ${active ? "bg-forest text-white" : "bg-white"}`}>
+            <button key={c.id} type="button" onClick={() => setActiveChildId(c.id)} aria-pressed={active} className={`flex items-center gap-4 rounded-2xl p-5 text-left shadow-card ${active ? "bg-forest text-white" : "bg-white"}`}>
               <Avatar name={`${c.firstName} ${c.lastName}`} size={56} />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-lg font-extrabold">
@@ -178,8 +178,8 @@ export function ParentHome() {
                 }
               >
                 <div className="grid gap-2">
-                  <Link to="/app/bulletins" className="flex min-h-12 items-center gap-3 rounded-xl bg-lime-soft px-4 text-sm font-semibold hover:bg-lime">Voir le bulletin</Link>
-                  <Link to="/app/paiements" className="flex min-h-12 items-center gap-3 rounded-xl bg-lime-soft px-4 text-sm font-semibold hover:bg-lime">Payer une mensualité</Link>
+                  <Link to="/app/bulletins" className="flex min-h-12 items-center gap-3 rounded-xl bg-lime-soft px-4 text-sm font-semibold">Voir le bulletin</Link>
+                  <Link to="/app/paiements" className="flex min-h-12 items-center gap-3 rounded-xl bg-lime-soft px-4 text-sm font-semibold">Payer une mensualité</Link>
                 </div>
               </ContentCard>
               {/* Évolution des notes */}
