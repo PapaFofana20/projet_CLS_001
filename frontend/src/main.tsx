@@ -23,6 +23,11 @@ class ErrorBoundary extends React.Component<
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error("[ErrorBoundary] Erreur React capturée :", error, errorInfo);
+    try {
+      sessionStorage.setItem("__lastReactError", `${error?.message}\n${error?.stack ?? ""}`);
+    } catch {
+      /* ignore */
+    }
   }
 
   render() {

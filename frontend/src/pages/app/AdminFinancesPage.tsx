@@ -21,6 +21,7 @@ import type { AdminFinanceEvent, AdminFinancesData } from "@/types";
 import { eventLabel, methodLabel } from "@/features/admin/labels";
 import { RevenueChart } from "@/features/admin/charts";
 import { formatCurrency, formatDate, formatDateTime } from "@/utils/format";
+import { planPriceLabel } from "@/utils/planPrice";
 import { cn } from "@/utils/cn";
 import {
   HeroCard,
@@ -270,7 +271,7 @@ function OverviewTab({ data, onOpen }: { data: AdminFinancesData; onOpen: (event
                     render: (p) => (
                       <div>
                         <p className="font-semibold text-ink">{p.name}</p>
-                        <p className="text-xs text-neutral-500">{formatCurrency(p.monthlyPrice)} / mois</p>
+                        <p className="text-xs text-neutral-500">{planPriceLabel(p)}</p>
                       </div>
                     ),
                   },

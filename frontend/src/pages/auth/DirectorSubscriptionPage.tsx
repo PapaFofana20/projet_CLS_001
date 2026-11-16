@@ -13,6 +13,7 @@ import { useSchool } from "@/context/SchoolContext";
 import { useToast } from "@/context/ToastContext";
 import { CYCLE_LABELS } from "@/data/school";
 import { planLimitLabel, plans, priceFor } from "@/data/plans";
+import { YEARLY_MONTHS } from "@/utils/planPrice";
 import { MatriculeCard } from "@/features/subscription/MatriculeCard";
 import { PlanCard } from "@/features/subscription/PlanCard";
 import { useAsync } from "@/hooks/useAsync";
@@ -33,7 +34,13 @@ const MAX_STUDENTS = 1500;
 const STEPS = ["Inscription", "Vérification", "Abonnement", "Matricule"];
 
 function recommendPlan(count: number): Plan {
-  return plans.find((plan) => plan.studentLimit === null || count <= plan.studentLimit) ?? plans[plans.length - 1];
+  // Les formules sur devis ne sont pas sélectionnables : on ne propose que
+  // Découverte et Premium.
+  const candidates = plans.filter((plan) => !plan.onQuote);
+  return (
+    candidates.find((plan) => plan.studentLimit === null || count <= plan.studentLimit) ??
+    candidates[candidates.length - 1]
+  );
 }
 
 function OnboardingSteps({ current }: { current: number }) {
@@ -109,7 +116,7 @@ export default function DirectorSubscriptionPage() {
   const school = useSchool();
   const { toast } = useToast();
   const [studentCount, setStudentCount] = useState(300);
-  const [planId, setPlanId] = useState<PlanId>("pro");
+  const [planId, setPlanId] = useState<PlanId>("premium");
   const [cycle, setCycle] = useState<BillingCycle>("monthly");
   const [submitting, setSubmitting] = useState(false);
   const [checking, setChecking] = useState(false);
@@ -128,9 +135,9 @@ export default function DirectorSubscriptionPage() {
   const recommended = recommendPlan(studentCount);
   const selectedPlan = plans.find((plan) => plan.id === planId) ?? recommended;
   const fits = selectedPlan.studentLimit === null || studentCount <= selectedPlan.studentLimit;
-  const monthlyPrice = priceFor(selectedPlan, "monthly");
-  const yearlyPrice = priceFor(selectedPlan, "yearly");
-  const due = priceFor(selectedPlan, cycle);
+  const monthlyPrice = priceFor(selectedPlan, "monthly", studentCount);
+  const yearlyPrice = priceFor(selectedPlan, "yearly", studentCount);
+  const due = priceFor(selectedPlan, cycle, studentCount);
   const cycles = school.school?.cycles ?? school.settings?.cycles ?? [];
   const schoolName = school.school?.name ?? school.settings?.name ?? school.schoolName ?? "Votre école";
   const city = school.school?.city ?? "";
@@ -173,6 +180,7 @@ export default function DirectorSubscriptionPage() {
   };
 
   const choosePlan = (plan: Plan) => {
+    if (plan.onQuote) return;
     if (plan.studentLimit !== null && studentCount > plan.studentLimit) return;
     setPlanId(plan.id);
   };
@@ -400,14 +408,14 @@ export default function DirectorSubscriptionPage() {
                   <PriceChoice
                     label="Par mois"
                     price={formatCurrency(monthlyPrice)}
-                    hint={`Soit ${formatCurrency(monthlyPrice * 12)} par an`}
+                    hint={`Soit ${formatCurrency(monthlyPrice * YEARLY_MONTHS)} par an`}
                     selected={cycle === "monthly"}
                     onClick={() => setCycle("monthly")}
                   />
                   <PriceChoice
                     label="Par an"
                     price={formatCurrency(yearlyPrice)}
-                    hint={`Soit ${formatCurrency(Math.round(yearlyPrice / 12))} par mois`}
+                    hint={`Soit ${formatCurrency(Math.round(yearlyPrice / YEARLY_MONTHS))} par mois · 2 mois offerts`}
                     selected={cycle === "yearly"}
                     onClick={() => setCycle("yearly")}
                   />
@@ -443,7 +451,7 @@ export default function DirectorSubscriptionPage() {
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
-                {plans.map((plan) => {
+                {plans.filter((plan) => !plan.onQuote).map((plan) => {
                   const compatible = plan.studentLimit === null || studentCount <= plan.studentLimit;
                   const selected = plan.id === selectedPlan.id;
                   return (
@@ -455,7 +463,7 @@ export default function DirectorSubscriptionPage() {
                         selected && "ring-4 ring-lime ring-offset-2",
                       )}
                     >
-                      <PlanCard plan={plan} cycle={cycle} />
+                      <PlanCard plan={plan} cycle={cycle} studentCount={studentCount} />
                       <button
                         type="button"
                         aria-label={`Choisir la formule ${plan.name}`}
@@ -477,6 +485,18 @@ export default function DirectorSubscriptionPage() {
                     </div>
                   );
                 })}
+              </div>
+
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-mist p-4">
+                <div className="flex items-start gap-2 text-sm text-neutral-600">
+                  <Icon name="domain" className="text-[20px] text-forest" />
+                  <span>
+                    <strong className="text-ink">Groupe scolaire</strong> — plusieurs établissements, tarif sur devis.
+                  </span>
+                </div>
+                <LinkButton to="/contact" variant="outline" size="sm" icon="arrow_forward" className="shrink-0">
+                  Demander un devis
+                </LinkButton>
               </div>
 
               <p className="mt-3 text-xs text-neutral-500">

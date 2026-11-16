@@ -163,8 +163,10 @@ begin
     (v_user_student, v_school, 'eleve', 'ACTIF', 'Ndeye', 'Fall', '', 'eleve@demo.scol.sn', null, null, v_student1)
   on conflict (id) do nothing;
 
+  -- Formule Premium (500 FCFA par élève et par mois) : l'école de démo compte
+  -- un élève, règlement annuel de 10 mois = 5 000 FCFA.
   insert into public.subscriptions (school_id, plan_id, starts_at, ends_at, student_limit, amount_paid, payment_ref, method, paid_at)
-  values (v_school, 'pro', current_date, current_date + 90, 300, 300000, 'WV-1234-5678', 'wave', now())
+  values (v_school, 'premium', current_date, current_date + 90, null, 5000, 'WV-1234-5678', 'wave', now())
   on conflict (school_id) do nothing;
 
   insert into public.registration_requests (school_id, user_id, role, first_name, last_name, email, phone, class_id, status)

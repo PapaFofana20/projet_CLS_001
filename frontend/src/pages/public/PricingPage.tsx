@@ -12,7 +12,7 @@ export default function PricingPage() {
   usePageMeta({
     title: "Tarifs et offres scolaires",
     description:
-      "Un tarif clair, calculé par élève : formules Essentiel et Premium avec estimateur en ligne. Découvrez le budget pour votre école privée.",
+      "Un tarif clair, calculé par élève : formules Découverte et Premium avec estimateur en ligne, et un tarif sur devis pour les groupes scolaires.",
     path: "/tarifs",
   });
   return (

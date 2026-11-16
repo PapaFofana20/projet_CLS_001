@@ -30,6 +30,13 @@ import type {
   AdminSubscriptionsData,
 } from "@/types";
 import { formatCurrency, formatDate } from "@/utils/format";
+import {
+  planCyclePriceLabel,
+  planMonthlyAmount,
+  planPriceHint,
+  planPriceLabel,
+  planYearlyAmount,
+} from "@/utils/planPrice";
 import { methodLabel } from "@/features/admin/labels";
 import { cn } from "@/utils/cn";
 import {
@@ -52,14 +59,27 @@ interface ActivationTarget {
   schoolName: string;
   planId?: string;
   cycle?: "monthly" | "yearly";
+  studentCount?: number;
   request?: AdminSubscriptionRequest;
 }
 
+// Les formules sur devis ne peuvent pas être activées depuis la console :
+// le montant doit d'abord être négocié avec le réseau.
 const PLAN_OPTIONS = (plans: AdminPlan[], cycle: "monthly" | "yearly") =>
-  plans.map((p) => ({
-    value: p.id,
-    label: `${p.name} — ${formatCurrency(cycle === "monthly" ? p.monthlyPrice : p.yearlyPrice)} / ${cycle === "monthly" ? "mois" : "an"}`,
-  }));
+  plans
+    .filter((p) => !p.onQuote)
+    .map((p) => ({
+      value: p.id,
+      label: `${p.name} — ${planCyclePriceLabel(p, cycle)}`,
+    }));
+
+/** Tarif réel d'une formule dans une ligne d'abonnement (par élève, devis ou forfait). */
+function rowPlanPriceLabel(row: AdminSubscriptionRow): string {
+  if (row.planOnQuote) return "Sur devis";
+  if (row.planPricePerStudent > 0) return `${formatCurrency(row.planPricePerStudent)} / élève / mois`;
+  if (row.planMonthlyPrice > 0) return `${formatCurrency(row.planMonthlyPrice)} / mois`;
+  return "Gratuit";
+}
 
 // Composant principal de la page.
 export default function AdminSubscriptionsPage() {
@@ -175,7 +195,14 @@ export default function AdminSubscriptionsPage() {
                   setPage(1);
                 }}
                 onPage={setPage}
-                onActivate={(row) => setActivation({ schoolId: row.schoolId, schoolName: row.schoolName })}
+                onActivate={(row) =>
+                  setActivation({
+                    schoolId: row.schoolId,
+                    schoolName: row.schoolName,
+                    planId: row.planId ?? undefined,
+                    studentCount: row.studentCount,
+                  })
+                }
               />
             )}
 
@@ -342,7 +369,7 @@ function SubscriptionsTab({
                     r.planName ? (
                       <div>
                         <p className="text-sm font-semibold text-ink">{r.planName}</p>
-                        <p className="text-xs text-neutral-500">{formatCurrency(r.planMonthlyPrice)} / mois</p>
+                        <p className="text-xs text-neutral-500">{rowPlanPriceLabel(r)}</p>
                       </div>
                     ) : (
                       <span className="text-sm text-neutral-400">Aucune</span>
@@ -555,7 +582,7 @@ function RequestsTab({
 function PlansTab({ data }: { data: AdminSubscriptionsData }) {
   return (
     <div className="space-y-4">
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {data.plans.map((plan) => (
           <Card key={plan.id} hover className={cn("flex flex-col", plan.highlight && "ring-2 ring-lime")}>
             <div className="flex items-start justify-between gap-2">
@@ -565,8 +592,8 @@ function PlansTab({ data }: { data: AdminSubscriptionsData }) {
               </div>
               {plan.highlight && <Badge tone="lime">Populaire</Badge>}
             </div>
-            <p className="mt-3 text-2xl font-extrabold text-forest">{formatCurrency(plan.monthlyPrice)}</p>
-            <p className="text-xs text-neutral-500">par mois · {formatCurrency(plan.yearlyPrice)} par an</p>
+            <p className="mt-3 text-2xl font-extrabold text-forest">{planPriceLabel(plan)}</p>
+            <p className="text-xs text-neutral-500">{planPriceHint(plan)}</p>
             <p className="mt-1 text-xs font-semibold text-neutral-600">{plan.studentLimit ? `Jusqu'à ${plan.studentLimit} élèves` : "Élèves illimités"}</p>
             <div className="mt-4 grid grid-cols-2 gap-2">
               <div className="rounded-xl bg-mist p-3">
@@ -593,9 +620,10 @@ function PlansTab({ data }: { data: AdminSubscriptionsData }) {
       <Card>
         <PanelHeading icon="info" title="Lecture des indicateurs" />
         <p className="mt-3 text-sm leading-relaxed text-neutral-600">
-          Le MRR correspond à la somme des formules mensuelles des abonnements encore valides aujourd'hui. L'ARR en est la projection sur
-          12 mois. Les montants encaissés proviennent du journal des activations (<code>subscription_events</code>) : un renouvellement
-          cumule la durée achetée sur l'échéance en cours.
+          Le MRR correspond à la somme des formules mensuelles des abonnements encore valides aujourd'hui : prix par élève × effectif
+          actif pour Premium, forfait mensuel pour les autres. L'ARR en est la projection sur 12 mois. Les montants encaissés
+          proviennent du journal des activations (<code>subscription_events</code>) : un renouvellement cumule la durée achetée sur
+          l'échéance en cours.
         </p>
       </Card>
     </div>
@@ -636,7 +664,12 @@ function ActivationModal({
   }, [target, plans]);
 
   const selectedPlan = plans.find((p) => p.id === planId) ?? null;
-  const price = selectedPlan ? (cycle === "yearly" ? selectedPlan.yearlyPrice : selectedPlan.monthlyPrice) : 0;
+  const studentCount = target?.request?.studentCount ?? target?.studentCount ?? 0;
+  const price = selectedPlan
+    ? cycle === "yearly"
+      ? planYearlyAmount(selectedPlan, studentCount)
+      : planMonthlyAmount(selectedPlan, studentCount)
+    : 0;
 
   const submit = async () => {
     if (!target) return;
@@ -702,6 +735,17 @@ function ActivationModal({
             onChange={(e) => setPlanId(e.target.value)}
             options={PLAN_OPTIONS(plans, cycle)}
           />
+          {selectedPlan && (
+            <p className="-mt-2 text-xs text-neutral-500">
+              {selectedPlan.onQuote
+                ? "Formule sur devis : le montant est négocié avec le réseau."
+                : selectedPlan.pricePerStudent
+                  ? `${formatCurrency(selectedPlan.pricePerStudent)} × ${studentCount} élève(s)${
+                      cycle === "yearly" ? " × 10 mois" : ""
+                    } = ${formatCurrency(price)}`
+                  : planPriceHint(selectedPlan)}
+            </p>
+          )}
           <div className="grid gap-4 sm:grid-cols-2">
             <Select
               label="Cycle de facturation"

@@ -1,5 +1,6 @@
 // Espace eleve : scolarite, notes et prochaines echeances.
-
+// Design aligné sur la console admin : bandeau forêt (HeroCard), tuiles KPI
+// colorées (KpiTile), en-têtes de panneau (PanelHeading).
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
@@ -21,8 +22,30 @@ import { averageTone } from "@/utils/grades";
 import { PAY_STATUS_LABELS, remaining } from "@/utils/payments";
 import { GradeEvolutionCharts } from "./charts";
 import { GreetingSection } from "./GreetingSection";
-import { KpiTile, PanelHeading } from "@/features/admin/adminUi";
+import {
+  HeroCard,
+  KpiTile,
+  PanelHeading,
+} from "@/features/admin/adminUi";
+import { cn } from "@/utils/cn";
 import type { Payment } from "@/types";
+
+function ContentCard({
+  children,
+  heading,
+  className,
+}: {
+  children: React.ReactNode;
+  heading: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <Card padded={false} className={cn("overflow-hidden", className)}>
+      <div className="px-4 pt-5 sm:px-6">{heading}</div>
+      <div className="mt-4 px-4 pb-5 sm:px-5">{children}</div>
+    </Card>
+  );
+}
 
 /** Espace élève : école, notes et prochaines échéances. */
 export function StudentHome() {
@@ -46,13 +69,14 @@ export function StudentHome() {
       <PageHeader
         title="Ma scolarité"
         subtitle={`${school.schoolName}${settings?.schoolYear ? ` · année scolaire ${settings.schoolYear}` : ""}`}
-        actions={<LinkButton to="/app/bulletins" icon="description">Mon bulletin</LinkButton>}
+        actions={<LinkButton to="/app/bulletins">Mon bulletin</LinkButton>}
       />
       <GreetingSection />
       <AsyncView state={state} skeleton={<Skeleton className="h-72 w-full" />}>
         {(d) =>
           !d ? null : (
             <div className="space-y-4">
+              {/* Carte d'identité de l'élève (fond forêt, style console admin). */}
               <Card dark>
                 <div className="flex flex-wrap items-center justify-between gap-4">
                   <SchoolMark name={school.schoolName} matricule={school.school?.matricule} size={48} dark />
@@ -64,50 +88,64 @@ export function StudentHome() {
                   </div>
                 </div>
               </Card>
-              <PanelHeading icon="grade" title="Mes résultats" subtitle={`Moyenne par matière${periodLabel ? ` (${periodLabel})` : ""}`} action={<Link to="/app/notes" className="text-sm font-semibold text-forest hover:underline">Détails</Link>} />
-              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                <KpiTile tone="lime" icon="grade" label="Moyenne générale" value={d.report?.generalAverage == null ? "—" : `${formatNumber(d.report.generalAverage)} / 20`} note={periodLabel ?? undefined} />
+              {/* Bandeau de synthèse : moyenne générale. */}
+              <HeroCardForStudent d={d} periodLabel={periodLabel} />
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 <KpiTile tone="sky" icon="emoji_events" label="Rang" value={d.report?.rank ? `${d.report.rank}e / ${d.report.classSize}` : "—"} note={d.classRoom.name} />
                 <KpiTile tone="amber" icon="event_busy" label="Absences" value={d.report?.meta ? `${d.report.meta.absences} h` : "—"} note={d.report?.meta?.conduct ? `Conduite : ${d.report.meta.conduct}` : "Non renseigné"} />
                 <KpiTile tone="red" icon="payments" label="Reste dû (échu)" value={formatCurrency(d.row.balance)} note={d.row.balance > 0 ? "À régler" : "À jour"} />
               </div>
-              <div className="grid gap-4 xl:grid-cols-2">
-                <Card>
-                  <PanelHeading icon="grade" title="Mes notes" subtitle={`Moyenne par matière${periodLabel ? ` (${periodLabel})` : ""}`} action={<Link to="/app/notes" className="text-sm font-semibold text-forest hover:underline">Détails</Link>} />
-                  <ul className="space-y-3">
-                    {(d.report?.lines ?? []).slice(0, 8).map((l) => (
-                      <li key={l.subjectId} className="flex items-center gap-3">
-                        <span className="w-44 truncate text-sm font-medium">{l.subjectName}</span>
-                        <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-neutral-100">
-                          <div className="h-full rounded-full bg-leaf" style={{ width: `${((l.average ?? 0) / 20) * 100}%` }} />
-                        </div>
-                        <Badge tone={averageTone(l.average)} className="w-16 justify-center">
-                          {l.average === null ? "—" : formatNumber(l.average)}
-                        </Badge>
-                      </li>
-                    ))}
+              <ContentCard
+                heading={
+                  <PanelHeading
+                    icon="grade"
+                    title="Mes notes"
+                    subtitle={`Moyenne par matière${periodLabel ? ` (${periodLabel})` : ""}`}
+                    action={<Link to="/app/notes" className="text-sm font-semibold text-forest hover:underline">Détails</Link>}
+                  />
+                }
+              >
+                <ul className="space-y-3">
+                  {(d.report?.lines ?? []).slice(0, 8).map((l) => (
+                    <li key={l.subjectId} className="flex items-center gap-3">
+                      <span className="w-44 truncate text-sm font-medium">{l.subjectName}</span>
+                      <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-neutral-100">
+                        <div className="h-full rounded-full bg-leaf" style={{ width: `${((l.average ?? 0) / 20) * 100}%` }} />
+                      </div>
+                      <Badge tone={averageTone(l.average)} className="w-16 justify-center">
+                        {l.average === null ? "—" : formatNumber(l.average)}
+                      </Badge>
+                    </li>
+                  ))}
+                </ul>
+              </ContentCard>
+              <ContentCard
+                heading={
+                  <PanelHeading
+                    icon="payments"
+                    title="Prochaines échéances"
+                    subtitle="Échéances de paiement à venir"
+                    action={<Link to="/app/paiements" className="text-sm font-semibold text-forest hover:underline">Tout voir</Link>}
+                  />
+                }
+              >
+                {d.payments.length === 0 ? (
+                  <p className="text-sm text-neutral-500">Aucun échéancier : les paiements sont gérés dans l'espace parent.</p>
+                ) : (
+                  <ul className="divide-y divide-neutral-100">
+                    {d.payments
+                      .filter((p) => remaining(p) > 0)
+                      .slice(0, 4)
+                      .map((p) => (
+                        <PaymentLine key={p.id} payment={p} />
+                      ))}
                   </ul>
-                </Card>
-                <Card>
-                  <PanelHeading icon="payments" title="Prochaines échéances" subtitle="Échéances de paiement à venir" action={<Link to="/app/paiements" className="text-sm font-semibold text-forest hover:underline">Tout voir</Link>} />
-                  {d.payments.length === 0 ? (
-                    <p className="text-sm text-neutral-500">Aucun échéancier : les paiements sont gérés dans l'espace parent.</p>
-                  ) : (
-                    <ul className="divide-y divide-neutral-100">
-                      {d.payments
-                        .filter((p) => remaining(p) > 0)
-                        .slice(0, 4)
-                        .map((p) => (
-                          <PaymentLine key={p.id} payment={p} />
-                        ))}
-                    </ul>
-                  )}
-                  <p className="mt-4 flex items-start gap-2 rounded-2xl bg-lime-soft p-4 text-xs font-medium text-forest">
-                    <Icon name="info" className="text-[18px]" />
-                    Les paiements sont enregistrés par vos parents depuis leur espace. Ils apparaissent ici en temps réel.
-                  </p>
-                </Card>
-              </div>
+                )}
+                <p className="mt-4 flex items-start gap-2 rounded-2xl bg-lime-soft p-4 text-xs font-medium text-forest">
+                  <Icon name="info" className="text-[18px]" />
+                  Les paiements sont enregistrés par vos parents depuis leur espace. Ils apparaissent ici en temps réel.
+                </p>
+              </ContentCard>
               {/* Évolution des notes */}
               <AsyncView state={history} skeleton={<Skeleton className="h-64 w-full" />}>
                 {(h) => <GradeEvolutionCharts history={h ?? []} cycle={d.classRoom.cycle} />}
@@ -117,6 +155,23 @@ export function StudentHome() {
         }
       </AsyncView>
     </>
+  );
+}
+
+// Bandeau forêt résumant la moyenne générale de l'élève.
+function HeroCardForStudent({ d, periodLabel }: { d: any; periodLabel: string | null | undefined }) {
+  const avg = d.report?.generalAverage;
+  return (
+    <HeroCard
+      eyebrow="Moyenne générale"
+      icon="grade"
+      value={avg == null ? "—" : `${formatNumber(avg)} / 20`}
+      label={periodLabel ?? "Toutes périodes confondues"}
+      footnote={d.row.balance > 0 ? `Reste dû : ${formatCurrency(d.row.balance)}` : "Paiements à jour"}
+      badge={
+        avg == null ? null : <Badge tone={averageTone(avg)} className="px-2 py-0.5 text-[10px]">{formatNumber(avg)} / 20</Badge>
+      }
+    />
   );
 }
 

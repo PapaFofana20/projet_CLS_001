@@ -1,5 +1,6 @@
 // Espace enseignant : ses classes et la saisie des notes.
-
+// Design aligné sur la console admin : bandeau forêt (HeroCard), tuiles KPI,
+// en-têtes de panneau (PanelHeading).
 import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -24,7 +25,25 @@ import { formatNumber } from "@/utils/format";
 import { averageTone } from "@/utils/grades";
 import { TeacherGradeEvolutionCharts } from "./charts";
 import { GreetingSection } from "./GreetingSection";
-import { PanelHeading } from "@/features/admin/adminUi";
+import { HeroCard, PanelHeading } from "@/features/admin/adminUi";
+import { cn } from "@/utils/cn";
+
+function ContentCard({
+  children,
+  heading,
+  className,
+}: {
+  children: React.ReactNode;
+  heading: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <Card padded={false} className={cn("overflow-hidden", className)}>
+      <div className="px-4 pt-5 sm:px-6">{heading}</div>
+      <div className="mt-4 px-4 pb-5 sm:px-5">{children}</div>
+    </Card>
+  );
+}
 
 /** « Mes classes » (professeur) ou « Ma classe » (instituteur : toutes les matières, sans sélecteur de classe). */
 export function TeacherHome() {
@@ -46,6 +65,9 @@ export function TeacherHome() {
     navigate(to);
   };
 
+  const classCount = headClasses.length;
+  const studentTotal = headClasses.reduce((sum, c) => sum + Number((c as { studentCount?: number }).studentCount ?? 0), 0);
+
   return (
     <>
       <PageHeader
@@ -57,6 +79,17 @@ export function TeacherHome() {
         }
       />
       <GreetingSection />
+      {/* Bandeau de synthèse : charge d'enseignement. */}
+      <HeroCard
+        eyebrow="Charge d'enseignement"
+        icon="groups"
+        value={String(classCount)}
+        label={classCount === 1 ? "classe" : "classes enseignées"}
+        footnote={`${studentTotal} élève(s) au total`}
+        badge={
+          classCount === 0 ? null : <Badge tone="lime" className="px-2 py-0.5 text-[10px]">{studentTotal} élève(s)</Badge>
+        }
+      />
       <AsyncView state={state} skeleton={<SkeletonCards count={3} className="lg:grid-cols-3" />}>
         {(items) =>
           items.length === 0 && !loading ? (
@@ -80,53 +113,62 @@ export function TeacherHome() {
                   </Button>
                 </Card>
               )}
-              <PanelHeading icon="groups" title="Mes classes" subtitle="Sélectionnez une classe pour saisir les notes et faire l'appel" />
-              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                {items.map((c) => (
-                  <Card key={`${c.classId}-${c.subjectId}`} hover className="flex flex-col">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <p className="text-2xl font-extrabold text-forest">{c.className}</p>
-                        <p className="text-sm font-semibold text-neutral-600">{c.subjectName}</p>
+              <ContentCard
+                heading={
+                  <PanelHeading
+                    icon="groups"
+                    title="Mes classes"
+                    subtitle="Sélectionnez une classe pour saisir les notes et faire l'appel"
+                  />
+                }
+              >
+                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                  {items.map((c) => (
+                    <Card key={`${c.classId}-${c.subjectId}`} hover className="flex flex-col">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <p className="text-2xl font-extrabold text-forest">{c.className}</p>
+                          <p className="text-sm font-semibold text-neutral-600">{c.subjectName}</p>
+                        </div>
+                        <Badge tone={averageTone(c.average)}>{c.average === null ? "Pas de note" : `Moy. ${formatNumber(c.average)}`}</Badge>
                       </div>
-                      <Badge tone={averageTone(c.average)}>{c.average === null ? "Pas de note" : `Moy. ${formatNumber(c.average)}`}</Badge>
-                    </div>
-                    <div className="mt-5 flex items-center gap-2 text-sm text-neutral-600">
-                      <Icon name="groups" className="text-[18px]" />
-                      {c.studentCount} élèves
-                    </div>
-                    <div className="mt-4">
-                      <div className="mb-1.5 flex justify-between text-xs font-semibold">
-                        <span>Notes saisies</span>
-                        <span>{c.completion} %</span>
+                      <div className="mt-5 flex items-center gap-2 text-sm text-neutral-600">
+                        <Icon name="groups" className="text-[18px]" />
+                        {c.studentCount} élèves
                       </div>
-                      <ProgressBar value={c.completion} tone={c.completion < 50 ? "warning" : "leaf"} />
-                    </div>
-                    <div className="mt-5 flex flex-wrap gap-2">
-                      <Button variant="dark" icon="edit_note" onClick={() => open(c)}>
-                        Saisir les notes
-                      </Button>
-                      <Button
-                        variant="outline"
-                        icon="event_available"
-                        onClick={() => navigate(`/app/presences?classId=${c.classId}&subjectId=${c.subjectId}`)}
-                      >
-                        Faire l'appel
-                      </Button>
-                    </div>
-                    {(() => {
-                      const todayRows = (absences.data ?? []).filter((a) => a.date === todayIso() && a.subjectId === c.subjectId);
-                      const absentToday = todayRows.filter((a) => a.type === "absence").length;
-                      const retardToday = todayRows.filter((a) => a.type === "retard").length;
-                      return absentToday + retardToday > 0 ? (
-                        <p className="mt-3 text-xs font-semibold text-neutral-600">
-                          Aujourd'hui : {absentToday} absent(s) · {retardToday} retard(s)
-                        </p>
-                      ) : null;
-                    })()}
-                  </Card>
-                ))}
-              </div>
+                      <div className="mt-4">
+                        <div className="mb-1.5 flex justify-between text-xs font-semibold">
+                          <span>Notes saisies</span>
+                          <span>{c.completion} %</span>
+                        </div>
+                        <ProgressBar value={c.completion} tone={c.completion < 50 ? "warning" : "leaf"} />
+                      </div>
+                      <div className="mt-5 flex flex-wrap gap-2">
+                        <Button variant="dark" icon="edit_note" onClick={() => open(c)}>
+                          Saisir les notes
+                        </Button>
+                        <Button
+                          variant="outline"
+                          icon="event_available"
+                          onClick={() => navigate(`/app/presences?classId=${c.classId}&subjectId=${c.subjectId}`)}
+                        >
+                          Faire l'appel
+                        </Button>
+                      </div>
+                      {(() => {
+                        const todayRows = (absences.data ?? []).filter((a) => a.date === todayIso() && a.subjectId === c.subjectId);
+                        const absentToday = todayRows.filter((a) => a.type === "absence").length;
+                        const retardToday = todayRows.filter((a) => a.type === "retard").length;
+                        return absentToday + retardToday > 0 ? (
+                          <p className="mt-3 text-xs font-semibold text-neutral-600">
+                            Aujourd'hui : {absentToday} absent(s) · {retardToday} retard(s)
+                          </p>
+                        ) : null;
+                      })()}
+                    </Card>
+                  ))}
+                </div>
+              </ContentCard>
 
               {/* Évolution des moyennes de classe */}
               <AsyncView state={history} skeleton={<Skeleton className="h-64 w-full" />}>

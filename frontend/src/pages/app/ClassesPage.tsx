@@ -71,7 +71,7 @@ export default function ClassesPage() {
 
   return (
     <>
-      <PageHeader title="Classes" subtitle="Élémentaire, moyen et secondaire" actions={<Button icon="add" onClick={() => setOpen(true)}>Nouvelle classe</Button>} />
+      <PageHeader title="Classes" subtitle="Élémentaire, moyen et secondaire" actions={<Button onClick={() => setOpen(true)}>Nouvelle classe</Button>} />
       <AsyncView state={state} skeleton={<SkeletonCards count={6} className="lg:grid-cols-3" />}>
         {({ overview, students, teachers }) => (
           <div className="space-y-8">

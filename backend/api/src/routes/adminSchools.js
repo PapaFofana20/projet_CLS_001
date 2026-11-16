@@ -379,7 +379,9 @@ async function schoolProfile(svc, res, schoolId) {
   // Abonnement avec sa formule (FK plan_id → plans).
   const { data: sub } = await svc
     .from("subscriptions")
-    .select("starts_at, ends_at, student_limit, amount_paid, method, paid_at, plans(id, name, tagline, student_limit, monthly_price, yearly_price)")
+    .select(
+      "starts_at, ends_at, student_limit, amount_paid, method, paid_at, plans(id, name, tagline, student_limit, monthly_price, yearly_price, price_per_student, on_quote)",
+    )
     .eq("school_id", schoolId)
     .maybeSingle();
   const subscription = sub
@@ -392,6 +394,8 @@ async function schoolProfile(svc, res, schoolId) {
               studentLimit: sub.plans.student_limit,
               monthlyPrice: sub.plans.monthly_price,
               yearlyPrice: sub.plans.yearly_price,
+              pricePerStudent: sub.plans.price_per_student,
+              onQuote: sub.plans.on_quote,
             }
           : null,
         startsAt: sub.starts_at,

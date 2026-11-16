@@ -4,6 +4,7 @@
  */
 import { requireAdminRole, serviceClient } from "../lib/authAdmin.js";
 import { ok, route, serverError, RATE_LIMIT_RE, logError } from "../lib/http.js";
+import { planMonthlyAmount } from "../lib/planPricing.js";
 import { enforceRateLimit } from "../lib/rateLimit.js";
 
 // Handler principal : GET /admin/stats — statistiques transversales de la plateforme.
@@ -35,12 +36,16 @@ export default route(async (req, res) => {
     ).length;
 
     // Abonnements et revenus réels : formules, échéances, encaissements du mois.
-    const [{ data: planRows }, { data: pendingRequests }, { data: monthEvents }] = await Promise.all([
-      svc.from("plans").select("id, monthly_price"),
-      svc.from("subscription_requests").select("amount, status").eq("status", "EN_ATTENTE"),
-      svc.from("subscription_events").select("amount_paid, created_at").gte("created_at", monthStart),
-    ]);
-    const planPriceById = new Map((planRows ?? []).map((p) => [p.id, Number(p.monthly_price ?? 0)]));
+    const [{ data: planRows }, { data: pendingRequests }, { data: monthEvents }, { data: schoolStats, error: statsError }] =
+      await Promise.all([
+        svc.from("plans").select("id, monthly_price, price_per_student, on_quote"),
+        svc.from("subscription_requests").select("amount, status").eq("status", "EN_ATTENTE"),
+        svc.from("subscription_events").select("amount_paid, created_at").gte("created_at", monthStart),
+        svc.rpc("admin_school_stats"),
+      ]);
+    if (statsError) throw new Error("Impossible de charger les statistiques par établissement.");
+    const planById = new Map((planRows ?? []).map((p) => [p.id, p]));
+    const studentsBySchool = new Map((schoolStats ?? []).map((s) => [s.school_id, Number(s.student_count ?? 0)]));
     const activeSubs = (subRows ?? []).filter((s) => s.ends_at && s.ends_at >= today);
     const expiringSoon = activeSubs.filter((s) => {
       const left = Math.round((Date.parse(`${s.ends_at}T00:00:00Z`) - Date.parse(`${today}T00:00:00Z`)) / 86_400_000);
@@ -54,7 +59,11 @@ export default route(async (req, res) => {
       none: Math.max(0, (schoolRows ?? []).length - (subRows ?? []).length),
       pendingRequests: (pendingRequests ?? []).length,
       pendingAmount: (pendingRequests ?? []).reduce((sum, r) => sum + Number(r.amount ?? 0), 0),
-      mrr: activeSubs.reduce((sum, s) => sum + (planPriceById.get(s.plan_id) ?? 0), 0),
+      mrr: activeSubs.reduce(
+        (sum, s) =>
+          sum + planMonthlyAmount(planById.get(s.plan_id), studentsBySchool.get(s.school_id) ?? 0),
+        0,
+      ),
       revenueThisMonth: (monthEvents ?? []).reduce((sum, e) => sum + Number(e.amount_paid ?? 0), 0),
     };
 
@@ -69,9 +78,8 @@ export default route(async (req, res) => {
     const { count: totalTeachers } = await svc.from("profiles").select("*", { count: "exact", head: true }).in("role", ["professeur", "instituteur"]);
     const { count: totalParents } = await svc.from("profiles").select("*", { count: "exact", head: true }).eq("role", "parent");
 
-    // Statistiques par établissement (top 10 par effectif).
-    const { data: schoolStats, error: statsError } = await svc.rpc("admin_school_stats");
-    if (statsError) throw new Error("Impossible de charger les statistiques par établissement.");
+    // Statistiques par établissement (top 10 par effectif) : chargées plus haut
+    // avec les abonnements, car le MRR dépend de l'effectif de chaque école.
 
     // Activités récentes (audit_log des actions administratives).
     const { data: recentActivity, error: activityError } = await svc

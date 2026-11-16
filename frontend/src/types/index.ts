@@ -37,7 +37,8 @@ export interface School {
   createdAt: string;
 }
 
-export type PlanId = "essentiel" | "pro" | "premium" | "illimite";
+/** Formules réelles : Découverte, Premium et Groupe scolaire. */
+export type PlanId = "essentiel" | "premium" | "illimite";
 
 export interface Plan {
   id: PlanId;
@@ -47,6 +48,10 @@ export interface Plan {
   studentLimit: number | null;
   monthlyPrice: number;
   yearlyPrice: number;
+  /** Tarif mensuel par élève (0 ou absent = forfait à prix fixe). */
+  pricePerStudent?: number;
+  /** Formule établie sur devis (Groupe scolaire). */
+  onQuote?: boolean;
   features: string[];
   highlight?: boolean;
 }
@@ -349,6 +354,12 @@ export interface AdminSubscriptionRow {
   planId: string | null;
   planName: string | null;
   planMonthlyPrice: number;
+  /** Tarif mensuel par élève de la formule (0 = forfait). */
+  planPricePerStudent: number;
+  /** Formule établie sur devis (Groupe scolaire). */
+  planOnQuote: boolean;
+  /** Effectif actif de l'école, base de la facturation par élève. */
+  studentCount: number;
   startsAt: string | null;
   endsAt: string | null;
   daysLeft: number | null;
@@ -383,6 +394,8 @@ export interface AdminPlan {
   studentLimit: number | null;
   monthlyPrice: number;
   yearlyPrice: number;
+  pricePerStudent: number;
+  onQuote: boolean;
   features: string[];
   highlight: boolean;
   activeSchools: number;
@@ -439,6 +452,8 @@ export interface AdminFinancePlan {
   planId: string;
   name: string;
   monthlyPrice: number;
+  pricePerStudent: number;
+  onQuote: boolean;
   activeSubscriptions: number;
   activations: number;
   revenue: number;
@@ -517,7 +532,7 @@ export interface AdminAnalyticsData {
   growth: AdminAnalyticsGrowthPoint[];
   byCity: Array<{ city: string; schools: number; students: number }>;
   byCycle: Array<{ cycle: string; label: string; schools: number }>;
-  byPlan: Array<{ planId: string; name: string; monthlyPrice: number; schools: number; share: number }>;
+  byPlan: Array<{ planId: string; name: string; monthlyPrice: number; pricePerStudent: number; onQuote: boolean; schools: number; share: number }>;
   topSchools: Array<{
     schoolId: string;
     schoolName: string;

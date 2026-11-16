@@ -5,6 +5,7 @@
  */
 import { requireAdminRole, serviceClient } from "../lib/authAdmin.js";
 import { ok, route, serverError, RATE_LIMIT_RE, logError } from "../lib/http.js";
+import { planMonthlyAmount } from "../lib/planPricing.js";
 import { lastMonths, todayIso } from "../lib/periods.js";
 import { enforceRateLimit } from "../lib/rateLimit.js";
 
@@ -47,7 +48,7 @@ export default route(async (req, res) => {
     ] = await Promise.all([
       svc.from("schools").select("id, name, city, cycles, created_at, registration_open").limit(5000),
       svc.from("subscriptions").select("school_id, plan_id, ends_at").limit(5000),
-      svc.from("plans").select("id, name, monthly_price"),
+      svc.from("plans").select("id, name, monthly_price, price_per_student, on_quote").order("sort_order"),
       svc.from("students").select("*", { count: "exact", head: true }),
       svc.from("class_rooms").select("*", { count: "exact", head: true }),
       svc.from("profiles").select("*", { count: "exact", head: true }).in("role", ["professeur", "instituteur"]),
@@ -163,7 +164,12 @@ export default route(async (req, res) => {
         conversionRate: pct(payingSchools.length, allSchools.length),
         churnRate: pct(expiredSubs.length, (subs ?? []).length),
         mrr: payingSchools.reduce(
-          (sum, s) => sum + Number(planById.get(subBySchool.get(s.id)?.plan_id)?.monthly_price ?? 0),
+          (sum, s) =>
+            sum +
+            planMonthlyAmount(
+              planById.get(subBySchool.get(s.id)?.plan_id),
+              studentsBySchool.get(s.id) ?? 0,
+            ),
           0,
         ),
       },
@@ -180,6 +186,8 @@ export default route(async (req, res) => {
         planId: p.id,
         name: p.name,
         monthlyPrice: Number(p.monthly_price ?? 0),
+        pricePerStudent: Number(p.price_per_student ?? 0),
+        onQuote: p.on_quote === true,
         schools: activeByPlan.get(p.id) ?? 0,
         share: pct(activeByPlan.get(p.id) ?? 0, payingSchools.length),
       })),

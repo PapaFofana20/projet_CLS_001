@@ -12,6 +12,7 @@
 import { auditAdmin, requireAdminRole, serviceClient } from "../lib/authAdmin.js";
 import { badRequest, forbidden, notFound, ok, route, serverError, RATE_LIMIT_RE, logError } from "../lib/http.js";
 import { daysBetween, todayIso } from "../lib/periods.js";
+import { planMonthlyAmount } from "../lib/planPricing.js";
 import { enforceRateLimit } from "../lib/rateLimit.js";
 import { expectObject, optionalString, requireString, requireUuid, ValidationError } from "../lib/validate.js";
 
@@ -25,11 +26,6 @@ const MAX_AMOUNT = 10_000_000;
  * PAS '%' par un espace, sinon une recherche comme "100%" ne trouve rien. */
 function sanitizeSearch(value) {
   return String(value ?? "").trim().slice(0, 60);
-}
-
-/** Prix mensuel d'une formule, 0 si absent (évite les NaN dans les totaux). */
-function planPrice(plan) {
-  return Number(plan?.monthly_price ?? 0);
 }
 
 /** Valide le montant saisi pour une activation manuelle. Entrée : corps. Sortie : entier ou null si absent. */
@@ -81,8 +77,15 @@ export default route(async (req, res) => {
           .maybeSingle();
         if (!school) return notFound(res, "Établissement introuvable.");
 
-        const { data: plan } = await svc.from("plans").select("id, name").eq("id", planId).maybeSingle();
+        const { data: plan } = await svc
+          .from("plans")
+          .select("id, name, on_quote")
+          .eq("id", planId)
+          .maybeSingle();
         if (!plan) return badRequest(res, "Formule d'abonnement introuvable.");
+        if (plan.on_quote === true) {
+          return badRequest(res, "Cette formule est établie sur devis : activez-la après négociation du montant.");
+        }
 
         const { data: activation, error } = await svc.rpc("activate_school_subscription", {
           p_school_id: schoolId,
@@ -192,13 +195,16 @@ async function listSubscriptions(svc, res, req) {
     { data: plans, error: plansError },
     { data: pendingRequests, error: requestsError },
     { data: pastRequests },
+    { data: stats, error: statsError },
   ] = await Promise.all([
     schoolQuery,
     svc
       .from("subscriptions")
-      .select("school_id, plan_id, starts_at, ends_at, student_limit, amount_paid, method, paid_at, plans(id, name, monthly_price, yearly_price, student_limit)")
+      .select(
+        "school_id, plan_id, starts_at, ends_at, student_limit, amount_paid, method, paid_at, plans(id, name, monthly_price, yearly_price, price_per_student, on_quote, student_limit)",
+      )
       .limit(5000),
-    svc.from("plans").select("*").order("monthly_price"),
+    svc.from("plans").select("*").order("sort_order"),
     svc
       .from("subscription_requests")
       .select(REQUEST_FIELDS)
@@ -210,6 +216,7 @@ async function listSubscriptions(svc, res, req) {
       .neq("status", "EN_ATTENTE")
       .order("created_at", { ascending: false })
       .limit(30),
+    svc.rpc("admin_school_stats"),
   ]);
   const requests = [...(pendingRequests ?? []), ...(pastRequests ?? [])];
 
@@ -217,10 +224,12 @@ async function listSubscriptions(svc, res, req) {
   if (subsError) throw new Error("Impossible de charger les abonnements.");
   if (plansError) throw new Error("Impossible de charger les formules.");
   if (requestsError) throw new Error("Impossible de charger les demandes d'abonnement.");
+  if (statsError) throw new Error("Impossible de charger les effectifs par établissement.");
 
   const plansById = new Map((plans ?? []).map((p) => [p.id, p]));
   const subBySchool = new Map((subs ?? []).map((s) => [s.school_id, s]));
   const schoolById = new Map((schools ?? []).map((s) => [s.id, s]));
+  const studentsBySchool = new Map((stats ?? []).map((s) => [s.school_id, Number(s.student_count ?? 0)]));
 
   // Lignes complètes (avant filtrage).
   const allRows = (schools ?? []).map((school) => {
@@ -229,6 +238,7 @@ async function listSubscriptions(svc, res, req) {
     const endsAt = sub?.ends_at ?? null;
     const statusValue = !endsAt ? "AUCUN" : endsAt < today ? "EXPIRE" : "ACTIF";
     const daysLeft = endsAt ? daysBetween(today, endsAt) : null;
+    const studentCount = studentsBySchool.get(school.id) ?? 0;
     return {
       schoolId: school.id,
       schoolName: school.name,
@@ -236,7 +246,10 @@ async function listSubscriptions(svc, res, req) {
       city: school.city ?? "",
       planId: sub?.plan_id ?? null,
       planName: plan?.name ?? null,
-      planMonthlyPrice: planPrice(plan),
+      planMonthlyPrice: planMonthlyAmount(plan, studentCount),
+      planPricePerStudent: Number(plan?.price_per_student ?? 0),
+      planOnQuote: plan?.on_quote === true,
+      studentCount,
       startsAt: sub?.starts_at ?? null,
       endsAt,
       daysLeft,
@@ -291,9 +304,11 @@ async function listSubscriptions(svc, res, req) {
   const pageRows = filtered.slice((page - 1) * pageSize, page * pageSize);
 
   const activeByPlan = new Map();
+  const mrrByPlan = new Map();
   for (const row of activeRows) {
     if (!row.planId) continue;
     activeByPlan.set(row.planId, (activeByPlan.get(row.planId) ?? 0) + 1);
+    mrrByPlan.set(row.planId, (mrrByPlan.get(row.planId) ?? 0) + row.planMonthlyPrice);
   }
   const revenueByPlan = new Map();
   for (const sub of subs ?? []) {
@@ -311,11 +326,13 @@ async function listSubscriptions(svc, res, req) {
       studentLimit: p.student_limit,
       monthlyPrice: Number(p.monthly_price ?? 0),
       yearlyPrice: Number(p.yearly_price ?? 0),
+      pricePerStudent: Number(p.price_per_student ?? 0),
+      onQuote: p.on_quote === true,
       features: p.features ?? [],
       highlight: p.highlight === true,
       activeSchools: activeByPlan.get(p.id) ?? 0,
       totalRevenue: revenueByPlan.get(p.id) ?? 0,
-      mrr: (activeByPlan.get(p.id) ?? 0) * Number(p.monthly_price ?? 0),
+      mrr: mrrByPlan.get(p.id) ?? 0,
     })),
     requests: (requests ?? []).map((r) => {
       const school = schoolById.get(r.school_id);

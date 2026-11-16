@@ -1,11 +1,12 @@
 // Espace parent : suivi des eleves, notes et paiements.
-
+// Design aligné sur la console admin : bandeau forêt (HeroCard), tuiles KPI
+// colorées (KpiTile), en-têtes de panneau (PanelHeading).
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Avatar } from "@/components/ui/Brand";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { Card, CardHeader } from "@/components/ui/Card";
+import { Card } from "@/components/ui/Card";
 import { AsyncView } from "@/components/ui/AsyncView";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Icon } from "@/components/ui/Icon";
@@ -29,11 +30,33 @@ import { averageTone } from "@/utils/grades";
 import { STUDENT_STATUS_LABELS } from "@/utils/payments";
 import { GradeEvolutionCharts } from "./charts";
 import { GreetingSection } from "./GreetingSection";
-import { KpiTile, PanelHeading } from "@/features/admin/adminUi";
+import {
+  HeroCard,
+  KpiTile,
+  PanelHeading,
+} from "@/features/admin/adminUi";
 import type { Cycle } from "@/types";
+import { cn } from "@/utils/cn";
 
 // Bareme des notes : sur 10 a l'elementaire, sur 20 ensuite.
 const getScale = (cycle?: Cycle | null) => (cycle === "elementaire" ? 10 : 20);
+
+function ContentCard({
+  children,
+  heading,
+  className,
+}: {
+  children: React.ReactNode;
+  heading: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <Card padded={false} className={cn("overflow-hidden", className)}>
+      <div className="px-4 pt-5 sm:px-6">{heading}</div>
+      <div className="mt-4 px-4 pb-5 sm:px-5">{children}</div>
+    </Card>
+  );
+}
 
 // Page d'accueil du parent : choix de l'enfant, puis son suivi.
 export function ParentHome() {
@@ -84,7 +107,7 @@ export function ParentHome() {
       <PageHeader
         title="Suivi de mes élèves"
         subtitle={`${school.schoolName}${settings?.schoolYear ? ` · année scolaire ${settings.schoolYear}` : ""} · résultats et paiements de vos élèves.`}
-        actions={<Button icon="add" onClick={() => setOpen(true)}>Ajouter un élève</Button>}
+        actions={<Button onClick={() => setOpen(true)}>Ajouter un élève</Button>}
       />
       <GreetingSection />
       {error && (
@@ -115,47 +138,50 @@ export function ParentHome() {
         {(d) =>
           d && (
             <div className="space-y-4">
-              <PanelHeading icon="grade" title="Résultats de {d.row.firstName}" subtitle={`Moyenne par matière${periodLabel ? ` (${periodLabel})` : ""}`} action={<LinkButton to="/app/notes" variant="ghost" size="sm">Détails</LinkButton>} />
-              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                {(() => {
-                  const scale = getScale(d.classRoom.cycle);
-                  return (
-                    <>
-                      <KpiTile tone="lime" icon="grade" label="Moyenne générale" value={d.report?.generalAverage == null ? "—" : `${formatNumber(d.report.generalAverage)} / ${scale}`} note={periodLabel ?? undefined} />
-                      <KpiTile tone="sky" icon="emoji_events" label="Rang" value={d.report?.rank ? `${d.report.rank}${d.report.rank === 1 ? "er" : "e"} / ${d.report.classSize}` : "—"} note={d.classRoom.name} />
-                      <KpiTile tone="amber" icon="event_busy" label="Absences" value={d.report?.meta ? `${d.report.meta.absences} h` : "—"} note={d.report?.meta?.conduct ? `Conduite : ${d.report.meta.conduct}` : "Non renseigné"} />
-                      <KpiTile tone="red" icon="payments" label="Reste dû (échu)" value={formatCurrency(d.row.balance)} note={d.row.balance > 0 ? "À régler" : "À jour"} />
-                    </>
-                  );
-                })()}
+              {/* Bandeau de synthèse : moyenne générale de l'enfant. */}
+              <HeroCardForChild d={d} scale={getScale(d.classRoom.cycle)} periodLabel={periodLabel} />
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                <KpiTile tone="sky" icon="emoji_events" label="Rang" value={d.report?.rank ? `${d.report.rank}${d.report.rank === 1 ? "er" : "e"} / ${d.report.classSize}` : "—"} note={d.classRoom.name} />
+                <KpiTile tone="amber" icon="event_busy" label="Absences" value={d.report?.meta ? `${d.report.meta.absences} h` : "—"} note={d.report?.meta?.conduct ? `Conduite : ${d.report.meta.conduct}` : "Non renseigné"} />
+                <KpiTile tone="red" icon="payments" label="Reste dû (échu)" value={formatCurrency(d.row.balance)} note={d.row.balance > 0 ? "À régler" : "À jour"} />
               </div>
-              <div className="grid gap-4 xl:grid-cols-3">
-                <Card className="xl:col-span-2">
-                  <ul className="space-y-3">
-                    {(d.report?.lines ?? []).map((l) => {
-                      const scale = getScale(d.classRoom.cycle);
-                      return (
-                        <li key={l.subjectId} className="flex items-center gap-3">
-                          <span className="w-44 truncate text-sm font-medium">{l.subjectName}</span>
-                          <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-neutral-100">
-                            <div className="h-full rounded-full bg-leaf" style={{ width: `${Math.min(100, ((l.average ?? 0) / scale) * 100)}%` }} />
-                          </div>
-                          <Badge tone={averageTone(l.average)} className="w-16 justify-center">
-                            {l.average === null ? "—" : formatNumber(l.average)}
-                          </Badge>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </Card>
-                <Card>
-                  <CardHeader title="Accès rapides" />
-                  <div className="grid gap-2">
-                    <Link to="/app/bulletins" className="flex min-h-12 items-center gap-3 rounded-xl bg-lime-soft px-4 text-sm font-semibold hover:bg-lime">Voir le bulletin</Link>
-                    <Link to="/app/paiements" className="flex min-h-12 items-center gap-3 rounded-xl bg-lime-soft px-4 text-sm font-semibold hover:bg-lime">Payer une mensualité</Link>
-                  </div>
-                </Card>
-              </div>
+              <ContentCard
+                heading={
+                  <PanelHeading
+                    icon="grade"
+                    title={`Résultats de ${d.row.firstName}`}
+                    subtitle={`Moyenne par matière${periodLabel ? ` (${periodLabel})` : ""}`}
+                    action={<LinkButton to="/app/notes" variant="ghost" size="sm">Détails</LinkButton>}
+                  />
+                }
+              >
+                <ul className="space-y-3">
+                  {(d.report?.lines ?? []).map((l) => {
+                    const scale = getScale(d.classRoom.cycle);
+                    return (
+                      <li key={l.subjectId} className="flex items-center gap-3">
+                        <span className="w-44 truncate text-sm font-medium">{l.subjectName}</span>
+                        <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-neutral-100">
+                          <div className="h-full rounded-full bg-leaf" style={{ width: `${Math.min(100, ((l.average ?? 0) / scale) * 100)}%` }} />
+                        </div>
+                        <Badge tone={averageTone(l.average)} className="w-16 justify-center">
+                          {l.average === null ? "—" : formatNumber(l.average)}
+                        </Badge>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </ContentCard>
+              <ContentCard
+                heading={
+                  <PanelHeading icon="link" title="Accès rapides" />
+                }
+              >
+                <div className="grid gap-2">
+                  <Link to="/app/bulletins" className="flex min-h-12 items-center gap-3 rounded-xl bg-lime-soft px-4 text-sm font-semibold hover:bg-lime">Voir le bulletin</Link>
+                  <Link to="/app/paiements" className="flex min-h-12 items-center gap-3 rounded-xl bg-lime-soft px-4 text-sm font-semibold hover:bg-lime">Payer une mensualité</Link>
+                </div>
+              </ContentCard>
               {/* Évolution des notes */}
               <AsyncView state={history} skeleton={<Skeleton className="h-64 w-full" />}>
                 {(h) => <GradeEvolutionCharts history={h ?? []} cycle={d.classRoom.cycle} />}
@@ -214,5 +240,22 @@ export function ParentHome() {
         </div>
       </Modal>
     </>
+  );
+}
+
+// Bandeau forêt résumant la moyenne générale de l'enfant selectionné.
+function HeroCardForChild({ d, scale, periodLabel }: { d: any; scale: number; periodLabel: string | null | undefined }) {
+  const avg = d.report?.generalAverage;
+  return (
+    <HeroCard
+      eyebrow="Moyenne générale"
+      icon="grade"
+      value={avg == null ? "—" : `${formatNumber(avg)} / ${scale}`}
+      label={periodLabel ?? "Toutes périodes confondues"}
+      footnote={d.row.balance > 0 ? `Reste dû : ${formatCurrency(d.row.balance)}` : "Paiements à jour"}
+      badge={
+        avg == null ? null : <Badge tone={averageTone(avg)} className="px-2 py-0.5 text-[10px]">{formatNumber(avg)} / {scale}</Badge>
+      }
+    />
   );
 }

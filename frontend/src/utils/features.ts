@@ -7,23 +7,23 @@ import type { PlanId } from "@/types";
  * Basé sur les features listées dans data/plans.ts
  */
 export type FeatureKey =
-  /** Plans Pro+ */
+  /** Plans Premium+ */
   | "mobile_payments"           // Paiements Wave / Orange Money / Free Money
   | "auto_reminders"            // Rappels automatiques des impayés
   | "scheduling"                // Affectations et emplois du temps (disponible dès le plan Découverte)
   /** Plans Premium+ */
   | "staff_accounts"            // Comptes économe, secrétaire, surveillant (disponible dès le plan Découverte)
   | "data_export"               // Export des données et rapports
-  /** Plans Illimité */
+  /** Groupe scolaire */
   | "multi_campus";             // Multi-sièges / multi-campus
 
 /** Ordre des plans pour la comparaison */
-const PLAN_ORDER: PlanId[] = ["essentiel", "pro", "premium", "illimite"];
+const PLAN_ORDER: PlanId[] = ["essentiel", "premium", "illimite"];
 
 /** Niveau minimum requis pour chaque fonctionnalité */
 const FEATURE_REQUIREMENTS: Record<FeatureKey, PlanId> = {
-  mobile_payments: "pro",
-  auto_reminders: "pro",
+  mobile_payments: "premium",
+  auto_reminders: "premium",
   scheduling: "essentiel",
   staff_accounts: "essentiel",
   data_export: "premium",
@@ -37,10 +37,11 @@ const FEATURE_REQUIREMENTS: Record<FeatureKey, PlanId> = {
 export function hasFeature(feature: FeatureKey, schoolId: string): boolean {
   const info = subscriptionInfoOf(schoolId);
   if (!info.plan) return false;
-  // Normalisation des ids de formule : « reseau » (landing) correspond à
-  // « illimite » (catalogue backend). Un plan inconnu reste bloquant.
+  // Normalisation des ids de formule : « reseau » (site public) correspond à
+  // « illimite » (catalogue backend), et « pro » (ancien catalogue) est un
+  // doublon historique de « premium ». Un plan inconnu reste bloquant.
   const rawId = info.plan.id as string;
-  const normalizedId = rawId === "reseau" ? "illimite" : rawId;
+  const normalizedId = rawId === "reseau" ? "illimite" : rawId === "pro" ? "premium" : rawId;
   const currentPlanIndex = PLAN_ORDER.indexOf(normalizedId as PlanId);
   const requiredPlanIndex = PLAN_ORDER.indexOf(FEATURE_REQUIREMENTS[feature]);
   if (currentPlanIndex === -1) return false; // Fail-closed : plan inconnu/corrompu = aucune feature premium.
@@ -65,10 +66,9 @@ export function getRequiredPlanLabel(feature: FeatureKey): string {
   if (!plan) return "Premium";
   
   const labels: Record<PlanId, string> = {
-    essentiel: "Plan découverte",
-    pro: "Pro",
+    essentiel: "Découverte",
     premium: "Premium",
-    illimite: "Illimité",
+    illimite: "Groupe scolaire",
   };
   return labels[planId] ?? "Premium";
 }

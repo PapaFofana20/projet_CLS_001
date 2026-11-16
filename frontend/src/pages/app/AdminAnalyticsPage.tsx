@@ -11,6 +11,7 @@ import { getAdminAnalytics } from "@/services/admin";
 import type { AdminAnalyticsData } from "@/types";
 import { CycleShareChart, GrowthChart } from "@/features/admin/charts";
 import { formatCurrency, formatDate, formatNumber } from "@/utils/format";
+import { planPriceLabel } from "@/utils/planPrice";
 import { cn } from "@/utils/cn";
 import {
   HeroBar,
@@ -213,7 +214,7 @@ function Content({ data }: { data: AdminAnalyticsData }) {
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
-          <PanelHeading icon="sell" title="Adoption des formules" subtitle="Part des écoles payantes par formule." />
+          <PanelHeading icon="sell" title="Adoption des formules" subtitle="Écoles avec abonnement actif, par formule." />
           {data.byPlan.length === 0 ? (
             <p className="py-8 text-center text-sm text-neutral-500">Aucune formule configurée.</p>
           ) : (
@@ -223,7 +224,7 @@ function Content({ data }: { data: AdminAnalyticsData }) {
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <p className="text-sm font-bold text-ink">{plan.name}</p>
-                      <p className="text-xs text-neutral-500">{formatCurrency(plan.monthlyPrice)} / mois</p>
+                      <p className="text-xs text-neutral-500">{planPriceLabel(plan)}</p>
                     </div>
                     <div className="text-right">
                       <p className="text-sm font-extrabold tabular-nums text-forest">{plan.schools} école(s)</p>

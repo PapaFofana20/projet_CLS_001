@@ -1,8 +1,11 @@
 // Tableau de bord de la direction (ou financier selon le mode).
-
+// Design aligné sur la console admin : bandeau forêt (HeroCard), tuiles KPI
+// colorées (KpiTile), en-têtes de panneau (PanelHeading) et cartes à en-tête
+// intégrée.
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/Badge";
-import { Card, CardHeader } from "@/components/ui/Card";
+import { Card } from "@/components/ui/Card";
 import { AsyncView } from "@/components/ui/AsyncView";
 import { Icon } from "@/components/ui/Icon";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -19,12 +22,73 @@ import { useToast } from "@/context/ToastContext";
 import { MatriculeCard } from "@/features/subscription/MatriculeCard";
 import { OnboardingChecklist } from "@/features/subscription/OnboardingChecklist";
 import { formatCurrency, formatNumber } from "@/utils/format";
+import { cn } from "@/utils/cn";
 import { ClassBars, CycleDonut, CYCLE_COLORS, PaymentsChart } from "./charts";
 import { CurrentMonthMensualites } from "./CurrentMonthMensualites";
 import { GreetingSection } from "./GreetingSection";
 import { LatestPayments } from "./LatestPayments";
-import { KpiTile, PanelHeading } from "@/features/admin/adminUi";
-import { useState } from "react";
+import {
+  HeroBar,
+  HeroCard,
+  HeroLegend,
+  KpiTile,
+  PanelHeading,
+} from "@/features/admin/adminUi";
+
+// Bandeau de synthèse en haut du tableau de bord direction.
+function SummaryBand({ s, finance }: { s: AdminStats; finance: boolean }) {
+  if (finance) {
+    return (
+      <HeroCard
+        eyebrow="Encaissements"
+        icon="account_balance_wallet"
+        value={formatCurrency(s.collected)}
+        label="encaissé à ce jour sur les échéances échues"
+        footnote={`Taux de recouvrement : ${s.recoveryRate} % · attendu ${formatCurrency(s.expected)}`}
+      />
+    );
+  }
+  return (
+    <HeroCard
+      eyebrow="Effectif"
+      icon="groups"
+      value={String(s.totalStudents)}
+      label="élèves inscrits à l'établissement"
+      footnote={`Récupération : ${s.recoveryRate} % · impayés ${formatCurrency(s.unpaidTotal)}`}
+    >
+      <HeroBar
+        segments={s.byCycle.map((c) => ({
+          pct: s.totalStudents > 0 ? Math.round((c.count / s.totalStudents) * 100) : 0,
+          className: CYCLE_COLORS[c.cycle],
+        }))}
+      />
+      <HeroLegend
+        items={s.byCycle.map((c) => ({
+          dot: CYCLE_COLORS[c.cycle],
+          label: `${CYCLE_LABELS[c.cycle]} · ${c.count}`,
+        }))}
+      />
+    </HeroCard>
+  );
+}
+
+// Carte de contenu avec en-tête PanelHeading intégré (style console admin).
+function ContentCard({
+  children,
+  heading,
+  className,
+}: {
+  children: React.ReactNode;
+  heading: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <Card padded={false} className={cn("overflow-hidden", className)}>
+      <div className="px-4 pt-5 sm:px-6">{heading}</div>
+      <div className="mt-4 px-4 pb-5 sm:px-5">{children}</div>
+    </Card>
+  );
+}
 
 // Charge les statistiques, puis delegue l'affichage au contenu ci-dessous.
 export function AdminDashboard({ finance = false }: { finance?: boolean }) {
@@ -37,11 +101,11 @@ export function AdminDashboard({ finance = false }: { finance?: boolean }) {
         subtitle={`${schoolName} · Année scolaire 2026-2027`}
         actions={
           finance ? (
-            <LinkButton to="/app/paiements" icon="payments">
+            <LinkButton to="/app/paiements">
               Gérer les paiements
             </LinkButton>
           ) : (
-            <LinkButton to="/app/inscription-eleve" icon="person_add">
+            <LinkButton to="/app/inscription-eleve">
               Inscrire un élève
             </LinkButton>
           )
@@ -66,7 +130,9 @@ function Content({ s, finance }: { s: AdminStats; finance: boolean }) {
     try {
       await updateSettings(schoolId, { blockStudentBulletins: checked });
       reload();
-      toast(checked ? "Bulletins masqués aux élèves et parents." : "Bulletins visibles aux élèves et parents.");
+      toast(
+        checked ? "Bulletins masqués aux élèves et parents." : "Bulletins visibles aux élèves et parents.",
+      );
     } catch (e) {
       toast(e instanceof Error ? e.message : "Impossible de mettre à jour.", "error");
     } finally {
@@ -80,53 +146,81 @@ function Content({ s, finance }: { s: AdminStats; finance: boolean }) {
         <>
           <OnboardingChecklist user={currentUser} />
           {school && <MatriculeCard school={school} canManage onChanged={() => window.location.reload()} />}
-          {!finance && (
-            <Card>
-              <CardHeader title="Accès aux bulletins" subtitle="Contrôle l'affichage et le téléchargement des bulletins pour les élèves et parents." />
-              <div className="px-6 pb-6">
-                <Switch
-                  checked={isBlocked}
-                  disabled={busy}
-                  onChange={(v) => void toggle(v)}
-                  label="Bloquer les bulletins (élèves / parents)"
-                  description="Quand activé, les bulletins sont masqués et le téléchargement/impression est désactivé."
-                />
-              </div>
-            </Card>
-          )}
+          <ContentCard
+            heading={
+              <PanelHeading
+                icon="lock"
+                title="Accès aux bulletins"
+                subtitle="Contrôle l'affichage et le téléchargement des bulletins pour les élèves et parents."
+              />
+            }
+          >
+            <Switch
+              checked={isBlocked}
+              disabled={busy}
+              onChange={(v) => void toggle(v)}
+              label="Bloquer les bulletins (élèves / parents)"
+              description="Quand activé, les bulletins sont masqués et le téléchargement/impression est désactivé."
+            />
+          </ContentCard>
         </>
       )}
-      {/* Grilles pilotées par le conteneur (@container) : le nombre de colonnes ne change pas pendant la transition de la sidebar. */}
-      <PanelHeading icon="dashboard" title="Indicateurs clés" subtitle="Vue rapide de l'activité de l'établissement" />
+
+      {/* Bandeau de synthèse (style console admin). */}
+      <SummaryBand s={s} finance={finance} />
+
+      {/* Tuiles KPI principales. */}
+      <ContentCard
+        heading={
+          <PanelHeading
+            icon="dashboard"
+            title="Indicateurs clés"
+            subtitle="Vue rapide de l'activité de l'établissement"
+          />
+        }
+      >
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {finance ? (
+            <>
+              <KpiTile tone="sky" icon="request_quote" label="Attendu à ce jour" value={formatCurrency(s.expected)} note="échéances échues" />
+              <KpiTile tone="red" icon="warning" label="Impayés" value={formatCurrency(s.unpaidTotal)} note="échéances en retard" />
+              <KpiTile tone="violet" icon="percent" label="Taux de recouvrement" value={`${s.recoveryRate} %`} />
+            </>
+          ) : (
+            <>
+              <KpiTile tone="amber" icon="savings" label="Taux de recouvrement" value={`${s.recoveryRate} %`} note={`${formatCurrency(s.collected)} encaissés`} />
+              <KpiTile tone="red" icon="warning" label="Impayés" value={formatCurrency(s.unpaidTotal)} note="échéances en retard" />
+              <KpiTile tone="violet" icon="grade" label="Moyenne générale" value={s.generalAverage === null ? "—" : `${formatNumber(s.generalAverage)} / 20`} note="toutes classes confondues" />
+            </>
+          )}
+        </div>
+      </ContentCard>
+
+      {/* Grilles pilotées par le conteneur (@container). */}
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {finance ? (
-              <>
-                <KpiTile tone="lime" icon="account_balance_wallet" label="Encaissé à ce jour" value={formatCurrency(s.collected)} note="sur les échéances échues" />
-                <KpiTile tone="sky" icon="request_quote" label="Attendu à ce jour" value={formatCurrency(s.expected)} note="échéances au 15/12/2026" />
-              </>
-            ) : (
-              <>
-                <KpiTile tone="lime" icon="groups" label="Effectif total" value={String(s.totalStudents)} note={s.byCycle.map((c) => `${CYCLE_LABELS[c.cycle]} ${c.count}`).join(" · ")} />
-                <KpiTile tone="amber" icon="savings" label="Taux de recouvrement" value={`${s.recoveryRate} %`} note={`${formatCurrency(s.collected)} encaissés`} />
-              </>
-            )}
-            <KpiTile tone="red" icon="warning" label="Impayés" value={formatCurrency(s.unpaidTotal)} note="échéances en retard" />
-            {finance ? (
-              <KpiTile tone="violet" icon="percent" label="Taux de recouvrement" value={`${s.recoveryRate} %`} />
-            ) : (
-              <KpiTile tone="violet" icon="grade" label="Moyenne générale" value={s.generalAverage === null ? "—" : `${formatNumber(s.generalAverage)} / 20`} note="toutes classes confondues" />
-            )}
-          </div>
-          <Card>
-            <CardHeader title="Paiements par mois" subtitle="Mensualités attendues et encaissées (octobre à juillet)" />
+          <ContentCard
+            heading={
+              <PanelHeading
+                icon="payments"
+                title="Paiements par mois"
+                subtitle="Mensualités attendues et encaissées (octobre à juillet)"
+              />
+            }
+          >
             <PaymentsChart data={s.paymentsByMonth} />
-          </Card>
+          </ContentCard>
         </div>
         <div className="space-y-4">
-          <Card>
-            <CardHeader title="Élèves par cycle" subtitle={`${s.totalStudents} élèves inscrits`} />
+          <ContentCard
+            heading={
+              <PanelHeading
+                icon="groups"
+                title="Élèves par cycle"
+                subtitle={`${s.totalStudents} élèves inscrits`}
+              />
+            }
+          >
             <CycleDonut data={s.byCycle} />
             <ul className="mt-2 space-y-2">
               {s.byCycle.map((c) => (
@@ -139,9 +233,12 @@ function Content({ s, finance }: { s: AdminStats; finance: boolean }) {
                 </li>
               ))}
             </ul>
-          </Card>
-          <Card>
-            <CardHeader title="Alertes" />
+          </ContentCard>
+          <ContentCard
+            heading={
+              <PanelHeading icon="notifications_active" title="Alertes" subtitle="Points à surveiller" />
+            }
+          >
             <ul className="space-y-3">
               {s.alerts.map((a) => (
                 <li key={a.id}>
@@ -154,24 +251,38 @@ function Content({ s, finance }: { s: AdminStats; finance: boolean }) {
                 </li>
               ))}
             </ul>
-          </Card>
+          </ContentCard>
         </div>
       </div>
+
       {/* Mensualités du mois courant — visible pour direction et économe */}
       <CurrentMonthMensualites />
       <div className="grid gap-4 lg:grid-cols-3">
         {!finance && (
-          <Card className="lg:col-span-2">
-            <CardHeader title="Effectif par classe" subtitle="Élémentaire, moyen et secondaire" />
+          <ContentCard className="lg:col-span-2"
+            heading={
+              <PanelHeading
+                icon="meeting_room"
+                title="Effectif par classe"
+                subtitle="Élémentaire, moyen et secondaire"
+              />
+            }
+          >
             <ClassBars data={s.studentsByClass} />
-          </Card>
+          </ContentCard>
         )}
-        <Card className={finance ? "lg:col-span-3" : ""}>
-          <CardHeader title="Derniers paiements" action={<LinkButton to="/app/paiements" variant="ghost" size="sm">Tout voir</LinkButton>} />
+        <ContentCard className={finance ? "lg:col-span-3" : ""}
+          heading={
+            <PanelHeading
+              icon="receipt_long"
+              title="Derniers paiements"
+              action={<LinkButton to="/app/paiements" variant="ghost" size="sm">Tout voir</LinkButton>}
+            />
+          }
+        >
           <LatestPayments rows={s.latestPayments} />
-        </Card>
+        </ContentCard>
       </div>
     </div>
   );
 }
-

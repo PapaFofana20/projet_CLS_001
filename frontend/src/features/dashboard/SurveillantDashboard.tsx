@@ -70,7 +70,7 @@ export function SurveillantDashboard() {
 
   return (
     <>
-      <PageHeader title="Vie scolaire" subtitle="Absences, retards et discipline — décembre 2026" actions={<Button icon="add" onClick={() => setOpen(true)}>Nouveau signalement</Button>} />
+      <PageHeader title="Vie scolaire" subtitle="Absences, retards et discipline — décembre 2026" actions={<Button onClick={() => setOpen(true)}>Nouveau signalement</Button>} />
       <GreetingSection />
       <AsyncView state={state}>
         {() => (

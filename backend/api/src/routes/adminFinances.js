@@ -9,6 +9,7 @@
 import { requireAdminRole, serviceClient } from "../lib/authAdmin.js";
 import { ok, route, serverError, RATE_LIMIT_RE, logError } from "../lib/http.js";
 import { daysBetween, lastMonths, monthKey, monthStartIso, todayIso } from "../lib/periods.js";
+import { planMonthlyAmount } from "../lib/planPricing.js";
 import { enforceRateLimit } from "../lib/rateLimit.js";
 
 const EVENT_SELECT =
@@ -47,16 +48,17 @@ export default route(async (req, res) => {
     const thisMonth = monthKey();
     const months = lastMonths(12);
 
-    const [events, { data: subs, error: subsError }, { data: plans, error: plansError }, { data: schools }, { data: requests }] =
+    const [events, { data: subs, error: subsError }, { data: plans, error: plansError }, { data: schools }, { data: requests }, { data: statsRows }] =
       await Promise.all([
         fetchAllEvents(svc),
         svc
           .from("subscriptions")
           .select("school_id, plan_id, starts_at, ends_at, amount_paid, method, paid_at")
           .limit(5000),
-        svc.from("plans").select("id, name, monthly_price, yearly_price"),
+        svc.from("plans").select("id, name, monthly_price, yearly_price, price_per_student, on_quote").order("sort_order"),
         svc.from("schools").select("id, name, matricule").limit(5000),
         svc.from("subscription_requests").select("id, amount, status").eq("status", "EN_ATTENTE"),
+        svc.rpc("admin_school_stats"),
       ]);
 
     if (subsError) throw new Error("Impossible de charger les abonnements.");
@@ -82,16 +84,15 @@ export default route(async (req, res) => {
 
     const activeSubs = (subs ?? []).filter((s) => s.ends_at && s.ends_at >= today);
     const expiredSubs = (subs ?? []).filter((s) => s.ends_at && s.ends_at < today);
-    const mrr = activeSubs.reduce((sum, s) => sum + Number(planById.get(s.plan_id)?.monthly_price ?? 0), 0);
-    const atRiskMrr = expiredSubs.reduce((sum, s) => sum + Number(planById.get(s.plan_id)?.monthly_price ?? 0), 0);
+    const studentsBySchool = new Map((statsRows ?? []).map((s) => [s.school_id, Number(s.student_count ?? 0)]));
+    const mrrOf = (sub) => planMonthlyAmount(planById.get(sub.plan_id), studentsBySchool.get(sub.school_id) ?? 0);
+    const mrr = activeSubs.reduce((sum, s) => sum + mrrOf(s), 0);
+    const atRiskMrr = expiredSubs.reduce((sum, s) => sum + mrrOf(s), 0);
     const renewalsDue30 = activeSubs.filter((s) => {
       const left = daysBetween(today, s.ends_at);
       return left !== null && left <= 30;
     });
-    const renewalsDue30Amount = renewalsDue30.reduce(
-      (sum, s) => sum + Number(planById.get(s.plan_id)?.monthly_price ?? 0),
-      0,
-    );
+    const renewalsDue30Amount = renewalsDue30.reduce((sum, s) => sum + mrrOf(s), 0);
     const payingSchools = new Set(events.filter((e) => amountOf(e) > 0).map((e) => e.school_id)).size;
     const pendingRequests = requests ?? [];
 
@@ -135,15 +136,19 @@ export default route(async (req, res) => {
     }
     const activeByPlan = new Map();
     for (const s of activeSubs) activeByPlan.set(s.plan_id, (activeByPlan.get(s.plan_id) ?? 0) + 1);
+    const mrrByPlan = new Map();
+    for (const s of activeSubs) mrrByPlan.set(s.plan_id, (mrrByPlan.get(s.plan_id) ?? 0) + mrrOf(s));
 
     const byPlan = (plans ?? []).map((p) => ({
       planId: p.id,
       name: p.name,
       monthlyPrice: Number(p.monthly_price ?? 0),
+      pricePerStudent: Number(p.price_per_student ?? 0),
+      onQuote: p.on_quote === true,
       activeSubscriptions: activeByPlan.get(p.id) ?? 0,
       activations: countByPlan.get(p.id) ?? 0,
       revenue: revenueByPlan.get(p.id) ?? 0,
-      mrr: (activeByPlan.get(p.id) ?? 0) * Number(p.monthly_price ?? 0),
+      mrr: mrrByPlan.get(p.id) ?? 0,
     }));
 
     const methodTotals = new Map();

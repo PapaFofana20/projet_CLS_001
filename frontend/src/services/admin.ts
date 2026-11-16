@@ -196,7 +196,18 @@ export interface SchoolTeacherRow {
 }
 
 export interface SchoolSubscription {
-  plan: { id: string; name: string; tagline: string; studentLimit: number | null; monthlyPrice: number; yearlyPrice: number } | null;
+  plan: {
+    id: string;
+    name: string;
+    tagline: string;
+    studentLimit: number | null;
+    monthlyPrice: number;
+    yearlyPrice: number;
+    /** Tarif mensuel par élève (0 = forfait). */
+    pricePerStudent?: number;
+    /** Formule établie sur devis (Groupe scolaire). */
+    onQuote?: boolean;
+  } | null;
   startsAt: string | null;
   endsAt: string | null;
   studentLimit: number | null;
