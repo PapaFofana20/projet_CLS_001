@@ -4,6 +4,7 @@ import { Button, LinkButton } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Icon } from "@/components/ui/Icon";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { HeroBar, HeroCard, HeroLegend, KpiTile, PanelHeading } from "@/features/admin/adminUi";
 import { MatriculeCard } from "@/features/subscription/MatriculeCard";
 import { useAuth } from "@/context/AuthContext";
 import { useSchool } from "@/context/SchoolContext";
@@ -44,36 +45,64 @@ export default function SubscriptionPage() {
       />
 
       <div className="space-y-4">
-        <Card>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <p className="text-sm font-semibold text-neutral-600">{school.schoolName}</p>
-              <p className="text-2xl font-extrabold">{school.settings?.name ?? "Votre école"}</p>
-            </div>
-            <Badge tone={STATUS_TONES[info]}>{STATUS_LABELS[info]}</Badge>
-          </div>
-          {school.settings && (
-            <p className="mt-3 text-sm text-neutral-600">
-              {info === "AUCUN"
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+          <HeroCard
+            eyebrow={school.schoolName}
+            icon="workspace_premium"
+            value={school.plan?.name ?? (info === "AUCUN" ? "Aucune formule" : "Classora")}
+            label={
+              info === "AUCUN"
                 ? school.inTrial
-                  ? `Essai gratuit de 14 jours — ${school.trialDaysLeft} jour(s) restant(s), fin le ${formatDate(school.trialEndsAt ?? undefined)}. Aucun paiement requis pendant les tests.`
-                  : "Aucun abonnement actif pour le moment."
-                : `Échéance le ${formatDate(school.endsAt ?? undefined)}`}
-            </p>
-          )}
-          {school.studentLimit !== null && info !== "AUCUN" && (
-            <p className="mt-1 text-sm text-neutral-600">
-              Élèves actifs : <strong>{school.activeStudents}</strong> / {school.studentLimit}
-              {school.limitReached && <Badge tone="danger" className="ml-2">Limite atteinte</Badge>}
-            </p>
-          )}
-          {info === "AUCUN" && (
-            <p className="mt-3 flex items-center gap-2 rounded-2xl bg-lime-soft p-4 text-sm font-medium text-forest">
-              <Icon name="info" className="text-[20px]" />
-              Le paiement en ligne est momentanément désactivé. Pour activer votre abonnement, contactez le support Classora : l'activation est effectuée manuellement.
-            </p>
-          )}
-        </Card>
+                  ? `Essai gratuit · ${school.trialDaysLeft} jour(s) restant(s)`
+                  : "Aucun abonnement actif"
+                : `Échéance le ${formatDate(school.endsAt ?? undefined)}`
+            }
+            footnote={school.settings?.name ?? "Votre école"}
+            badge={<Badge tone={STATUS_TONES[info]}>{STATUS_LABELS[info]}</Badge>}
+            valueClassName="text-2xl sm:text-3xl"
+          >
+            <HeroBar
+              segments={[
+                {
+                  pct:
+                    school.studentLimit !== null && school.studentLimit > 0
+                      ? Math.min(100, Math.round((school.activeStudents / school.studentLimit) * 100))
+                      : info === "AUCUN"
+                        ? 0
+                        : 100,
+                  className: school.limitReached ? "bg-red-400/80" : "bg-lime",
+                },
+              ]}
+            />
+            <HeroLegend
+              items={[
+                school.studentLimit !== null && info !== "AUCUN"
+                  ? { dot: school.limitReached ? "bg-red-400" : "bg-lime", label: `Élèves actifs · ${school.activeStudents} / ${school.studentLimit}` }
+                  : { dot: "bg-lime", label: school.inTrial ? "Période d'essai" : "Formule gratuite" },
+              ]}
+              trailing={
+                <>
+                  <Icon name={active ? "verified" : "info"} className="text-[14px]" />
+                  {active ? "Abonnement à jour" : "Activation requise"}
+                </>
+              }
+            />
+          </HeroCard>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <KpiTile tone={active ? "lime" : "amber"} icon="verified" label="Statut" value={STATUS_LABELS[info]} note={school.settings?.name ?? "École"} valueClassName="text-lg" />
+            <KpiTile tone="sky" icon="groups" label="Élèves actifs" value={school.activeStudents} note={school.studentLimit !== null && info !== "AUCUN" ? `Plafond ${school.studentLimit}` : "Aucun plafond"} />
+            <KpiTile tone={school.limitReached ? "red" : "neutral"} icon="event" label={info === "AUCUN" ? "Essai" : "Échéance"} value={info === "AUCUN" ? (school.inTrial ? `${school.trialDaysLeft} j` : "—") : formatDate(school.endsAt ?? undefined)} note={info === "AUCUN" ? (school.inTrial ? "Fin de l'essai gratuit" : "Sans abonnement") : "Renouvellement"} valueClassName="text-lg" />
+            <KpiTile tone="violet" icon="workspace_premium" label="Formule" value={school.plan?.name ?? "Aucune"} note={currentPlanId ?? "Gratuite"} valueClassName="text-lg" />
+          </div>
+        </div>
+
+        {info === "AUCUN" && (
+          <p className="flex items-center gap-2 rounded-2xl bg-lime-soft p-4 text-sm font-medium text-forest">
+            <Icon name="info" className="text-[20px]" />
+            Le paiement en ligne est momentanément désactivé. Pour activer votre abonnement, contactez le support Classora : l'activation est effectuée manuellement.
+          </p>
+        )}
 
         <Card className="overflow-hidden">
           <div className="relative bg-gradient-to-br from-forest to-forest-600 p-6 text-white sm:p-8">
@@ -114,7 +143,9 @@ export default function SubscriptionPage() {
               </div>
             </div>
           </div>
-          <div className="grid gap-4 p-6 sm:grid-cols-2 sm:p-8">
+          <div className="p-6 sm:p-8">
+            <PanelHeading icon="auto_awesome" title="Ce que débloque Premium" subtitle="Les avantages de la formule complète Classora" />
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <div className="flex items-start gap-3">
               <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-lime-soft text-forest">
                 <Icon name="groups" className="text-[22px]" />
@@ -150,6 +181,7 @@ export default function SubscriptionPage() {
                 <p className="font-bold text-ink">Évolutif</p>
                 <p className="mt-1 text-sm text-neutral-600">Un abonnement qui s'adapte aux besoins grandissants de votre école.</p>
               </div>
+            </div>
             </div>
           </div>
           {(info === "AUCUN" || currentPlanId === "essentiel") && (

@@ -27,7 +27,8 @@ import { getSchoolOverview } from "@/services/schoolService";
 import { deleteTeacher, listTeacherRows, type TeacherRow } from "@/services/teacherService";
 import { STAFF_ROLE_LABELS, STAFF_ROLES } from "@/utils/permissions";
 import { cn } from "@/utils/cn";
-import { isValidEmail } from "@/utils/format";
+import { isValidEmail, pluralize } from "@/utils/format";
+import { HeroBar, HeroCard, HeroLegend, KpiTile, PanelHeading } from "@/features/admin/adminUi";
 
 type Tab = "comptes" | "enseignants";
 
@@ -67,6 +68,13 @@ export default function StaffPage() {
 
   const filteredStaff = staff.filter((s) => (!role || s.role === role) && `${s.firstName} ${s.lastName} ${s.email}`.toLowerCase().includes(dq.trim().toLowerCase()));
   const filteredTeachers = teachers.filter((t) => `${t.firstName} ${t.lastName} ${t.email}`.toLowerCase().includes(dq.trim().toLowerCase()));
+
+  // Répartition des comptes par rôle pour le bandeau de synthèse.
+  const countByRole = (r: string) => staff.filter((s) => s.role === r).length;
+  const activeCount = staff.filter((s) => s.status === "ACTIF").length;
+  const pendingPassword = staff.filter((s) => s.mustChangePassword).length;
+  const withoutAccount = teachers.filter((t) => !t.userId).length;
+  const validEmails = staff.filter((s) => isValidEmail(s.email)).length;
 
   const submit = async (value: StaffFormValue) => {
     setBusy(true);
@@ -217,8 +225,57 @@ export default function StaffPage() {
         subtitle="Créez les accès du personnel : enseignants, secrétaires, économe et surveillant. Un compte désactivé ne peut plus se connecter."
         actions={<Button icon="person_add" onClick={() => { setEditing(null); setOpen(true); }} disabled={readOnly}>Créer un accès</Button>}
       />
+
+      <div className="mb-4 grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+        <HeroCard
+          eyebrow="Personnel de l'école"
+          icon="badge"
+          value={staff.length}
+          label={`compte${staff.length > 1 ? "s" : ""} d'accès · ${teachers.length} enseignant${teachers.length > 1 ? "s" : ""}`}
+          footnote={`${activeCount} actif${activeCount > 1 ? "s" : ""} · ${validEmails}/${staff.length} e-mails valides`}
+        >
+          <HeroBar
+            segments={[
+              { pct: staff.length > 0 ? Math.round((countByRole("instituteur") / staff.length) * 100) : 0, className: "bg-lime" },
+              { pct: staff.length > 0 ? Math.round((countByRole("professeur") / staff.length) * 100) : 0, className: "bg-emerald-300/90" },
+              { pct: staff.length > 0 ? Math.round((countByRole("econome") / staff.length) * 100) : 0, className: "bg-amber-300/90" },
+              { pct: staff.length > 0 ? Math.round((countByRole("secretaire") / staff.length) * 100) : 0, className: "bg-sky-300/90" },
+              { pct: staff.length > 0 ? Math.round((countByRole("surveillant") / staff.length) * 100) : 0, className: "bg-violet-300/90" },
+            ]}
+          />
+          <HeroLegend
+            items={[
+              { dot: "bg-lime", label: `Instituteurs · ${countByRole("instituteur")}` },
+              { dot: "bg-emerald-300", label: `Professeurs · ${countByRole("professeur")}` },
+              { dot: "bg-amber-300", label: `Économes · ${countByRole("econome")}` },
+              { dot: "bg-sky-300", label: `Secrétaires · ${countByRole("secretaire")}` },
+              { dot: "bg-violet-300", label: `Surveillants · ${countByRole("surveillant")}` },
+            ]}
+            trailing={
+              <>
+                <Icon name="verified_user" className="text-[14px]" />
+                {activeCount} actifs
+              </>
+            }
+          />
+        </HeroCard>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <KpiTile tone="lime" icon="key" label="Comptes d'accès" value={staff.length} note="Tous rôles confondus" />
+          <KpiTile tone="sky" icon="school" label="Enseignants" value={teachers.length} note={`${withoutAccount} sans accès`} />
+          <KpiTile tone={pendingPassword > 0 ? "amber" : "neutral"} icon="password" label="Mot de passe temporaire" value={pendingPassword} note="À changer par l'utilisateur" />
+          <KpiTile tone="violet" icon="person_check" label="Titulaires" value={teachers.filter((t) => t.headOf.length > 0).length} note="Classes dirigées" />
+        </div>
+      </div>
+
       <Card className="mb-4">
-        <div className="grid gap-3 md:grid-cols-2">
+        <PanelHeading
+          icon="filter_alt"
+          title="Rechercher et filtrer"
+          subtitle={`${tab === "comptes" ? filteredStaff.length : filteredTeachers.length} ${pluralize(tab === "comptes" ? filteredStaff.length : filteredTeachers.length, "résultat", "résultats")}`}
+          action={role ? <Badge tone="lime">1 filtre</Badge> : undefined}
+        />
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
           <Input aria-label="Rechercher" icon="search" placeholder="Nom, e-mail…" value={q} onChange={(e) => setQ(e.target.value)} />
           <div className="hidden md:contents">{roleFilter}</div>
         </div>
@@ -258,15 +315,25 @@ export default function StaffPage() {
             filteredStaff.length === 0 ? (
               <EmptyState icon="badge" title="Aucun accès" text="Créez un accès pour un membre du personnel : enseignant, secrétaire, économe ou surveillant." action={<Button icon="person_add" onClick={() => setOpen(true)}>Créer un accès</Button>} />
             ) : (
-              <Card padded={false} className="p-2">
-                <Table caption="Comptes d'accès du personnel" columns={staffCols} rows={filteredStaff} rowKey={(s) => s.userId} stagger />
+              <Card padded={false} className="overflow-hidden px-2 pb-2">
+                <div className="px-3 pt-4 sm:px-4">
+                  <PanelHeading icon="key" title="Comptes d'accès" subtitle={`${filteredStaff.length} ${pluralize(filteredStaff.length, "compte", "comptes")} · ${activeCount} actif${activeCount > 1 ? "s" : ""}`} />
+                </div>
+                <div className="mt-3">
+                  <Table caption="Comptes d'accès du personnel" columns={staffCols} rows={filteredStaff} rowKey={(s) => s.userId} stagger />
+                </div>
               </Card>
             )
           ) : filteredTeachers.length === 0 ? (
             <EmptyState icon="person_search" title="Aucun enseignant" text="Modifiez votre recherche." />
           ) : (
-            <Card padded={false} className="p-2">
-              <Table caption="Liste des enseignants" columns={teacherCols} rows={filteredTeachers} rowKey={(t) => t.id} stagger />
+            <Card padded={false} className="overflow-hidden px-2 pb-2">
+              <div className="px-3 pt-4 sm:px-4">
+                <PanelHeading icon="school" title="Enseignants" subtitle={`${filteredTeachers.length} enseignant${filteredTeachers.length > 1 ? "s" : ""} · ${withoutAccount} sans accès`} />
+              </div>
+              <div className="mt-3">
+                <Table caption="Liste des enseignants" columns={teacherCols} rows={filteredTeachers} rowKey={(t) => t.id} stagger />
+              </div>
             </Card>
           )
         }

@@ -9,6 +9,7 @@ import { Icon } from "@/components/ui/Icon";
 import { Table, type Column } from "@/components/ui/Table";
 import { Tabs } from "@/components/ui/Tabs";
 import { useToast } from "@/context/ToastContext";
+import { HeroBar, HeroCard, HeroLegend, KpiTile, PanelHeading } from "@/features/admin/adminUi";
 import { formatDateTime } from "@/utils/format";
 import type { RegistrationRequestRow } from "@/services/registrationService";
 import { cn } from "@/utils/cn";
@@ -107,8 +108,61 @@ export function PendingList({ pending, history, onApprove, onReject, busy, limit
       : []),
   ];
 
+  if (rows.length === 0) {
+    return (
+      <div className="space-y-4">
+        <Tabs label="Demandes" value={tab} onChange={setTab} items={[{ id: "pending", label: "En attente", icon: "pending_actions", badge: pending.length }, { id: "history", label: "Historique", icon: "history", badge: history.length }]} />
+        <EmptyState icon="how_to_reg" title={tab === "pending" ? "Aucune demande en attente" : "Aucun historique"} text={tab === "pending" ? "Les nouvelles inscriptions apparaîtront ici." : undefined} />
+      </div>
+    );
+  }
+
+  const approved = history.filter((r) => r.status === "APPROUVEE").length;
+  const rejected = history.filter((r) => r.status === "REFUSEE").length;
+  const students = pending.filter((r) => r.role === "eleve").length;
+  const parents = pending.length - students;
+  const total = pending.length + history.length;
+
   return (
     <div className="space-y-4">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+        <HeroCard
+          eyebrow="Demandes d'inscription"
+          icon="how_to_reg"
+          value={pending.length}
+          label={`demande${pending.length > 1 ? "s" : ""} en attente · ${total} au total`}
+          footnote={`${students} élève(s) · ${parents} parent(s) · ${approved} approuvée(s), ${rejected} refusée(s)`}
+        >
+          <HeroBar
+            segments={[
+              { pct: total > 0 ? Math.round((pending.length / total) * 100) : 0, className: "bg-amber-300/90" },
+              { pct: total > 0 ? Math.round((approved / total) * 100) : 0, className: "bg-lime" },
+              { pct: total > 0 ? Math.round((rejected / total) * 100) : 0, className: "bg-red-400/80" },
+            ]}
+          />
+          <HeroLegend
+            items={[
+              { dot: "bg-amber-300", label: `En attente · ${pending.length}` },
+              { dot: "bg-lime", label: `Approuvées · ${approved}` },
+              { dot: "bg-red-400", label: `Refusées · ${rejected}` },
+            ]}
+            trailing={
+              <>
+                <Icon name="pending_actions" className="text-[14px]" />
+                {picked.length} sélectionnée(s)
+              </>
+            }
+          />
+        </HeroCard>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <KpiTile tone={pending.length > 0 ? "amber" : "neutral"} icon="pending_actions" label="En attente" value={pending.length} note="À traiter" />
+          <KpiTile tone="sky" icon="groups" label="Élèves" value={students} note="Demandes d'élèves" />
+          <KpiTile tone="lime" icon="task_alt" label="Approuvées" value={approved} note="Historique" />
+          <KpiTile tone={rejected > 0 ? "red" : "neutral"} icon="close" label="Refusées" value={rejected} note="Historique" />
+        </div>
+      </div>
+
       <Tabs label="Demandes" value={tab} onChange={setTab} items={[{ id: "pending", label: "En attente", icon: "pending_actions", badge: pending.length }, { id: "history", label: "Historique", icon: "history", badge: history.length }]} />
       {limitReached && (
         <p role="status" className="flex items-start gap-2 rounded-2xl bg-amber-50 p-4 text-sm font-medium text-amber-900">
@@ -118,7 +172,13 @@ export function PendingList({ pending, history, onApprove, onReject, busy, limit
       )}
       {tab === "pending" && pending.length > 0 && (
         <Card>
-          <div className="flex flex-wrap items-center gap-3">
+          <PanelHeading
+            icon="task_alt"
+            title="Validation en lot"
+            subtitle="Sélectionnez les demandes puis approuvez ou refusez d'un coup."
+            action={picked.length > 0 ? <Badge tone="lime">{picked.length} sélectionnée(s)</Badge> : undefined}
+          />
+          <div className="mt-4 flex flex-wrap items-center gap-3">
             <Button variant="outline" onClick={() => setPicked(allPicked ? [] : pending.map((r) => r.id))}>
               {allPicked ? "Tout désélectionner" : "Tout sélectionner"}
             </Button>
@@ -131,13 +191,18 @@ export function PendingList({ pending, history, onApprove, onReject, busy, limit
           </div>
         </Card>
       )}
-      {rows.length === 0 ? (
-        <EmptyState icon="how_to_reg" title={tab === "pending" ? "Aucune demande en attente" : "Aucun historique"} text={tab === "pending" ? "Les nouvelles inscriptions apparaîtront ici." : undefined} />
-      ) : (
-        <Card padded={false} className={cn("p-2")}>
+      <Card padded={false} className={cn("overflow-hidden px-2 pb-2")}>
+        <div className="px-3 pt-4 sm:px-4">
+          <PanelHeading
+            icon={tab === "pending" ? "pending_actions" : "history"}
+            title={tab === "pending" ? "Demandes en attente" : "Historique des demandes"}
+            subtitle={`${rows.length} ${tab === "pending" ? "demande(s) à traiter" : "demande(s) traitée(s)"}`}
+          />
+        </div>
+        <div className="mt-3">
           <Table caption="Demandes d'inscription" columns={columns} rows={rows} rowKey={(r) => r.id} />
-        </Card>
-      )}
+        </div>
+      </Card>
     </div>
   );
 }

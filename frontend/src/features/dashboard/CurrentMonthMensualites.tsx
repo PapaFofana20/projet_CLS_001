@@ -4,13 +4,14 @@
 import { useMemo, useState } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { Card, CardHeader } from "@/components/ui/Card";
+import { Card } from "@/components/ui/Card";
 import { EmptyState, ErrorState } from "@/components/ui/EmptyState";
 import { Icon } from "@/components/ui/Icon";
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import { Table, type Column } from "@/components/ui/Table";
 import { useCurrentUser } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
+import { PanelHeading } from "@/features/admin/adminUi";
 import { useAsync } from "@/hooks/useAsync";
 import { listPaymentRows, setPaymentManualStatus, type PaymentRow } from "@/services/paymentService";
 import { formatCurrency } from "@/utils/format";
@@ -118,7 +119,8 @@ export function CurrentMonthMensualites() {
 
   return (
     <Card>
-      <CardHeader
+      <PanelHeading
+        icon="calendar_month"
         title="Mensualités du mois"
         subtitle={`Mois de ${new Date().toLocaleString("fr-FR", { month: "long", year: "numeric" })} — cliquez pour marquer Payé / En retard / Non payé`}
         action={canAct ? (
@@ -132,7 +134,9 @@ export function CurrentMonthMensualites() {
       ) : rows.length === 0 ? (
         <EmptyState icon="verified" title="Aucune mensualité ce mois" text="Toutes les mensualités de ce mois sont déjà réglées ou aucune n'est programmée." />
       ) : (
-        <Table caption="Mensualités à encaisser ce mois" columns={cols} rows={rows} rowKey={(r) => r.id} stagger />
+        <div className="mt-4">
+          <Table caption="Mensualités à encaisser ce mois" columns={cols} rows={rows} rowKey={(r) => r.id} stagger />
+        </div>
       )}
     </Card>
   );

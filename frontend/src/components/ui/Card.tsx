@@ -1,6 +1,7 @@
 // Carte blanche de base, avec padding et ombre par défaut.
 import type { HTMLAttributes, ReactNode } from "react";
 import { cn } from "@/utils/cn";
+import { Icon } from "./Icon";
 
 interface CardProps extends HTMLAttributes<HTMLDivElement> {
   hover?: boolean;
@@ -30,15 +31,25 @@ interface CardHeaderProps {
   title: string;
   subtitle?: string;
   action?: ReactNode;
+  /** Icône affichée dans une pastille lime, comme les panneaux de la console admin. */
+  icon?: string;
 }
 
 // Titre et sous-titre d'une carte, avec un éventuel bouton à droite.
-export function CardHeader({ title, subtitle, action }: CardHeaderProps) {
+// Même langage visuel que l'en-tête de panneau de la console admin.
+export function CardHeader({ title, subtitle, action, icon }: CardHeaderProps) {
   return (
     <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-      <div>
-        <h3 className="text-lg font-bold text-ink">{title}</h3>
-        {subtitle && <p className="text-sm text-neutral-500">{subtitle}</p>}
+      <div className="min-w-0">
+        <h3 className="flex items-center gap-2 text-lg font-bold text-ink">
+          {icon && (
+            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-lime-soft text-forest">
+              <Icon name={icon} fill className="text-[20px]" />
+            </span>
+          )}
+          {title}
+        </h3>
+        {subtitle && <p className={cn("text-sm text-neutral-500", icon && "mt-1")}>{subtitle}</p>}
       </div>
       {action}
     </div>

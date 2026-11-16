@@ -20,6 +20,7 @@ import { createClass, deleteClass, getSchoolOverview } from "@/services/schoolSe
 import { listStudentRows } from "@/services/studentService";
 import { listTeacherRows } from "@/services/teacherService";
 import type { ClassRoom } from "@/types";
+import { HeroBar, HeroCard, HeroLegend, KpiTile, PanelHeading } from "@/features/admin/adminUi";
 
 // Composant principal de la page.
 export default function ClassesPage() {
@@ -73,58 +74,107 @@ export default function ClassesPage() {
     <>
       <PageHeader title="Classes" subtitle="Élémentaire, moyen et secondaire" actions={<Button onClick={() => setOpen(true)}>Nouvelle classe</Button>} />
       <AsyncView state={state} skeleton={<SkeletonCards count={6} className="lg:grid-cols-3" />}>
-        {({ overview, students, teachers }) => (
-          <div className="space-y-8">
-            {CYCLES.map((cycle) => {
-              const list = overview.classes.filter((c) => c.cycle === cycle);
-              const enabled = overview.settings.cycles.includes(cycle);
-              return (
-                <section key={cycle} aria-labelledby={`cy-${cycle}`}>
-                  <div className="mb-3 flex items-center gap-3">
-                    <h2 id={`cy-${cycle}`} className="text-xl font-extrabold">{CYCLE_LABELS[cycle]}</h2>
-                    <Badge tone="dark">Examen : {CYCLE_EXAMS[cycle]}</Badge>
-                    {!enabled && <Badge tone="warning">Cycle non proposé</Badge>}
-                  </div>
-                  {list.length === 0 ? (
-                    <p className="rounded-2xl bg-white p-6 text-sm text-neutral-500 shadow-card">Aucune classe dans ce cycle.</p>
-                  ) : (
-                    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                      {list.map((c, index) => {
-                        const count = students.filter((s) => s.classId === c.id).length;
-                        const head = teachers.find((t) => t.id === c.headTeacherId);
-                        return (
-                          <Card key={c.id} hover className="stagger-item" style={{ animationDelay: `${index * 50}ms` }}>
-                            <div className="flex items-start justify-between">
-                              <div>
-                                <p className="text-2xl font-extrabold text-forest">{c.name}</p>
-                                <p className="text-xs text-neutral-500">{overview.levels.find((l) => l.id === c.levelId)?.label}{c.series ? ` · série ${c.series}` : ""}</p>
-                              </div>
-                              <button type="button" aria-label={`Supprimer la classe ${c.name}`} onClick={() => setToDelete(c)} className="grid size-11 place-items-center rounded-full text-neutral-400 hover:bg-red-50 hover:text-danger">
-                                <Icon name="delete" />
-                              </button>
-                            </div>
-                            <p className="mt-4 flex items-center gap-2 text-sm">
-                              <Icon name={cycle === "elementaire" ? "child_care" : "workspace_premium"} className="text-[18px] text-forest" />
-                              <span className="text-neutral-500">{cycle === "elementaire" ? "Instituteur titulaire :" : "Professeur principal :"}</span>
-                              <strong>{head ? `${head.firstName} ${head.lastName}` : "Non désigné"}</strong>
-                            </p>
-                            <div className="mt-4">
-                              <div className="mb-1.5 flex justify-between text-xs font-semibold"><span>Effectif</span><span>{count} / {c.capacity}</span></div>
-                              <ProgressBar value={(count / c.capacity) * 100} tone={count >= c.capacity ? "danger" : "leaf"} />
-                            </div>
-                            <Link to={`/app/eleves?classe=${c.id}`} className="mt-4 inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-forest hover:underline">
-                              Voir les élèves <Icon name="arrow_forward" className="text-[18px]" />
-                            </Link>
-                          </Card>
-                        );
-                      })}
+        {({ overview, students, teachers }) => {
+          const classes = overview.classes;
+          const countOf = (classId: string) => students.filter((s) => s.classId === classId).length;
+          const totalCapacity = classes.reduce((sum, c) => sum + c.capacity, 0);
+          const seated = classes.reduce((sum, c) => sum + countOf(c.id), 0);
+          const freeSeats = Math.max(0, totalCapacity - seated);
+          const fillRate = totalCapacity > 0 ? Math.round((seated / totalCapacity) * 100) : 0;
+          const headAssigned = classes.filter((c) => c.headTeacherId).length;
+          const byCycle = CYCLES.map((cycle) => ({ cycle, count: classes.filter((c) => c.cycle === cycle).length })).filter((c) => c.count > 0);
+          const cycleDot = (cycle: string) => (cycle === "elementaire" ? "bg-lime" : cycle === "moyen" ? "bg-emerald-300" : "bg-amber-300");
+
+          return (
+            <div className="space-y-6">
+              <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+                <HeroCard
+                  eyebrow="Réseau de classes"
+                  icon="meeting_room"
+                  value={classes.length}
+                  label={`classe${classes.length > 1 ? "s" : ""} ouverte${classes.length > 1 ? "s" : ""} · ${CYCLES.filter((c) => overview.settings.cycles.includes(c)).length} cycle${CYCLES.filter((c) => overview.settings.cycles.includes(c)).length > 1 ? "s" : ""} actif${CYCLES.filter((c) => overview.settings.cycles.includes(c)).length > 1 ? "s" : ""}`}
+                  footnote={`${seated} élève${seated > 1 ? "s" : ""} affecté${seated > 1 ? "s" : ""} sur ${totalCapacity} place${totalCapacity > 1 ? "s" : ""}`}
+                >
+                  <HeroBar segments={byCycle.map((c) => ({ pct: classes.length > 0 ? Math.round((c.count / classes.length) * 100) : 0, className: cycleDot(c.cycle) }))} />
+                  <HeroLegend
+                    items={byCycle.map((c) => ({ dot: cycleDot(c.cycle), label: `${CYCLE_LABELS[c.cycle]} · ${c.count}` }))}
+                    trailing={
+                      <>
+                        <Icon name="person_check" className="text-[14px]" />
+                        {headAssigned}/{classes.length} titulaires
+                      </>
+                    }
+                  />
+                </HeroCard>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <KpiTile tone="lime" icon="meeting_room" label="Classes" value={classes.length} note="Tous cycles confondus" />
+                  <KpiTile tone="sky" icon="groups" label="Élèves affectés" value={seated} note={`${totalCapacity} places au total`} />
+                  <KpiTile tone={freeSeats > 0 ? "amber" : "neutral"} icon="event_seat" label="Places libres" value={freeSeats} note={`Remplissage à ${fillRate} %`} />
+                  <KpiTile tone={headAssigned < classes.length ? "violet" : "neutral"} icon="person_check" label="Titulaires désignés" value={`${headAssigned}/${classes.length}`} note="Enseignant principal" />
+                </div>
+              </div>
+
+              {CYCLES.map((cycle) => {
+                const list = classes.filter((c) => c.cycle === cycle);
+                const enabled = overview.settings.cycles.includes(cycle);
+                const cycleStudents = list.reduce((sum, c) => sum + countOf(c.id), 0);
+                return (
+                  <section key={cycle} aria-labelledby={`cy-${cycle}`}>
+                    <PanelHeading
+                      icon={cycle === "elementaire" ? "child_care" : cycle === "moyen" ? "school" : "workspace_premium"}
+                      title={<span id={`cy-${cycle}`}>{CYCLE_LABELS[cycle]}</span>}
+                      subtitle={`${list.length} classe${list.length > 1 ? "s" : ""} · ${cycleStudents} élève${cycleStudents > 1 ? "s" : ""}`}
+                      action={
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge tone="dark">Examen : {CYCLE_EXAMS[cycle]}</Badge>
+                          {!enabled && <Badge tone="warning">Cycle non proposé</Badge>}
+                        </div>
+                      }
+                    />
+                    <div className="mt-3">
+                      {list.length === 0 ? (
+                        <p className="rounded-2xl bg-white p-6 text-sm text-neutral-500 shadow-card">Aucune classe dans ce cycle.</p>
+                      ) : (
+                        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                          {list.map((c, index) => {
+                            const count = countOf(c.id);
+                            const head = teachers.find((t) => t.id === c.headTeacherId);
+                            return (
+                              <Card key={c.id} hover className="stagger-item" style={{ animationDelay: `${index * 50}ms` }}>
+                                <div className="flex items-start justify-between">
+                                  <div>
+                                    <p className="text-2xl font-extrabold text-forest">{c.name}</p>
+                                    <p className="text-xs text-neutral-500">{overview.levels.find((l) => l.id === c.levelId)?.label}{c.series ? ` · série ${c.series}` : ""}</p>
+                                  </div>
+                                  <button type="button" aria-label={`Supprimer la classe ${c.name}`} onClick={() => setToDelete(c)} className="grid size-11 place-items-center rounded-full text-neutral-400 hover:bg-red-50 hover:text-danger">
+                                    <Icon name="delete" />
+                                  </button>
+                                </div>
+                                <p className="mt-4 flex items-center gap-2 text-sm">
+                                  <Icon name={cycle === "elementaire" ? "child_care" : "workspace_premium"} className="text-[18px] text-forest" />
+                                  <span className="text-neutral-500">{cycle === "elementaire" ? "Instituteur titulaire :" : "Professeur principal :"}</span>
+                                  <strong>{head ? `${head.firstName} ${head.lastName}` : "Non désigné"}</strong>
+                                </p>
+                                <div className="mt-4">
+                                  <div className="mb-1.5 flex justify-between text-xs font-semibold"><span>Effectif</span><span>{count} / {c.capacity}</span></div>
+                                  <ProgressBar value={(count / c.capacity) * 100} tone={count >= c.capacity ? "danger" : "leaf"} />
+                                </div>
+                                <Link to={`/app/eleves?classe=${c.id}`} className="mt-4 inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-forest hover:underline">
+                                  Voir les élèves <Icon name="arrow_forward" className="text-[18px]" />
+                                </Link>
+                              </Card>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
-                  )}
-                </section>
-              );
-            })}
-          </div>
-        )}
+                  </section>
+                );
+              })}
+            </div>
+          );
+        }}
       </AsyncView>
 
       <Modal open={open} onClose={() => setOpen(false)} title="Nouvelle classe" footer={<><Button variant="outline" onClick={() => setOpen(false)}>Annuler</Button><Button variant="dark" disabled={!formValid} loading={busy} onClick={() => void create()}>Créer la classe</Button></>}>

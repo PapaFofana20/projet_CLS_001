@@ -2,6 +2,7 @@
 // Elles reprennent le langage de la page « Gestion des établissements » :
 // carte forêt, tuiles KPI colorées, en-têtes de panneau et bandeaux.
 import type { ReactNode } from "react";
+import { Card } from "@/components/ui/Card";
 import { Icon } from "@/components/ui/Icon";
 import { cn } from "@/utils/cn";
 
@@ -160,6 +161,38 @@ export function PanelHeading({ icon, title, subtitle, action, className }: Panel
       </div>
       {action}
     </div>
+  );
+}
+
+/**
+ * Carte blanche avec l'en-tête de panneau intégré (pastille d'icône lime,
+ * titre, sous-titre et action à droite). Même gabarit que les cartes de la
+ * console admin : en-tête en haut, contenu en dessous.
+ */
+export function PanelCard({
+  icon,
+  title,
+  subtitle,
+  action,
+  children,
+  className,
+  bodyClassName,
+}: {
+  icon: string;
+  title: ReactNode;
+  subtitle?: ReactNode;
+  action?: ReactNode;
+  children: ReactNode;
+  className?: string;
+  bodyClassName?: string;
+}) {
+  return (
+    <Card padded={false} className={cn("overflow-hidden", className)}>
+      <div className="px-4 pt-5 sm:px-6">
+        <PanelHeading icon={icon} title={title} subtitle={subtitle} action={action} />
+      </div>
+      <div className={cn("mt-4 px-4 pb-5 sm:px-5", bodyClassName)}>{children}</div>
+    </Card>
   );
 }
 

@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AsyncView } from "@/components/ui/AsyncView";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { Card, CardHeader } from "@/components/ui/Card";
+import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { FilterSheet } from "@/components/ui/FilterSheet";
 import { Icon } from "@/components/ui/Icon";
@@ -12,9 +12,9 @@ import { Modal } from "@/components/ui/Modal";
 import { Pagination } from "@/components/ui/Pagination";
 import { Select } from "@/components/ui/Select";
 import { SkeletonTable } from "@/components/ui/Skeleton";
-import { StatCard } from "@/components/ui/StatCard";
 import { Table, type Column } from "@/components/ui/Table";
 import { Tabs } from "@/components/ui/Tabs";
+import { HeroBar, HeroCard, HeroLegend, KpiTile, PanelHeading } from "@/features/admin/adminUi";
 import { useCurrentUser } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
 import { todayIso } from "@/data/school";
@@ -248,19 +248,51 @@ export function FinancePayments({ schoolName, canAct }: { schoolName: string; ca
     <AsyncView state={state} skeleton={<SkeletonTable />}>
       {() => (
         <div className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <StatCard dark icon="account_balance_wallet" label="Encaissé" value={formatCurrency(collected)} />
-            <StatCard icon="request_quote" label="Attendu ce mois" value={formatCurrency(expected)} />
-            <StatCard icon="warning" label="Impayés" value={formatCurrency(expected - collected)} badge={{ text: `${debtors.length} élèves`, tone: "down" }} />
-            <StatCard icon="percent" label="Recouvrement" value={`${expected ? Math.round((collected / expected) * 100) : 0} %`} />
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+            <HeroCard
+              eyebrow="Recouvrement du mois"
+              icon="account_balance_wallet"
+              value={formatCurrency(collected)}
+              label={`encaissé sur ${formatCurrency(expected)} attendus`}
+              footnote={`${debtors.length} élève${debtors.length > 1 ? "s" : ""} avec échéance impayée · ${new Date().toLocaleString("fr-FR", { month: "long", year: "numeric" })}`}
+              valueClassName="text-3xl sm:text-4xl"
+            >
+              <HeroBar
+                segments={[
+                  { pct: expected > 0 ? Math.round((collected / expected) * 100) : 0, className: "bg-lime" },
+                  { pct: expected > 0 ? Math.round((Math.max(0, expected - collected) / expected) * 100) : 0, className: "bg-red-400/80" },
+                ]}
+              />
+              <HeroLegend
+                items={[
+                  { dot: "bg-lime", label: `Encaissé · ${expected ? Math.round((collected / expected) * 100) : 0} %` },
+                  { dot: "bg-red-400", label: `Impayés · ${formatCurrency(Math.max(0, expected - collected))}` },
+                ]}
+                trailing={
+                  <>
+                    <Icon name="calendar_month" className="text-[14px]" />
+                    {due.length} échéance{due.length > 1 ? "s" : ""} échue{due.length > 1 ? "s" : ""}
+                  </>
+                }
+              />
+            </HeroCard>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <KpiTile tone="lime" icon="payments" label="Encaissé" value={formatCurrency(collected)} note="Mois en cours" valueClassName="text-lg" />
+              <KpiTile tone="sky" icon="request_quote" label="Attendu" value={formatCurrency(expected)} note="Échéances échues" valueClassName="text-lg" />
+              <KpiTile tone={expected - collected > 0 ? "red" : "neutral"} icon="warning" label="Impayés" value={formatCurrency(Math.max(0, expected - collected))} note={`${debtors.length} élèves`} valueClassName="text-lg" />
+              <KpiTile tone="amber" icon="percent" label="Recouvrement" value={`${expected ? Math.round((collected / expected) * 100) : 0} %`} note={`${filtered.length} lignes ce mois`} />
+            </div>
           </div>
           <Tabs label="Paiements" value={tab} onChange={setTab} items={[{ id: "echeances", label: "Mensualités du mois", icon: "calendar_month" }, { id: "impayes", label: "Impayés et relances", icon: "notifications_active", badge: debtors.length }, { id: "recus", label: "Reçus", icon: "receipt_long" }]} />
           <Card>
-            <CardHeader
+            <PanelHeading
+              icon="calendar_month"
               title={`Mensualités de ${new Date().toLocaleString("fr-FR", { month: "long", year: "numeric" })}`}
               subtitle="Seules les mensualités du mois en cours sont affichées. Utilisez le menu « Statut manuel » pour marquer Payé / En retard / Non payé."
+              action={activeFilters > 0 ? <Badge tone="lime">{activeFilters} filtre</Badge> : undefined}
             />
-            <div className="grid gap-3 md:grid-cols-3">
+            <div className="mt-4 grid gap-3 md:grid-cols-3">
               <Input aria-label="Rechercher" icon="search" placeholder="Élève ou parent…" value={q} onChange={(e) => setQ(e.target.value)} />
               <div className="hidden md:contents">{filterFields}</div>
             </div>
@@ -292,13 +324,31 @@ export function FinancePayments({ schoolName, canAct }: { schoolName: string; ca
                 <Button variant="outline" icon="download" disabled={debtors.length === 0 || !canExportData} onClick={() => downloadDebtorsCsv(debtors)} title={canExportData ? undefined : "Disponible à partir du plan Premium"}>Exporter la liste</Button>
               </div>
               <p className="text-xs text-neutral-500">Chaque ligne ouvre WhatsApp avec un message personnalisé (montant + échéances). « Tracer la relance » enregistre l'envoi dans le journal d'audit.</p>
-              {debtors.length === 0 ? <EmptyState icon="verified" title="Aucun impayé" text="Toutes les échéances échues sont réglées." /> : <Card padded={false} className="p-2"><Table caption="Élèves avec échéances impayées" columns={debtorCols} rows={debtors} rowKey={(d) => d.studentId} stagger /></Card>}
+              {debtors.length === 0 ? <EmptyState icon="verified" title="Aucun impayé" text="Toutes les échéances échues sont réglées." /> : (
+                <Card padded={false} className="overflow-hidden px-2 pb-2">
+                  <div className="px-3 pt-4 sm:px-4">
+                    <PanelHeading icon="notifications_active" title="Impayés et relances" subtitle={`${debtors.length} élève${debtors.length > 1 ? "s" : ""} · ${formatCurrency(debtors.reduce((s, d) => s + d.total, 0))} en attente`} />
+                  </div>
+                  <div className="mt-3">
+                    <Table caption="Élèves avec échéances impayées" columns={debtorCols} rows={debtors} rowKey={(d) => d.studentId} stagger />
+                  </div>
+                </Card>
+              )}
             </>
           ) : list.length === 0 ? (
             <EmptyState icon="search_off" title="Aucune mensualité ce mois" text="Aucune mensualité programmée pour ce mois ou filtre trop restrictif." />
           ) : (
-            <Card padded={false} className="p-2">
-              <Table caption="Mensualités du mois" columns={tab === "recus" ? receiptCols : cols} rows={list.slice((page - 1) * PAGE, page * PAGE)} rowKey={(p) => p.id} stagger />
+            <Card padded={false} className="overflow-hidden px-2 pb-2">
+              <div className="px-3 pt-4 sm:px-4">
+                <PanelHeading
+                  icon={tab === "recus" ? "receipt_long" : "calendar_month"}
+                  title={tab === "recus" ? "Reçus du mois" : "Mensualités du mois"}
+                  subtitle={`${list.length} ${tab === "recus" ? "reçu(s)" : "ligne(s)"} · page ${page}`}
+                />
+              </div>
+              <div className="mt-3">
+                <Table caption="Mensualités du mois" columns={tab === "recus" ? receiptCols : cols} rows={list.slice((page - 1) * PAGE, page * PAGE)} rowKey={(p) => p.id} stagger />
+              </div>
               <div className="px-4 pb-4"><Pagination page={page} pageSize={PAGE} total={list.length} onChange={setPage} /></div>
             </Card>
           )}

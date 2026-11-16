@@ -2,13 +2,14 @@
 
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { AsyncView } from "@/components/ui/AsyncView";
-import { Avatar, ProgressBar } from "@/components/ui/Brand";
+import { Avatar } from "@/components/ui/Brand";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { Icon } from "@/components/ui/Icon";
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import { useCurrentUser } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
+import { HeroBar, HeroCard, HeroLegend, KpiTile, PanelHeading } from "@/features/admin/adminUi";
 import { useAsync } from "@/hooks/useAsync";
 import { getGradeSheet, saveGrade, type GradeSheet } from "@/services/gradeService";
 import type { Grade } from "@/types";
@@ -128,33 +129,35 @@ function Sheet({ sheet, period }: { sheet: GradeSheet; period: string }) {
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card className="md:col-span-2">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <p className="text-2xl font-extrabold text-forest">{sheet.classRoom.name} · {sheet.subject.name}</p>
-              <p className="text-sm text-neutral-500">
-                Coefficient {sheet.coefficient} · {sheet.students.length} élèves
-                {cycle !== "elementaire" && " · Moyenne = (moyenne des devoirs + composition) / 2"}
-              </p>
-            </div>
-            <div aria-live="polite" className="flex min-h-11 items-center gap-2 rounded-full bg-mist px-4 text-sm font-semibold">
-              {status === "saving" && (<><span className="size-4 animate-spin rounded-full border-2 border-forest border-t-transparent" /> Enregistrement…</>)}
-              {status === "saved" && (<><Icon name="check_circle" fill className="text-[20px] text-leaf" /> Enregistré à {savedAt}</>)}
-              {status === "error" && (<><Icon name="error" fill className="text-[20px] text-danger" /> Échec de l'enregistrement</>)}
-              {status === "idle" && (<><Icon name="cloud_done" className="text-[20px] text-neutral-400" /> {sheet.editable ? "Enregistrement automatique" : "Lecture seule"}</>)}
-            </div>
-          </div>
-        </Card>
-        <Card>
-          <p className="text-xs font-semibold uppercase text-neutral-500">Moyenne de classe</p>
-          <p className="text-3xl font-extrabold">{classAvg === null ? "—" : formatNumber(classAvg)}<span className="text-base text-neutral-400"> /{cycle === "elementaire" ? 10 : 20}</span></p>
-        </Card>
-        <Card>
-          <p className="text-xs font-semibold uppercase text-neutral-500">Notes saisies</p>
-          <p className="text-3xl font-extrabold">{completion} %</p>
-          <ProgressBar className="mt-2" value={completion} tone={completion < 50 ? "warning" : "leaf"} />
-        </Card>
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+        <HeroCard
+          eyebrow={`${sheet.classRoom.name} · ${sheet.subject.name}`}
+          icon="edit_note"
+          value={classAvg === null ? "—" : formatNumber(classAvg)}
+          label={`moyenne de classe · ${sheet.students.length} élève${sheet.students.length > 1 ? "s" : ""} · coefficient ${sheet.coefficient}`}
+          footnote={`${fields.length} note(s) par élève · barème sur ${cycle === "elementaire" ? 10 : 20}${cycle !== "elementaire" ? " · moyenne = (devoirs + composition) / 2" : ""}`}
+        >
+          <HeroBar segments={[{ pct: completion, className: completion < 50 ? "bg-amber-300/90" : "bg-lime" }]} />
+          <HeroLegend
+            items={[
+              { dot: completion < 50 ? "bg-amber-300" : "bg-lime", label: `Saisie · ${completion} %` },
+              { dot: "bg-white/40", label: `Reste ${Math.max(0, 100 - completion)} %` },
+            ]}
+            trailing={
+              <>
+                <Icon name={sheet.editable ? "cloud_done" : "lock"} className="text-[14px]" />
+                {sheet.editable ? "Enregistrement auto" : "Lecture seule"}
+              </>
+            }
+          />
+        </HeroCard>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <KpiTile tone="lime" icon="analytics" label="Moyenne de classe" value={classAvg === null ? "—" : `${formatNumber(classAvg)}/${cycle === "elementaire" ? 10 : 20}`} note="Matière et période" valueClassName="text-lg" />
+          <KpiTile tone={completion < 50 ? "amber" : "sky"} icon="edit_note" label="Notes saisies" value={`${completion} %`} note={`${sheet.students.length} élèves à noter`} />
+          <KpiTile tone="neutral" icon="groups" label="Élèves" value={sheet.students.length} note={sheet.classRoom.name} />
+          <KpiTile tone={status === "error" ? "red" : "violet"} icon="cloud_done" label="État" value={status === "saving" ? "En cours" : status === "saved" ? savedAt : status === "error" ? "Échec" : sheet.editable ? "Auto" : "Verrouillé"} note={sheet.editable ? "Sauvegarde automatique" : "Modification impossible"} />
+        </div>
       </div>
 
       {!sheet.editable && (
@@ -164,7 +167,22 @@ function Sheet({ sheet, period }: { sheet: GradeSheet; period: string }) {
         </div>
       )}
 
-      <Card padded={false} className="p-2">
+      <Card padded={false} className="overflow-hidden px-2 pb-2">
+        <div className="px-3 pt-4 sm:px-4">
+          <PanelHeading
+            icon="edit_note"
+            title={`Feuille de notes · ${sheet.subject.name}`}
+            subtitle={`${sheet.classRoom.name} · coefficient ${sheet.coefficient} · ${sheet.students.length} élèves`}
+            action={
+              <span aria-live="polite" className="flex min-h-9 items-center gap-2 rounded-full bg-mist px-3 text-xs font-semibold">
+                {status === "saving" && (<><span className="size-3.5 animate-spin rounded-full border-2 border-forest border-t-transparent" /> Enregistrement…</>)}
+                {status === "saved" && (<><Icon name="check_circle" fill className="text-[16px] text-leaf" /> Enregistré à {savedAt}</>)}
+                {status === "error" && (<><Icon name="error" fill className="text-[16px] text-danger" /> Échec</>)}
+                {status === "idle" && (<><Icon name="cloud_done" className="text-[16px] text-neutral-400" /> {sheet.editable ? "Auto" : "Lecture seule"}</>)}
+              </span>
+            }
+          />
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[640px] text-sm">
             <caption className="sr-only">Saisie des notes de {sheet.classRoom.name}, {sheet.subject.name}</caption>

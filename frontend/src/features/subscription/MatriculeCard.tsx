@@ -1,9 +1,10 @@
 // Matricule de l'ecole, a copier ou a partager avec les familles.
 
 import { Badge } from "@/components/ui/Badge";
-import { Card, CardHeader } from "@/components/ui/Card";
+import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/context/ToastContext";
+import { PanelHeading } from "@/features/admin/adminUi";
 import type { School } from "@/types";
 
 /** Lien d'inscription pré-rempli avec le matricule. */
@@ -65,11 +66,12 @@ export function MatriculeCard({ school }: Props) {
   if (!school.matricule) {
     return (
       <Card>
-        <CardHeader
+        <PanelHeading
+          icon="key"
           title="Matricule de votre école"
           subtitle="Génération en cours..."
         />
-        <div className="flex items-center justify-center py-8">
+        <div className="mt-6 flex items-center justify-center py-6">
           <div className="flex flex-col items-center gap-4">
             <div className="animate-spin rounded-full h-10 w-10 border-3 border-forest border-t-transparent" />
             <p className="text-sm text-neutral-600">Génération du matricule sécurisé…</p>
@@ -81,12 +83,13 @@ export function MatriculeCard({ school }: Props) {
 
   return (
     <Card>
-      <CardHeader
+      <PanelHeading
+        icon="key"
         title="Matricule de votre école"
         subtitle="Communiqué aux élèves et aux parents pour créer leur compte. Il ne change jamais."
         action={<Badge tone={school.registrationOpen ? "success" : "warning"}>{school.registrationOpen ? "Inscriptions ouvertes" : "Inscriptions fermées"}</Badge>}
       />
-      <div className="flex flex-wrap items-center gap-4">
+      <div className="mt-4 flex flex-wrap items-center gap-4">
         <p className="rounded-2xl bg-forest px-5 py-3 text-3xl font-extrabold tracking-[0.35em] text-lime sm:text-4xl" aria-label={`Matricule ${school.matricule.split("").join(" ")}`}>
           {school.matricule}
         </p>

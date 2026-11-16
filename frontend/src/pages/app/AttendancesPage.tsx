@@ -7,13 +7,13 @@ import { AsyncView } from "@/components/ui/AsyncView";
 import { Avatar } from "@/components/ui/Brand";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { Card, CardHeader } from "@/components/ui/Card";
+import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Icon } from "@/components/ui/Icon";
 import { Input } from "@/components/ui/Input";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Select } from "@/components/ui/Select";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { StatCard } from "@/components/ui/StatCard";
 import { useCurrentUser } from "@/context/AuthContext";
 import { useTeaching } from "@/context/TeachingContext";
 import { useToast } from "@/context/ToastContext";
@@ -24,6 +24,7 @@ import { setAttendance, type AttendanceMark } from "@/services/attendanceService
 import { getSchoolOverview } from "@/services/schoolService";
 import { listStudentRows, type StudentRow } from "@/services/studentService";
 import { formatDate } from "@/utils/format";
+import { HeroBar, HeroCard, HeroLegend, KpiTile, PanelHeading } from "@/features/admin/adminUi";
 
 const MARK_LABELS: Record<AttendanceMark, string> = {
   present: "Présent",
@@ -180,15 +181,52 @@ function Content({ d, onReload }: { d: Loaded; onReload: () => void }) {
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard dark icon="event_available" label="Présents" value={String(counts.present)} note={`${classNameOf(activeClass) || "—"} · ${formatDate(date)}`} />
-        <StatCard icon="event_busy" label="Absents" value={String(counts.absence)} badge={counts.absence ? { text: "À suivre", tone: "down" } : { text: "Aucun", tone: "up" }} />
-        <StatCard icon="schedule" label="Retards" value={String(counts.retard)} />
-        <StatCard icon="percent" label="Taux de présence" value={`${rate} %`} note={`Aujourd'hui : ${todayRows.filter((a) => a.type === "absence").length} absent(s), ${todayRows.filter((a) => a.type === "retard").length} retard(s) (toutes classes)`} />
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+        <HeroCard
+          eyebrow="Appel du jour"
+          icon="event_available"
+          value={`${rate} %`}
+          label={`présence · ${classNameOf(activeClass) || "—"} · ${formatDate(date)}`}
+          footnote={`${counts.present} présent(s) · ${counts.absence} absent(s) · ${counts.retard} retard(s) sur ${classStudents.length} élève(s)`}
+        >
+          <HeroBar
+            segments={[
+              { pct: classStudents.length ? Math.round((counts.present / classStudents.length) * 100) : 0, className: "bg-lime" },
+              { pct: classStudents.length ? Math.round((counts.absence / classStudents.length) * 100) : 0, className: "bg-red-400/80" },
+              { pct: classStudents.length ? Math.round((counts.retard / classStudents.length) * 100) : 0, className: "bg-amber-300/90" },
+            ]}
+          />
+          <HeroLegend
+            items={[
+              { dot: "bg-lime", label: `Présents · ${counts.present}` },
+              { dot: "bg-red-400", label: `Absents · ${counts.absence}` },
+              { dot: "bg-amber-300", label: `Retards · ${counts.retard}` },
+            ]}
+            trailing={
+              <>
+                <Icon name="groups" className="text-[14px]" />
+                {classStudents.length} élèves
+              </>
+            }
+          />
+        </HeroCard>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <KpiTile tone="lime" icon="event_available" label="Présents" value={counts.present} note={classNameOf(activeClass) || "—"} />
+          <KpiTile tone={counts.absence > 0 ? "red" : "neutral"} icon="event_busy" label="Absents" value={counts.absence} note={counts.absence ? "À suivre" : "Aucun"} />
+          <KpiTile tone={counts.retard > 0 ? "amber" : "neutral"} icon="schedule" label="Retards" value={counts.retard} note="Sur l'appel en cours" />
+          <KpiTile tone="sky" icon="percent" label="Taux de présence" value={`${rate} %`} note={`École : ${todayRows.filter((a) => a.type === "absence").length} abs. · ${todayRows.filter((a) => a.type === "retard").length} ret.`} />
+        </div>
       </div>
 
       <Card>
-        <div className="grid gap-3 md:grid-cols-4">
+        <PanelHeading
+          icon="fact_check"
+          title="Feuille d'appel"
+          subtitle="Cochez les absents et retards : l'enregistrement est automatique."
+          action={saving ? <Badge tone="warning">Enregistrement…</Badge> : savedAt ? <Badge tone="success">Enregistré à {savedAt}</Badge> : undefined}
+        />
+        <div className="mt-4 grid gap-3 md:grid-cols-4">
           <Select label="Classe" value={activeClass} onChange={(e) => { setClassId(e.target.value); setSubjectId(""); }} options={classIds.map((id) => ({ value: id, label: classNameOf(id) }))} />
           <Select label="Matière" value={activeSubject} onChange={(e) => setSubjectId(e.target.value)} options={subjectOptions} placeholder="Sans matière" />
           <Input label="Date de l'appel" type="date" max={today} value={date} onChange={(e) => setDate(e.target.value || today)} />
@@ -208,8 +246,11 @@ function Content({ d, onReload }: { d: Loaded; onReload: () => void }) {
       {classStudents.length === 0 ? (
         <EmptyState icon="groups" title="Aucun élève dans cette classe" text="Les élèves apparaîtront ici dès leur inscription dans la classe." />
       ) : (
-        <Card padded={false} className="p-2">
-          <ul className="divide-y divide-neutral-100">
+        <Card padded={false} className="overflow-hidden px-2 pb-2">
+          <div className="px-3 pt-4 sm:px-4">
+            <PanelHeading icon="groups" title={`Élèves de ${classNameOf(activeClass) || "la classe"}`} subtitle={`${filteredStudents.length} élève(s) affiché(s) · ${counts.present} présent(s)`} />
+          </div>
+          <ul className="mt-2 divide-y divide-neutral-100">
             {filteredStudents.map((s) => {
               const mark = marks[s.id] ?? "present";
               return (
@@ -236,11 +277,11 @@ function Content({ d, onReload }: { d: Loaded; onReload: () => void }) {
       )}
 
       <Card>
-        <CardHeader title="Derniers signalements" subtitle={`Classe ${classNameOf(activeClass) || "—"} · absences et retards récents`} />
+        <PanelHeading icon="history" title="Derniers signalements" subtitle={`Classe ${classNameOf(activeClass) || "—"} · absences et retards récents`} />
         {history.length === 0 ? (
-          <p className="text-sm text-neutral-500">Aucun absent ni retard enregistré pour cette classe pour le moment.</p>
+          <p className="mt-4 text-sm text-neutral-500">Aucun absent ni retard enregistré pour cette classe pour le moment.</p>
         ) : (
-          <ul className="divide-y divide-neutral-100">
+          <ul className="mt-2 divide-y divide-neutral-100">
             {history.map((a) => (
               <li key={a.id} className="flex flex-wrap items-center gap-3 py-2.5 text-sm">
                 <span className="font-semibold">{a.studentName}</span>

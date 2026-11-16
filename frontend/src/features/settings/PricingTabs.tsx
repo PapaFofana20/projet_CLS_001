@@ -1,13 +1,16 @@
 // Parametres de tarification : coefficients, frais et reductions.
 
 import { useState } from "react";
+import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { Card, CardHeader } from "@/components/ui/Card";
+import { Card } from "@/components/ui/Card";
+import { Icon } from "@/components/ui/Icon";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { useToast } from "@/context/ToastContext";
 import { useAuth } from "@/context/AuthContext";
 import { useSchool } from "@/context/SchoolContext";
+import { HeroBar, HeroCard, HeroLegend, KpiTile, PanelHeading } from "@/features/admin/adminUi";
 import { setClassSubject, updateSettings, type SchoolOverview } from "@/services/schoolService";
 import type { LevelFees } from "@/types";
 import { formatCurrency } from "@/utils/format";
@@ -54,21 +57,66 @@ export function CoefficientsTab({ overview, onSaved }: TabProps) {
   };
 
   return (
-    <Card>
-      <CardHeader
-        title="Coefficients par classe"
-        subtitle={
-          isFreePlan
-            ? `Plan Découverte (gratuit) : coefficients réservés au cycle ${cycleLabel} seul. Passez à un plan payant pour gérer tous les cycles.`
-            : "Les coefficients dépendent de la classe et de la série. À l'élémentaire, tous valent 1."
-        }
-      />
-      {eligibleClasses.length === 0 && (
-        <p className="p-4 text-sm text-neutral-500">Aucune classe dans les cycles autorisés.</p>
-      )}
-      {eligibleClasses.length > 0 && (
-        <>
-          <Select compact className="mb-4 w-56" aria-label="Classe" value={classId} onChange={(e) => { setClassId(e.target.value); setDraft({}); }} options={eligibleClasses.map((c) => ({ value: c.id, label: `${c.name}${c.series ? ` (série ${c.series})` : ""}` }))} />
+    <div className="space-y-4">
+      {(() => {
+        const rows = selectedClass ? overview.classSubjects.filter((cs) => cs.classId === selectedClass.id) : [];
+        const subjectsOfCycle = overview.subjects.filter((s) => !selectedClass || s.cycles.includes(selectedClass.cycle));
+        const covered = subjectsOfCycle.filter((s) => rows.some((r) => r.subjectId === s.id)).length;
+        const pct = subjectsOfCycle.length ? Math.round((covered / subjectsOfCycle.length) * 100) : 0;
+        return (
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+            <HeroCard
+              eyebrow={`Coefficients · ${selectedClass?.name ?? "aucune classe"}`}
+              icon="balance"
+              value={`${covered}/${subjectsOfCycle.length}`}
+              label={`matière${subjectsOfCycle.length > 1 ? "s" : ""} coefficientée${subjectsOfCycle.length > 1 ? "s" : ""} · ${cycleLabel || "—"}`}
+              footnote={
+                isFreePlan
+                  ? "Plan Découverte : coefficients limités au cycle de l'école."
+                  : "Les coefficients dépendent de la classe et de la série. À l'élémentaire, tous valent 1."
+              }
+            >
+              <HeroBar segments={[{ pct, className: "bg-lime" }, { pct: Math.max(0, 100 - pct), className: "bg-white/20" }]} />
+              <HeroLegend
+                items={[
+                  { dot: "bg-lime", label: `Configurées · ${covered}` },
+                  { dot: "bg-white/40", label: `À définir · ${Math.max(0, subjectsOfCycle.length - covered)}` },
+                ]}
+                trailing={
+                  <>
+                    <Icon name="menu_book" className="text-[14px]" />
+                    {overview.subjects.length} matières
+                  </>
+                }
+              />
+            </HeroCard>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <KpiTile tone="lime" icon="meeting_room" label="Classes" value={eligibleClasses.length} note="Cycles autorisés" />
+              <KpiTile tone="sky" icon="menu_book" label="Matières" value={overview.subjects.length} note="École" />
+              <KpiTile tone={pct < 100 ? "amber" : "neutral"} icon="balance" label="Couverture" value={`${pct} %`} note={selectedClass?.name ?? "—"} />
+              <KpiTile tone="violet" icon="stairs" label="Cycle" value={cycleLabel || "—"} note={isFreePlan ? "Limité (gratuit)" : "Tous cycles"} valueClassName="text-lg" />
+            </div>
+          </div>
+        );
+      })()}
+
+      <Card>
+        <PanelHeading
+          icon="balance"
+          title="Coefficients par classe"
+          subtitle={
+            isFreePlan
+              ? `Plan Découverte (gratuit) : coefficients réservés au cycle ${cycleLabel} seul. Passez à un plan payant pour gérer tous les cycles.`
+              : "Les coefficients dépendent de la classe et de la série. À l'élémentaire, tous valent 1."
+          }
+          action={selectedClass ? <Badge tone="dark">{selectedClass.name}</Badge> : undefined}
+        />
+        {eligibleClasses.length === 0 && (
+          <p className="mt-4 text-sm text-neutral-500">Aucune classe dans les cycles autorisés.</p>
+        )}
+        {eligibleClasses.length > 0 && (
+          <>
+            <Select compact className="mt-4 mb-2 w-56" aria-label="Classe" value={classId} onChange={(e) => { setClassId(e.target.value); setDraft({}); }} options={eligibleClasses.map((c) => ({ value: c.id, label: `${c.name}${c.series ? ` (série ${c.series})` : ""}` }))} />
           <ul className="divide-y divide-neutral-100">
             {eligible.map((s) => {
               if (selectedClass && !s.cycles.includes(selectedClass.cycle)) return null;
@@ -99,7 +147,8 @@ export function CoefficientsTab({ overview, onSaved }: TabProps) {
           )}
         </>
       )}
-    </Card>
+      </Card>
+    </div>
   );
 }
 
@@ -132,8 +181,60 @@ export function FeesTab({ overview, onSaved }: TabProps) {
 
   return (
     <div className="space-y-4">
-      <Card padded={false} className="p-2">
-        <div className="px-4 pt-4"><CardHeader title="Tarifs par niveau" subtitle="Inscription (une fois) et mensualité sur 10 mois (octobre à juillet), en FCFA." /></div>
+      {(() => {
+        const levelCount = overview.levels.length;
+        const totals = overview.levels.map((l) => {
+          const f = fees[l.id];
+          return f ? Number(f.inscription) + Number(f.mensualite) * 10 : 0;
+        });
+        const avg = levelCount ? Math.round(totals.reduce((a, b) => a + b, 0) / levelCount) : 0;
+        const min = totals.length ? Math.min(...totals) : 0;
+        const max = totals.length ? Math.max(...totals) : 0;
+        return (
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+            <HeroCard
+              eyebrow="Tarification annuelle"
+              icon="sell"
+              value={formatCurrency(avg)}
+              label={`coût annuel moyen · ${levelCount} niveau${levelCount > 1 ? "x" : ""} tarifé${levelCount > 1 ? "s" : ""}`}
+              footnote={`De ${formatCurrency(min)} à ${formatCurrency(max)} par an · réduction fratrie ${discount || 0} %`}
+              valueClassName="text-2xl sm:text-3xl"
+            >
+              <HeroBar
+                segments={overview.levels.map((l, index) => {
+                  const f = fees[l.id];
+                  const t = f ? Number(f.inscription) + Number(f.mensualite) * 10 : 0;
+                  return { pct: max > 0 ? Math.round((t / max) * 100) : 0, className: index % 3 === 0 ? "bg-lime" : index % 3 === 1 ? "bg-emerald-300/90" : "bg-amber-300/90" };
+                })}
+              />
+              <HeroLegend
+                items={overview.levels.slice(0, 4).map((l, index) => {
+                  const f = fees[l.id];
+                  const t = f ? Number(f.inscription) + Number(f.mensualite) * 10 : 0;
+                  return { dot: index % 3 === 0 ? "bg-lime" : index % 3 === 1 ? "bg-emerald-300" : "bg-amber-300", label: `${l.label} · ${formatCurrency(t)}` };
+                })}
+                trailing={
+                  <>
+                    <Icon name="receipt_long" className="text-[14px]" />
+                    10 mensualités
+                  </>
+                }
+              />
+            </HeroCard>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <KpiTile tone="lime" icon="sell" label="Tarif moyen" value={formatCurrency(avg)} note="Par an, par élève" valueClassName="text-lg" />
+              <KpiTile tone="sky" icon="arrow_upward" label="Tarif le plus élevé" value={formatCurrency(max)} note="Niveau supérieur" valueClassName="text-lg" />
+              <KpiTile tone="amber" icon="percent" label="Réduction fratrie" value={`${discount || 0} %`} note="Familles nombreuses" />
+              <KpiTile tone="violet" icon="restaurant" label="Cantine" value={formatCurrency(Number(annex.cantine))} note="Par mois" valueClassName="text-lg" />
+            </div>
+          </div>
+        );
+      })()}
+
+      <Card padded={false} className="overflow-hidden px-2 pb-2">
+        <div className="px-3 pt-4 sm:px-4">
+          <PanelHeading icon="receipt_long" title="Tarifs par niveau" subtitle="Inscription (une fois) et mensualité sur 10 mois (octobre à juillet), en FCFA." />
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[560px] text-sm">
             <caption className="sr-only">Tarifs par niveau</caption>
@@ -155,8 +256,8 @@ export function FeesTab({ overview, onSaved }: TabProps) {
         </div>
       </Card>
       <Card>
-        <CardHeader title="Frais annexes et réduction fratrie" />
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <PanelHeading icon="add_card" title="Frais annexes et réduction fratrie" subtitle="Services optionnels facturés en complément de la scolarité" />
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Input label="Cantine (par mois)" type="number" value={annex.cantine} onChange={(e) => setAnnex({ ...annex, cantine: e.target.value })} error={bad(annex.cantine) ? "Montant invalide." : null} />
           <Input label="Transport (par mois)" type="number" value={annex.transport} onChange={(e) => setAnnex({ ...annex, transport: e.target.value })} error={bad(annex.transport) ? "Montant invalide." : null} />
           <Input label="Tenue (une fois)" type="number" value={annex.tenue} onChange={(e) => setAnnex({ ...annex, tenue: e.target.value })} error={bad(annex.tenue) ? "Montant invalide." : null} />

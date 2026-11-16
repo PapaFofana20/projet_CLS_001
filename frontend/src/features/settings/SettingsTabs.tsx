@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { Card, CardHeader } from "@/components/ui/Card";
+import { Card } from "@/components/ui/Card";
 import { Icon } from "@/components/ui/Icon";
 import { Input } from "@/components/ui/Input";
 import { ConfirmDialog } from "@/components/ui/Modal";
@@ -12,6 +12,7 @@ import { useCurrentUser, useAuth } from "@/context/AuthContext";
 import { useSchool } from "@/context/SchoolContext";
 import { useToast } from "@/context/ToastContext";
 import { CYCLES, CYCLE_EXAMS, CYCLE_LABELS, getPeriods } from "@/data/school";
+import { PanelHeading } from "@/features/admin/adminUi";
 import { ROLE_LABELS } from "@/utils/permissions";
 import { resetDatabase } from "@/services/db";
 import { addSubject, setAutoApprove, toggleRegistration, updateSettings, type SchoolOverview } from "@/services/schoolService";
@@ -55,8 +56,8 @@ export function SchoolTab({ overview, onSaved }: TabProps) {
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader title="Informations de l'école" subtitle={`Année scolaire ${s.schoolYear}`} />
-        <div className="grid gap-4 sm:grid-cols-2">
+        <PanelHeading icon="domain" title="Informations de l'école" subtitle={`Année scolaire ${s.schoolYear}`} />
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <Input label="Nom de l'école" required placeholder="Ex. Groupe Scolaire Les Baobabs" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} error={errors.name} />
           <Input label="Téléphone" placeholder="77 123 45 67" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} />
           <Input label="E-mail" type="email" placeholder="contact@ecole.sn" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} error={errors.email} />
@@ -66,8 +67,8 @@ export function SchoolTab({ overview, onSaved }: TabProps) {
       </Card>
       {overview.school && <RegistrationTab school={overview.school} onSaved={onSaved} />}
       <Card>
-        <CardHeader title="Données de démonstration" subtitle="Remet l'application dans son état initial (notes, paiements, messages, affectations)." />
-        <Button variant="outline" icon="restart_alt" onClick={() => setReset(true)}>Réinitialiser les données</Button>
+        <PanelHeading icon="restart_alt" title="Données de démonstration" subtitle="Remet l'application dans son état initial (notes, paiements, messages, affectations)." />
+        <Button className="mt-4" variant="outline" icon="restart_alt" onClick={() => setReset(true)}>Réinitialiser les données</Button>
       </Card>
       <ConfirmDialog open={reset} title="Réinitialiser les données ?" message="Toutes vos modifications (notes, paiements, affectations, messages) seront perdues." confirmLabel="Réinitialiser" onCancel={() => setReset(false)} onConfirm={() => { resetDatabase(); window.location.reload(); }} />
     </div>
@@ -79,8 +80,8 @@ export function RegistrationTab({ school, onSaved }: { school: School; onSaved: 
   const { busy, run } = useSave(onSaved);
   return (
     <Card>
-      <CardHeader title="Inscriptions" subtitle="Matricule, ouverture des inscriptions et validation automatique des élèves." />
-      <div className="space-y-4">
+      <PanelHeading icon="how_to_reg" title="Inscriptions" subtitle="Matricule, ouverture des inscriptions et validation automatique des élèves." />
+      <div className="mt-4 space-y-4">
         <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-mist p-4">
           <Icon name="key" className="text-[22px] text-forest" />
           <p className="text-sm text-neutral-700">
@@ -130,7 +131,8 @@ export function CyclesTab({ overview, onSaved }: TabProps) {
   const levelsOf = (c: Cycle) => overview.levels.filter((l) => l.cycle === c).map((l) => l.label).join(", ");
   return (
     <Card>
-      <CardHeader
+      <PanelHeading
+        icon="stairs"
         title="Cycles proposés par l'école"
         subtitle={
           isFreePlan
@@ -139,11 +141,11 @@ export function CyclesTab({ overview, onSaved }: TabProps) {
         }
       />
       {isFreePlan && cycles.length > 0 && (
-        <p className="mb-3 text-xs text-neutral-600">
+        <p className="mt-3 text-xs text-neutral-600">
           Vous avez choisi le cycle <strong>{CYCLE_LABELS[cycles[0]]}</strong>. Sur le plan gratuit, ce cycle est définitif : vous ne pouvez pas en ajouter d‘autre sans passer à un plan payant.
         </p>
       )}
-      <div className="grid gap-3 md:grid-cols-3">
+      <div className="mt-4 grid gap-3 md:grid-cols-3">
         {CYCLES.map((c) => {
           const on = cycles.includes(c);
           const disabled = isFreePlan && cycles.length > 0 && !on;
@@ -173,8 +175,8 @@ export function PeriodsTab({ overview, onSaved }: TabProps) {
   const effective = periods.some((p) => p.id === current) ? current : periods[0].id;
   return (
     <Card>
-      <CardHeader title="Périodes d'évaluation" subtitle="Semestres ou trimestres : par matière, 2 devoirs + 1 composition (moyen et secondaire)." />
-      <div className="grid gap-4 sm:grid-cols-2">
+      <PanelHeading icon="date_range" title="Périodes d'évaluation" subtitle="Semestres ou trimestres : par matière, 2 devoirs + 1 composition (moyen et secondaire)." />
+      <div className="mt-4 grid gap-4 sm:grid-cols-2">
         <Select label="Découpage de l'année" value={type} onChange={(e) => setType(e.target.value === "trimestre" ? "trimestre" : "semestre")} options={[{ value: "semestre", label: "2 semestres" }, { value: "trimestre", label: "3 trimestres" }]} />
         <Select label="Période en cours" value={effective} onChange={(e) => setCurrent(e.target.value)} options={periods.map((p) => ({ value: p.id, label: p.label }))} />
       </div>
@@ -197,8 +199,8 @@ export function SubjectsTab({ overview, onSaved }: TabProps) {
   return (
     <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
       <Card>
-        <CardHeader title="Matières" subtitle={`${overview.subjects.length} matières configurées`} />
-        <ul className="divide-y divide-neutral-100">
+        <PanelHeading icon="menu_book" title="Matières" subtitle={`${overview.subjects.length} matières configurées`} />
+        <ul className="mt-2 divide-y divide-neutral-100">
           {overview.subjects.map((s) => (
             <li key={s.id} className="flex flex-wrap items-center justify-between gap-2 py-3">
               <span className="font-semibold">{s.name}</span>
@@ -208,7 +210,8 @@ export function SubjectsTab({ overview, onSaved }: TabProps) {
         </ul>
       </Card>
       <Card>
-        <CardHeader title="Ajouter une matière" />
+        <PanelHeading icon="add" title="Ajouter une matière" subtitle="Nom et cycles concernés" />
+        <div className="mt-4">
         <Input label="Nom de la matière" placeholder="Ex. Mathématiques" value={name} onChange={(e) => setName(e.target.value)} error={name && name.trim().length < 3 ? "Nom trop court." : null} />
         <fieldset className="mt-4">
           <legend className="mb-2 text-sm font-semibold">Cycles concernés</legend>
@@ -238,6 +241,7 @@ export function SubjectsTab({ overview, onSaved }: TabProps) {
           )}
         </fieldset>
         <Button className="mt-5" variant="dark" icon="add" disabled={!valid} loading={busy} onClick={() => void run(async () => { await addSubject(schoolId, name, cycles); setName(""); }, "Matière ajoutée.")}>Ajouter</Button>
+        </div>
       </Card>
     </div>
   );
@@ -249,8 +253,8 @@ export function ProfileTab() {
   const { schoolName } = useSchool();
   return (
     <Card>
-      <CardHeader title="Mon profil" />
-      <dl className="grid gap-3 sm:grid-cols-2">
+      <PanelHeading icon="account_circle" title="Mon profil" subtitle="Vos informations de compte" />
+      <dl className="mt-4 grid gap-3 sm:grid-cols-2">
         {[
           ["Nom", `${user.firstName} ${user.lastName}`],
           ["E-mail", user.email],

@@ -22,6 +22,7 @@ import { useDebounce } from "@/hooks/useDebounce";
 import { listStudentRows, type StudentRow } from "@/services/studentService";
 import { formatCurrency, formatDate, pluralize } from "@/utils/format";
 import { STUDENT_STATUS_LABELS } from "@/utils/payments";
+import { HeroBar, HeroCard, HeroLegend, KpiTile, PanelHeading } from "@/features/admin/adminUi";
 
 const PAGE_SIZE = 10;
 const STATUS_TONE = { a_jour: "success", partiel: "warning", impaye: "danger" } as const;
@@ -102,6 +103,13 @@ export default function StudentsPage() {
     </>
   );
 
+  // Répartition de l'effectif par cycle pour le bandeau de synthèse.
+  const byCycle = CYCLES.map((c) => ({ cycle: c, count: rows.filter((r) => r.cycle === c).length })).filter((c) => c.count > 0);
+  const classCount = new Set(rows.map((r) => r.classId)).size;
+  const upToDate = rows.filter((r) => r.payStatus === "a_jour").length;
+  const overdueCount = rows.filter((r) => r.payStatus === "impaye").length;
+  const totalDue = rows.reduce((sum, r) => sum + Math.max(0, r.balance), 0);
+
   return (
     <>
       <PageHeader
@@ -114,8 +122,60 @@ export default function StudentsPage() {
           </div>
         ) : undefined}
       />
+
+      <div className="mb-4 grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+        <HeroCard
+          eyebrow="Effectif de l'école"
+          icon="groups"
+          value={rows.length}
+          label={`élève${rows.length > 1 ? "s" : ""} inscrit${rows.length > 1 ? "s" : ""} · ${classCount} ${pluralize(classCount, "classe", "classes")}`}
+          footnote={`Année scolaire 2026-2027 · ${pluralize(rows.length, "dossier", "dossiers")} consultable${rows.length > 1 ? "s" : ""}`}
+        >
+          <HeroBar
+            segments={byCycle.map((c) => ({
+              pct: rows.length > 0 ? Math.round((c.count / rows.length) * 100) : 0,
+              className: c.cycle === "elementaire" ? "bg-lime" : c.cycle === "moyen" ? "bg-emerald-300/90" : "bg-amber-300/90",
+            }))}
+          />
+          <HeroLegend
+            items={byCycle.map((c) => ({
+              dot: c.cycle === "elementaire" ? "bg-lime" : c.cycle === "moyen" ? "bg-emerald-300" : "bg-amber-300",
+              label: `${CYCLE_LABELS[c.cycle]} · ${c.count}`,
+            }))}
+            trailing={
+              <>
+                <Icon name="trending_up" className="text-[14px]" />
+                {classCount} classes
+              </>
+            }
+          />
+        </HeroCard>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <KpiTile tone="sky" icon="groups" label="Élèves" value={rows.length} note="Toutes classes confondues" />
+          <KpiTile tone="lime" icon="meeting_room" label="Classes" value={classCount} note="Avec au moins un élève" />
+          {showMoney ? (
+            <>
+              <KpiTile tone="amber" icon="task_alt" label="À jour" value={upToDate} note={`${overdueCount} en retard`} />
+              <KpiTile tone={overdueCount > 0 ? "red" : "neutral"} icon="request_quote" label="Solde dû" value={formatCurrency(totalDue)} note="Échéances échues" valueClassName="text-lg" />
+            </>
+          ) : (
+            <>
+              <KpiTile tone="violet" icon="family_restroom" label="Parents" value={new Set(rows.map((r) => r.parentName)).size} note="Comptes rattachés" />
+              <KpiTile tone="neutral" icon="school" label="Niveaux" value={new Set(rows.map((r) => r.levelLabel)).size} note="Niveaux représentés" />
+            </>
+          )}
+        </div>
+      </div>
+
       <Card className="mb-4">
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <PanelHeading
+          icon="filter_alt"
+          title="Rechercher et filtrer"
+          subtitle={`${filtered.length} ${pluralize(filtered.length, "élève", "élèves")} affiché${filtered.length > 1 ? "s" : ""} · page ${page}`}
+          action={activeFilters > 0 ? <Badge tone="lime">{activeFilters} filtre(s)</Badge> : undefined}
+        />
+        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           <Input aria-label="Rechercher un élève" icon="search" placeholder="Nom, matricule, parent…" value={q} onChange={(e) => setQ(e.target.value)} />
           <div className="hidden md:contents">{filterFields}</div>
         </div>
@@ -144,8 +204,13 @@ export default function StudentsPage() {
           filtered.length === 0 ? (
             <EmptyState icon="search_off" title="Aucun élève trouvé" text="Modifiez votre recherche ou vos filtres." />
           ) : (
-            <Card padded={false} className="p-2">
-              <Table caption="Liste des élèves" columns={columns} rows={pageRows} rowKey={(r) => r.id} onRowClick={(r) => navigate(`/app/eleves/${r.id}`)} stagger />
+            <Card padded={false} className="overflow-hidden px-2 pb-2">
+              <div className="px-3 pt-4 sm:px-4">
+                <PanelHeading icon="badge" title="Liste des élèves" subtitle={`${filtered.length} ${pluralize(filtered.length, "élève", "élèves")} correspondant aux filtres`} />
+              </div>
+              <div className="mt-3">
+                <Table caption="Liste des élèves" columns={columns} rows={pageRows} rowKey={(r) => r.id} onRowClick={(r) => navigate(`/app/eleves/${r.id}`)} stagger />
+              </div>
               <div className="px-4 pb-4">
                 <Pagination page={page} pageSize={PAGE_SIZE} total={filtered.length} onChange={setPage} />
               </div>

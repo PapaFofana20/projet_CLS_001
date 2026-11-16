@@ -1,8 +1,9 @@
 // Liste de premiers pas pour le directeur, cochee automatiquement.
 
 import { Link } from "react-router-dom";
-import { Card, CardHeader } from "@/components/ui/Card";
+import { Card } from "@/components/ui/Card";
 import { Icon } from "@/components/ui/Icon";
+import { PanelHeading } from "@/features/admin/adminUi";
 import { useAsync } from "@/hooks/useAsync";
 import { assignmentsOf, classesOf, studentsOf, teachersOf, usersOf } from "@/services/db";
 import { countPendingFor } from "@/services/registrationService";
@@ -49,7 +50,8 @@ export function OnboardingChecklist({ user }: { user: SessionUser }) {
 
   return (
     <Card>
-      <CardHeader
+      <PanelHeading
+        icon="rocket_launch"
         title="Premiers pas"
         subtitle="Quatre étapes pour ouvrir votre école aux familles. Elles se valident automatiquement."
         action={
@@ -58,7 +60,7 @@ export function OnboardingChecklist({ user }: { user: SessionUser }) {
           </span>
         }
       />
-      <ul className="grid gap-2 sm:grid-cols-2">
+      <ul className="mt-4 grid gap-2 sm:grid-cols-2">
         {steps.map((s, i) => (
           <li key={s.id}>
             <Link to={s.to} className={cn("flex items-start gap-3 rounded-2xl border p-4 transition hover:border-forest", s.done ? "border-lime-soft bg-lime-pale" : "border-neutral-200 bg-white")}>

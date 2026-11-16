@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { AsyncView } from "@/components/ui/AsyncView";
 import { Badge } from "@/components/ui/Badge";
 import { ProgressBar } from "@/components/ui/Brand";
-import { Card, CardHeader } from "@/components/ui/Card";
+import { Card } from "@/components/ui/Card";
 import { Icon } from "@/components/ui/Icon";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -12,6 +12,7 @@ import { Tabs } from "@/components/ui/Tabs";
 import { useToast } from "@/context/ToastContext";
 import { CYCLES, CYCLE_LABELS } from "@/data/school";
 import { AssignmentMatrix } from "@/features/assignments/AssignmentMatrix";
+import { HeroBar, HeroCard, HeroLegend, KpiTile, PanelHeading } from "@/features/admin/adminUi";
 import { useAsync } from "@/hooks/useAsync";
 import { getAssignmentBoard, setCellTeacher, setHeadTeacher, setTitular, type AssignmentBoard } from "@/services/assignmentService";
 import { useCurrentUser } from "@/context/AuthContext";
@@ -49,14 +50,59 @@ export default function AssignmentsPage() {
           const errors = board.conflicts.filter((c) => c.severity === "error");
           const warnings = board.conflicts.filter((c) => c.severity === "warning");
           const profs = board.teachers.filter((t) => t.kind === "professeur");
+          const totalCells = board.classSubjects.length;
+          const filled = board.assignments.length;
+          const coverage = totalCells > 0 ? Math.round((filled / totalCells) * 100) : 0;
+          const overloaded = profs.filter((t) => board.assignments.filter((a) => a.teacherId === t.id).length > MAX_ASSIGNMENTS_PER_TEACHER).length;
           return (
             <div className="space-y-4">
+              <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+                <HeroCard
+                  eyebrow="Couverture pédagogique"
+                  icon="how_to_reg"
+                  value={`${coverage} %`}
+                  label={`${filled} affectation${filled > 1 ? "s" : ""} sur ${totalCells} case${totalCells > 1 ? "s" : ""} (classe · matière)`}
+                  footnote={`${board.teachers.length} enseignant${board.teachers.length > 1 ? "s" : ""} · ${board.classes.length} classe${board.classes.length > 1 ? "s" : ""} · ${errors.length} erreur(s), ${warnings.length} alerte(s)`}
+                >
+                  <HeroBar
+                    segments={[
+                      { pct: coverage, className: "bg-lime" },
+                      { pct: Math.max(0, 100 - coverage), className: "bg-white/20" },
+                    ]}
+                  />
+                  <HeroLegend
+                    items={[
+                      { dot: "bg-lime", label: `Affecté · ${filled}` },
+                      { dot: "bg-white/40", label: `À compléter · ${Math.max(0, totalCells - filled)}` },
+                    ]}
+                    trailing={
+                      <>
+                        <Icon name={errors.length ? "error" : "verified"} className="text-[14px]" />
+                        {errors.length ? `${errors.length} conflit(s)` : "Aucun conflit"}
+                      </>
+                    }
+                  />
+                </HeroCard>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <KpiTile tone="lime" icon="how_to_reg" label="Affectations" value={filled} note={`${totalCells} cases possibles`} />
+                  <KpiTile tone="sky" icon="badge" label="Enseignants" value={board.teachers.length} note={`${profs.length} professeur(s)`} />
+                  <KpiTile tone={errors.length ? "red" : "neutral"} icon="error" label="Erreurs" value={errors.length} note="Conflits bloquants" />
+                  <KpiTile tone={overloaded > 0 ? "amber" : "violet"} icon="schedule" label="Surchargés" value={overloaded} note={`Max ${MAX_ASSIGNMENTS_PER_TEACHER} affectations`} />
+                </div>
+              </div>
+
               <Card className={board.conflicts.length ? "" : "!bg-lime-soft"}>
-                <CardHeader title="Contrôle des conflits" subtitle="Matière sans professeur, professeur surchargé, doublon sur une même classe et matière" action={<div className="flex gap-2"><Badge tone={errors.length ? "danger" : "success"}>{errors.length} erreur(s)</Badge><Badge tone={warnings.length ? "warning" : "success"}>{warnings.length} alerte(s)</Badge></div>} />
+                <PanelHeading
+                  icon={board.conflicts.length ? "warning" : "verified"}
+                  title="Contrôle des conflits"
+                  subtitle="Matière sans professeur, professeur surchargé, doublon sur une même classe et matière"
+                  action={<div className="flex gap-2"><Badge tone={errors.length ? "danger" : "success"}>{errors.length} erreur(s)</Badge><Badge tone={warnings.length ? "warning" : "success"}>{warnings.length} alerte(s)</Badge></div>}
+                />
                 {board.conflicts.length === 0 ? (
-                  <p className="flex items-center gap-2 text-sm font-semibold text-forest"><Icon name="check_circle" fill /> Aucune anomalie : toutes les matières ont un enseignant.</p>
+                  <p className="mt-4 flex items-center gap-2 text-sm font-semibold text-forest"><Icon name="check_circle" fill /> Aucune anomalie : toutes les matières ont un enseignant.</p>
                 ) : (
-                  <ul className="grid gap-2 md:grid-cols-2" aria-live="polite">
+                  <ul className="mt-4 grid gap-2 md:grid-cols-2" aria-live="polite">
                     {board.conflicts.map((c) => (
                       <li key={c.id} className={`flex items-start gap-2 rounded-xl p-3 text-sm ${c.severity === "error" ? "bg-red-50 text-red-900" : "bg-amber-50 text-amber-900"}`}>
                         <Icon name={c.severity === "error" ? "error" : "warning"} fill className="text-[20px]" />
@@ -90,8 +136,8 @@ export default function AssignmentsPage() {
               />
               {cycle !== "elementaire" && (
                 <Card>
-                  <CardHeader title="Charge des professeurs" subtitle={`Maximum conseillé : ${MAX_ASSIGNMENTS_PER_TEACHER} affectations (classe · matière)`} />
-                  <ul className="grid gap-x-8 gap-y-3 md:grid-cols-2">
+                  <PanelHeading icon="school" title="Charge des professeurs" subtitle={`Maximum conseillé : ${MAX_ASSIGNMENTS_PER_TEACHER} affectations (classe · matière)`} />
+                  <ul className="mt-4 grid gap-x-8 gap-y-3 md:grid-cols-2">
                     {profs.map((t) => {
                       const n = board.assignments.filter((a) => a.teacherId === t.id).length;
                       return (

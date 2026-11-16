@@ -17,6 +17,7 @@ import { Tabs } from "@/components/ui/Tabs";
 import { useCurrentUser } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
 import { CYCLE_LABELS, todayIso } from "@/data/school";
+import { HeroBar, HeroCard, HeroLegend, KpiTile, PanelHeading } from "@/features/admin/adminUi";
 import { useAsync } from "@/hooks/useAsync";
 import { setPaymentManualStatus, recordCashPayment } from "@/services/paymentService";
 import { getStudentDetail, type StudentDetail } from "@/services/studentService";
@@ -156,38 +157,78 @@ function Detail({ d, onPaymentsChanged }: { d: StudentDetail; onPaymentsChanged:
     const mensualites = d.payments.filter((p) => p.kind === "mensualite").sort((a, b) => a.dueDate.localeCompare(b.dueDate));
     return [...frais, ...mensualites];
   }, [d.payments]);
+  const totalDue = d.payments.reduce((sum, p) => sum + p.amount, 0);
+  const paidTotal = d.payments.reduce((sum, p) => sum + p.paidAmount, 0);
   return (
     <div className="space-y-4">
       <Link to={user.role === "parent" ? "/app" : "/app/eleves"} className="inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-forest hover:underline">
         <Icon name="arrow_back" className="text-[18px]" />
         {user.role === "parent" ? "Retour au suivi" : "Retour aux élèves"}
       </Link>
-      <Card dark className="flex flex-wrap items-center gap-5">
-        <Avatar name={`${r.firstName} ${r.lastName}`} size={72} />
-        <div className="min-w-0 flex-1">
-          <h1 className="text-2xl font-extrabold">
-            {r.firstName} {r.lastName}
-          </h1>
-          <p className="text-sm text-white/75">
-            {r.matricule} · {d.classRoom.name} · {CYCLE_LABELS[r.cycle]}
-          </p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <Badge tone="lime">{d.classRoom.name}</Badge>
-            {d.payments.length > 0 && <Badge tone={STATUS_TONE[r.payStatus]}>{STUDENT_STATUS_LABELS[r.payStatus]}</Badge>}
-            {d.siblings.length > 0 && <Badge tone="info">Fratrie dans l'école</Badge>}
-          </div>
+
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+        <HeroCard
+          eyebrow={`${r.matricule} · ${CYCLE_LABELS[r.cycle]}`}
+          icon="badge"
+          value={`${r.firstName} ${r.lastName}`}
+          label={`${d.classRoom.name} · inscrit le ${formatDate(r.enrolledAt)}`}
+          footnote={d.report ? `Moyenne générale ${d.report.generalAverage === null ? "—" : formatNumber(d.report.generalAverage)} · rang ${d.report.rank ?? "—"}/${d.report.classSize}` : "Aucun bulletin disponible pour la période"}
+          valueClassName="text-2xl sm:text-3xl"
+          badge={
+            <div className="flex flex-wrap gap-2">
+              <Badge tone="lime">{d.classRoom.name}</Badge>
+              {d.payments.length > 0 && <Badge tone={STATUS_TONE[r.payStatus]}>{STUDENT_STATUS_LABELS[r.payStatus]}</Badge>}
+              {d.siblings.length > 0 && <Badge tone="info">Fratrie</Badge>}
+            </div>
+          }
+        >
+          <HeroBar
+            segments={[
+              { pct: totalDue > 0 ? Math.round((paidTotal / totalDue) * 100) : 0, className: "bg-lime" },
+              { pct: totalDue > 0 ? Math.round((Math.max(0, totalDue - paidTotal) / totalDue) * 100) : 0, className: "bg-red-400/80" },
+            ]}
+          />
+          <HeroLegend
+            items={[
+              { dot: "bg-lime", label: `Payé · ${formatCurrency(paidTotal)}` },
+              { dot: "bg-red-400", label: `Reste · ${formatCurrency(Math.max(0, totalDue - paidTotal))}` },
+            ]}
+            trailing={
+              <>
+                <Icon name="family_restroom" className="text-[14px]" />
+                {d.siblings.length} frère(s)/sœur(s)
+              </>
+            }
+          />
+        </HeroCard>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <KpiTile tone="sky" icon="cake" label="Âge" value={`${ageFrom(r.birthDate, todayIso())} ans`} note={formatDate(r.birthDate)} />
+          <KpiTile tone="lime" icon="meeting_room" label="Classe" value={d.classRoom.name} note={CYCLE_LABELS[r.cycle]} valueClassName="text-lg" />
+          {d.report ? (
+            <KpiTile tone="violet" icon="analytics" label="Moyenne générale" value={d.report.generalAverage === null ? "—" : formatNumber(d.report.generalAverage)} note={`Rang ${d.report.rank ?? "—"} sur ${d.report.classSize}`} />
+          ) : (
+            <KpiTile tone="neutral" icon="analytics" label="Moyenne" value="—" note="Pas de bulletin" />
+          )}
+          {d.payments.length > 0 ? (
+            <KpiTile
+              tone={r.payStatus === "impaye" ? "red" : r.payStatus === "partiel" ? "amber" : "neutral"}
+              icon="payments"
+              label="Solde dû"
+              value={formatCurrency(Math.max(0, totalDue - paidTotal))}
+              note={STUDENT_STATUS_LABELS[r.payStatus]}
+              valueClassName="text-lg"
+            />
+          ) : (
+            <KpiTile tone="neutral" icon="payments" label="Paiements" value="—" note="Aucun échéancier" />
+          )}
         </div>
-        {d.report && (
-          <div className="rounded-2xl bg-white/10 px-6 py-3 text-center">
-            <p className="text-3xl font-extrabold text-lime">{d.report.generalAverage === null ? "—" : formatNumber(d.report.generalAverage)}</p>
-            <p className="text-xs text-white/70">Moyenne · rang {d.report.rank ?? "—"}/{d.report.classSize}</p>
-          </div>
-        )}
-      </Card>
+      </div>
       <Tabs label="Sections de la fiche" items={tabs} value={tab} onChange={setTab} />
       {tab === "apercu" && (
         <Card>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <PanelHeading icon="person" title="Informations de l'élève" subtitle="État civil et options souscrites" />
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <Info label="Date de naissance" value={`${formatDate(r.birthDate)} (${ageFrom(r.birthDate, todayIso())} ans)`} />
             <Info label="Genre" value={r.gender === "F" ? "Fille" : "Garçon"} />
             <Info label="Inscrit le" value={formatDate(r.enrolledAt)} />
@@ -198,22 +239,33 @@ function Detail({ d, onPaymentsChanged }: { d: StudentDetail; onPaymentsChanged:
         </Card>
       )}
       {tab === "notes" && d.report && (
-        <Card padded={false} className="p-2">
-          <Table caption="Notes du semestre" columns={lineCols} rows={d.report.lines} rowKey={(l) => l.subjectId} />
+        <Card padded={false} className="overflow-hidden px-2 pb-2">
+          <div className="px-3 pt-4 sm:px-4">
+            <PanelHeading icon="edit_note" title="Notes du semestre" subtitle={`${d.report.lines.length} matière(s) · moyenne ${d.report.generalAverage === null ? "—" : formatNumber(d.report.generalAverage)}`} />
+          </div>
+          <div className="mt-3">
+            <Table caption="Notes du semestre" columns={lineCols} rows={d.report.lines} rowKey={(l) => l.subjectId} />
+          </div>
         </Card>
       )}
       {tab === "paiements" && (
         <>
           {canEditPayments && <p className="text-sm text-neutral-600">Pour chaque mois, choisissez le statut : <strong>À venir</strong> par défaut, <strong>Payé</strong> quand la famille a réglé, <strong>Impayé</strong> quand elle n'a pas encore payé.</p>}
-          <Card padded={false} className="p-2">
-            <Table caption="Échéancier de paiement" columns={payCols} rows={sortedPayments} rowKey={(p) => p.id} />
+          <Card padded={false} className="overflow-hidden px-2 pb-2">
+            <div className="px-3 pt-4 sm:px-4">
+              <PanelHeading icon="payments" title="Échéancier de paiement" subtitle={`${formatCurrency(paidTotal)} payés sur ${formatCurrency(totalDue)}`} />
+            </div>
+            <div className="mt-3">
+              <Table caption="Échéancier de paiement" columns={payCols} rows={sortedPayments} rowKey={(p) => p.id} />
+            </div>
           </Card>
         </>
       )}
       {tab === "famille" && (
         <div className="grid gap-4 lg:grid-cols-2">
           <Card>
-            <h2 className="mb-4 text-lg font-bold">Parent / tuteur</h2>
+            <PanelHeading icon="family_restroom" title="Parent / tuteur" subtitle="Contact de la famille" />
+            <div className="mt-4">
             {d.parent ? (
               <>
                 <p className="font-semibold">
@@ -237,9 +289,11 @@ function Detail({ d, onPaymentsChanged }: { d: StudentDetail; onPaymentsChanged:
             ) : (
               <p className="text-sm text-neutral-500">Aucun parent rattaché pour le moment.</p>
             )}
+            </div>
           </Card>
           <Card>
-            <h2 className="mb-4 text-lg font-bold">Frères et sœurs</h2>
+            <PanelHeading icon="diversity_3" title="Frères et sœurs" subtitle={`${d.siblings.length} élève(s) de la même famille`} />
+            <div className="mt-4">
             {d.siblings.length === 0 ? (
               <p className="text-sm text-neutral-500">Aucun frère ou sœur dans l'école.</p>
             ) : (
@@ -255,6 +309,7 @@ function Detail({ d, onPaymentsChanged }: { d: StudentDetail; onPaymentsChanged:
                 ))}
               </ul>
             )}
+            </div>
           </Card>
         </div>
       )}

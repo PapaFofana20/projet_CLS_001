@@ -15,12 +15,14 @@ import { useChild } from "@/context/ChildContext";
 import { useSchool } from "@/context/SchoolContext";
 import { useToast } from "@/context/ToastContext";
 import { CONDUCT_OPTIONS, levels } from "@/data/school";
+import { HeroBar, HeroCard, HeroLegend, KpiTile, PanelHeading } from "@/features/admin/adminUi";
 import { ElementaryReport, SecondaryReport } from "@/features/reportCards/ReportCards";
 import { useAsync } from "@/hooks/useAsync";
 import { usePeriods } from "@/hooks/usePeriods";
 import { bulletinClasses, getClassReportCards, updateReportMeta } from "@/services/reportService";
 import { getSchoolOverview } from "@/services/schoolService";
 import type { ReportCardData } from "@/types";
+import { formatNumber } from "@/utils/format";
 
 function MetaEditor({ card, onSaved }: { card: ReportCardData; onSaved: () => void }) {
   const user = useCurrentUser();
@@ -52,8 +54,12 @@ function MetaEditor({ card, onSaved }: { card: ReportCardData; onSaved: () => vo
   };
   return (
     <Card className="no-print">
-      <h2 className="mb-4 text-lg font-bold">{elem ? "Appréciation de l'instituteur" : "Conseil de classe"}</h2>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <PanelHeading
+        icon={elem ? "child_care" : "forum"}
+        title={elem ? "Appréciation de l'instituteur" : "Conseil de classe"}
+        subtitle="Conduite, absences et appréciation du bulletin"
+      />
+      <div className="mt-4 grid gap-4 sm:grid-cols-2">
         <Select label="Conduite" value={conduct} onChange={(e) => setConduct(e.target.value)} options={CONDUCT_OPTIONS.map((c) => ({ value: c, label: c }))} />
         <Input label="Absences (heures)" type="number" min={0} value={absences} onChange={(e) => setAbsences(e.target.value)} error={absErr} />
         <Textarea className="sm:col-span-2" label={elem ? "Appréciation (laisser vide pour la suggestion automatique)" : "Appréciation du conseil de classe (vide = suggestion automatique)"} value={comment} onChange={(e) => setComment(e.target.value)} maxLength={300} />
@@ -89,6 +95,13 @@ export default function BulletinsPage() {
   const data = cards.data ?? [];
   const current = isParent || isStudent ? data.find((c) => c.student.id === (isStudent ? user.studentId : activeChild?.id)) : data[Math.min(idx, data.length - 1)];
 
+  // Statistiques de la classe pour le bandeau de synthèse (personnel uniquement).
+  const classAvgs = data.map((c) => c.generalAverage).filter((v): v is number => v !== null);
+  const classAverage = classAvgs.length ? classAvgs.reduce((a, b) => a + b, 0) / classAvgs.length : null;
+  const belowTen = classAvgs.filter((a) => a < 10).length;
+  const bestAvg = classAvgs.length ? Math.max(...classAvgs) : null;
+  const showBand = !isParent && !isStudent && data.length > 0;
+
   return (
     <>
       <PageHeader
@@ -113,7 +126,12 @@ export default function BulletinsPage() {
               <div className="space-y-4">
                 {!isParent && !isStudent && (
                   <Card className="no-print">
-                    <div className="grid gap-3 md:grid-cols-[1fr_2fr_auto] md:items-end">
+                    <PanelHeading
+                      icon="description"
+                      title="Aperçu des bulletins"
+                      subtitle={`${allowed.length} classe${allowed.length > 1 ? "s" : ""} autorisée${allowed.length > 1 ? "s" : ""} · modèle selon le cycle`}
+                    />
+                    <div className="mt-4 grid gap-3 md:grid-cols-[1fr_2fr_auto] md:items-end">
                       {allowed.length > 1 ? <Select label="Classe" value={effectiveClass} onChange={(e) => setClassId(e.target.value)} options={allowed.map((c) => ({ value: c.id, label: c.name }))} /> : <div><p className="mb-1.5 text-sm font-semibold">Classe</p><p className="min-h-12 rounded-2xl bg-mist px-4 py-3 text-sm font-bold">{allowed[0].name}</p></div>}
                       <Select label="Élève" value={String(Math.min(idx, Math.max(0, data.length - 1)))} onChange={(e) => setIdx(Number(e.target.value))} options={data.map((c, i) => ({ value: String(i), label: `${c.student.firstName} ${c.student.lastName}` }))} />
                       <div className="flex gap-2">
@@ -122,6 +140,44 @@ export default function BulletinsPage() {
                       </div>
                     </div>
                   </Card>
+                )}
+
+                {showBand && (
+                  <div className="no-print grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+                    <HeroCard
+                      eyebrow={`Bulletins · ${allowed.find((c) => c.id === effectiveClass)?.name ?? "classe"}`}
+                      icon="description"
+                      value={classAverage === null ? "—" : formatNumber(classAverage)}
+                      label={`moyenne de classe · ${data.length} élève${data.length > 1 ? "s" : ""}`}
+                      footnote={current ? `Bulletin affiché : ${current.student.firstName} ${current.student.lastName} · ${current.period.label}` : undefined}
+                    >
+                      <HeroBar
+                        segments={[
+                          { pct: classAvgs.length ? Math.round(((classAvgs.length - belowTen) / classAvgs.length) * 100) : 0, className: "bg-lime" },
+                          { pct: classAvgs.length ? Math.round((belowTen / classAvgs.length) * 100) : 0, className: "bg-red-400/80" },
+                        ]}
+                      />
+                      <HeroLegend
+                        items={[
+                          { dot: "bg-lime", label: `≥ 10 · ${classAvgs.length - belowTen}` },
+                          { dot: "bg-red-400", label: `< 10 · ${belowTen}` },
+                        ]}
+                        trailing={
+                          <>
+                            <Icon name="military_tech" className="text-[14px]" />
+                            Major {bestAvg === null ? "—" : formatNumber(bestAvg)}
+                          </>
+                        }
+                      />
+                    </HeroCard>
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <KpiTile tone="lime" icon="description" label="Bulletins" value={data.length} note="Élèves évalués" />
+                      <KpiTile tone="sky" icon="analytics" label="Moyenne de classe" value={classAverage === null ? "—" : formatNumber(classAverage)} note="Toutes matières" />
+                      <KpiTile tone={belowTen > 0 ? "red" : "neutral"} icon="warning" label="Sous la moyenne" value={`${belowTen} / ${data.length}`} note="Moyenne < 10" />
+                      <KpiTile tone="violet" icon="military_tech" label="Meilleure moyenne" value={bestAvg === null ? "—" : formatNumber(bestAvg)} note="Major de classe" />
+                    </div>
+                  </div>
                 )}
                 {cards.loading && !cards.error ? (
                   <Skeleton className="h-[600px] w-full" />
