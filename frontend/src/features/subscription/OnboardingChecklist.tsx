@@ -51,7 +51,7 @@ export function OnboardingChecklist({ user }: { user: SessionUser }) {
   return (
     <Card>
       <PanelHeading
-        icon="rocket_launch"
+        icon="play_arrow"
         title="Premiers pas"
         subtitle="Quatre étapes pour ouvrir votre école aux familles. Elles se valident automatiquement."
         action={

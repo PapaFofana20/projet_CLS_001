@@ -94,10 +94,10 @@ export function MatriculeCard({ school }: Props) {
           {school.matricule}
         </p>
         <div className="flex flex-wrap gap-2">
-          <Button icon="content_copy" variant="outline" onClick={() => void copy(school.matricule, "Matricule copié.")}>
+          <Button icon="save" variant="outline" onClick={() => void copy(school.matricule, "Matricule copié.")}>
             Copier
           </Button>
-          <Button icon="share" variant="dark" onClick={() => void share()}>
+          <Button icon="send" variant="dark" onClick={() => void share()}>
             Partager
           </Button>
         </div>
