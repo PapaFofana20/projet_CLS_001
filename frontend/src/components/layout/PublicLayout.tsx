@@ -11,12 +11,13 @@ import { SuspenseOutlet } from "@/components/ui/PageSuspense";
  * le chevauche visuellement : aucun espace n'est réservé pour elle dans le flux,
  * donc aucune bande blanche ni boîte vide au-dessus du hero.
  */
-export function PublicLayout() {
+export function PublicLayout({ hideHeaderFooter }: { hideHeaderFooter?: boolean } = {}) {
   const { pathname } = useLocation();
   // Splash de l'accueil : monté ICI (layout synchrone) et non dans HomePage
   // (lazy). Sinon, pendant le chargement du chunk de la page d'accueil, le
   // footer du layout restait visible quelques secondes AVANT le splash.
   const isHome = pathname === "/";
+  const shouldHide = hideHeaderFooter || pathname === "/maintenance";
 
   return (
     // `relative` : ancre la sentinelle de la navbar sur le haut de page.
@@ -24,14 +25,14 @@ export function PublicLayout() {
     // `overflow-x-clip` : aucun défilement horizontal, sans conteneur de défilement.
     <div className="page-bg relative min-h-svh flow-root overflow-x-clip bg-white">
       {isHome && <SplashScreen forceShow />}
-      <Navbar />
+      {!shouldHide && <Navbar />}
       {/* Pas de key={pathname} : il remontait toute la page à chaque clic
           (perte d'état, skeletons et refetch systématiques). Le défilement
           en haut de page est déjà géré par ScrollToTop dans App.tsx. */}
       <main>
         <SuspenseOutlet />
       </main>
-      <Footer />
+      {!shouldHide && <Footer />}
     </div>
   );
 }

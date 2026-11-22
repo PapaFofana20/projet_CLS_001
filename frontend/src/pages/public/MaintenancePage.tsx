@@ -3,7 +3,6 @@
 // écran complet, professionnel et rassurant pour les visiteurs et les écoles.
 import { usePlatformStatus } from "@/context/PlatformContext";
 import { Logo } from "@/components/ui/Brand";
-import { Icon } from "@/components/ui/Icon";
 import { Button, LinkButton } from "@/components/ui/Button";
 import { usePageMeta } from "@/hooks/usePageMeta";
 
@@ -25,18 +24,8 @@ export default function MaintenancePage() {
   return (
     <div className="min-h-screen bg-white flex flex-col items-center justify-center text-center p-6 sm:p-12 lg:p-20">
       {/* Logo Classora en grand, centré */}
-      <div className="mb-8">
+      <div className="mb-12">
         <Logo dark={false} className="h-16 sm:h-20 mx-auto" />
-      </div>
-
-      {/* Icône de maintenance dans un cercle doux */}
-      <div className="mb-8 inline-flex items-center justify-center rounded-full bg-amber-50 p-4 sm:p-6 shadow-sm">
-        <Icon
-          name="engineering"
-          fill
-          className="text-[48px] sm:text-[64px] text-amber-600"
-          aria-hidden="true"
-        />
       </div>
 
       <h1 className="mb-4 text-3xl sm:text-4xl font-extrabold tracking-tight text-ink">
