@@ -36,7 +36,7 @@ export function AboutSection() {
           <Reveal delay={120}>
             <div className="mt-10 grid gap-5 lg:grid-cols-[1fr_260px]">
               <div className="relative rounded-3xl bg-lime p-2 shadow-pop">
-                <img src={images.aboutTeam} alt="L'équipe Classora au service des écoles" className="aspect-[16/10] w-full rounded-[1.25rem] object-cover" loading="lazy" />
+                <img src={images.aboutTeam} alt="L'équipe Classora au service des écoles" className="aspect-[16/10] block w-full max-w-xs sm:max-w-none mx-auto rounded-[1.25rem] object-cover" loading="lazy" />
               </div>
               <div className="grid sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-3 rounded-3xl bg-lime p-2">
                 {aboutStats.map((s, i) => (
