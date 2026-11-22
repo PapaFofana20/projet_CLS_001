@@ -98,8 +98,8 @@ export function AuthLayout({ title, subtitle, children, visualTitle, visualText,
         </div>
       )}
 
-      <div className={showVisual ? "grid min-h-screen bg-white lg:grid-cols-2 relative z-10" : hasImageBackground ? "relative z-10 flex justify-center items-start px-3 py-4 sm:px-6 sm:py-8 lg:max-h-[88vh] lg:overflow-y-auto lg:py-12 lg:items-center" : "min-h-screen relative z-10 flex justify-center"}>
-        <div className={showVisual ? "flex flex-col px-5 py-6 sm:px-10 lg:px-16" : hasImageBackground ? `flex w-full ${wide ? "max-w-7xl" : "max-w-3xl"} flex-col self-start lg:self-center rounded-[28px] border border-forest/10 bg-white/95 px-5 py-6 shadow-soft backdrop-blur-sm sm:px-8 sm:py-8 lg:px-10` : `flex flex-col px-5 py-6 sm:px-10 lg:px-16 w-full ${wide ? "max-w-7xl" : "max-w-3xl"} pt-10`}>
+      <div className={showVisual ? "grid min-h-screen bg-white lg:grid-cols-2 relative z-10" : hasImageBackground ? "min-h-screen relative z-10 flex justify-center items-center px-3 py-4 sm:px-6 sm:py-8" : "min-h-screen relative z-10 flex justify-center"}>
+        <div className={showVisual ? "flex flex-col px-5 py-6 sm:px-10 lg:px-16" : hasImageBackground ? `flex w-full ${wide ? "max-w-7xl" : "max-w-3xl"} flex-col self-center rounded-[28px] border border-forest/10 bg-white/95 px-5 py-6 shadow-soft backdrop-blur-sm sm:px-8 sm:py-8 lg:px-10` : `flex flex-col px-5 py-6 sm:px-10 lg:px-16 w-full ${wide ? "max-w-7xl" : "max-w-3xl"} pt-10`}>
           <div className="flex items-center justify-between">
             <Logo />
             <Link to="/" className="inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-forest">
