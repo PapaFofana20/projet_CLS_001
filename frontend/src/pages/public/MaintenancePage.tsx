@@ -1,9 +1,8 @@
 // Page de maintenance affichée quand l'administrateur active le mode
-// maintenance depuis /admin/parametres. Remplace le simple bandeau par un
-// écran complet, professionnel et rassurant pour les visiteurs et les écoles.
+// maintenance depuis /admin/parametres. Écran complet, professionnel et
+// rassurant pour les visiteurs et les écoles. Sans header ni footer.
 import { usePlatformStatus } from "@/context/PlatformContext";
 import { Logo } from "@/components/ui/Brand";
-import { Button, LinkButton } from "@/components/ui/Button";
 import { usePageMeta } from "@/hooks/usePageMeta";
 
 export default function MaintenancePage() {
@@ -17,23 +16,30 @@ export default function MaintenancePage() {
       "La plateforme Classora est temporairement en maintenance. Revenez bientôt.",
   });
 
-  const retry = () => {
-    window.location.reload();
-  };
-
   return (
-    <div className="min-h-screen bg-white flex flex-col items-center justify-center text-center p-6 sm:p-12 lg:p-20">
+    <div className="min-h-screen bg-white flex flex-col items-center justify-center text-center p-6 sm:p-12 lg:p-20 relative overflow-hidden">
+      {/* Arrière-plan avec pointillés inspiré de la section contact */}
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 opacity-40 [background-image:radial-gradient(#c6f068_1.5px,transparent_1.5px)] [background-size:20px_20px]"
+      />
+      {/* Forme floue décorative en bas pour apporter de la douceur */}
+      <div
+        className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/3 size-[420px] rounded-full bg-lime/40 blur-2xl md:size-[560px]"
+        aria-hidden="true"
+      />
+
       {/* Logo Classora en grand, centré */}
-      <div className="mb-12">
+      <div className="relative z-10 mb-12">
         <Logo dark={false} className="h-16 sm:h-20 mx-auto" />
       </div>
 
-      <h1 className="mb-4 text-3xl sm:text-4xl font-extrabold tracking-tight text-ink">
+      <h1 className="relative z-10 mb-4 text-3xl sm:text-4xl font-extrabold tracking-tight text-ink">
         Maintenance en cours
       </h1>
 
       {/* Message personnalisé défini par l'administrateur, ou message par défaut rassurant */}
-      <p className="mb-6 max-w-xl mx-auto text-lg sm:text-xl text-neutral-600 leading-relaxed">
+      <p className="relative z-10 mb-10 max-w-xl mx-auto text-lg sm:text-xl text-neutral-600 leading-relaxed">
         {status.maintenanceMessage?.trim() || (
           <>
             Nous mettons la plateforme à jour pour vous offrir une meilleure
@@ -43,7 +49,7 @@ export default function MaintenancePage() {
       </p>
 
       {/* Informations de contact rassurantes */}
-      <div className="mb-10 max-w-md mx-auto rounded-2xl bg-forest/5 p-6 sm:p-8 border border-forest/10">
+      <div className="relative z-10 max-w-md mx-auto rounded-2xl bg-forest/5 p-6 sm:p-8 border border-forest/10">
         <p className="mb-3 text-sm font-semibold text-forest">
           Besoin d'aide ?
         </p>
@@ -54,19 +60,6 @@ export default function MaintenancePage() {
           📧 {status.supportEmail || "support@classora.sn"}
           {status.supportPhone ? ` · 📞 ${status.supportPhone}` : ""}
         </p>
-      </div>
-
-      <div className="flex flex-col sm:flex-row items-center gap-3">
-        <Button
-          variant="dark"
-          onClick={retry}
-          className="px-8 py-3 text-sm sm:text-base"
-        >
-          Réessayer
-        </Button>
-        <LinkButton to="/" variant="outline" className="px-8 py-3 text-sm sm:text-base">
-          Retour à l'accueil
-        </LinkButton>
       </div>
     </div>
   );
