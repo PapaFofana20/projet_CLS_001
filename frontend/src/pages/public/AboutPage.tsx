@@ -2,9 +2,8 @@
 import { PageHero } from "@/components/layout/PageHero";
 import { Reveal } from "@/components/ui/Reveal";
 import { pageHeroes } from "@/data/pageHeroes";
-import { aboutValues, aboutStats } from "@/data/landing";
+import { aboutValues } from "@/data/landing";
 import { CtaSection } from "@/features/landing/CtaSection";
-import { Counter } from "@/components/ui/Counter";
 import { usePageMeta } from "@/hooks/usePageMeta";
 
 // Composant principal de la page.
@@ -87,31 +86,33 @@ export default function AboutPage() {
               </h2>
               <div className="mt-8 space-y-4 text-lg leading-relaxed text-white/85">
                 <p>
-                  D'ici 2030, nous imaginons des écoles privées sénégalaises qui consacrent <mark className="rounded bg-lime px-1 font-semibold text-forest">moins de temps à la complexité administrative</mark> et disposent d'<mark className="rounded bg-lime px-1 font-semibold text-forest">outils simples</mark> pour organiser leur quotidien, suivre leurs élèves et coordonner leurs équipes, avec Classora comme <mark className="rounded bg-lime px-1 font-semibold text-forest">système nerveux</mark> centralisant la <mark className="rounded bg-lime px-1 font-semibold text-forest">vie administrative, pédagogique et financière</mark> de l'établissement. Cette plateforme s'adapte à chaque cycle, de l'instituteur titulaire à l'élémentaire aux professeurs spécialisés au secondaire, sans imposer une standardisation excessive, mais en offrant un <mark className="rounded bg-lime px-1 font-semibold text-forest">socle commun fiable</mark> sur lequel chaque école construit sa propre organisation.
+                  D'ici 2030, nous imaginons des écoles privées sénégalaises qui consacrent <span className="font-semibold text-lime">moins de temps à la complexité administrative</span> et disposent d'<span className="font-semibold text-lime">outils simples</span> pour organiser leur quotidien, suivre leurs élèves et coordonner leurs équipes, avec Classora comme <span className="font-semibold text-lime">système nerveux</span> centralisant la <span className="font-semibold text-lime">vie administrative, pédagogique et financière</span> de l'établissement. Cette plateforme s'adapte à chaque cycle, de l'instituteur titulaire à l'élémentaire aux professeurs spécialisés au secondaire, sans imposer une standardisation excessive, mais en offrant un <span className="font-semibold text-lime">socle commun fiable</span> sur lequel chaque école construit sa propre organisation.
                 </p>
                 <p>
-                  Elle transforme aussi la relation aux familles, grâce à des <mark className="rounded bg-lime px-1 font-semibold text-forest">paiements mobiles fluides et sécurisés</mark>, un <mark className="rounded bg-lime px-1 font-semibold text-forest">accès transparent aux bulletins et aux échéances</mark>, et une communication directe avec les enseignants, tout en équipant les directions de <mark className="rounded bg-lime px-1 font-semibold text-forest">tableaux de bord financiers en temps réel</mark>, d'alertes automatiques sur les impayés et de projections de trésorerie, pour faire de la gestion un <mark className="rounded bg-lime px-1 font-semibold text-forest">levier stratégique</mark> plutôt qu'une charge réactive.
+                  Elle transforme aussi la relation aux familles, grâce à des <span className="font-semibold text-lime">paiements mobiles fluides et sécurisés</span>, un <span className="font-semibold text-lime">accès transparent aux bulletins et aux échéances</span>, et une communication directe avec les enseignants, tout en équipant les directions de <span className="font-semibold text-lime">tableaux de bord financiers en temps réel</span>, d'alertes automatiques sur les impayés et de projections de trésorerie, pour faire de la gestion un <span className="font-semibold text-lime">levier stratégique</span> plutôt qu'une charge réactive.
                 </p>
               </div>
             </header>
           </Reveal>
 
           <Reveal delay={200}>
-            <blockquote className="mt-16 text-center">
-              <p className="text-lg font-semibold text-white/90 italic">
-                "<span className="text-lime">2030</span> n'est pas une ligne d'arrivée. C'est une vision qui nous pousse à aller toujours plus loin. Chaque évolution de Classora nous en rapproche."
-              </p>
-            </blockquote>
+            <img
+              src="/images/carte-senegal-connectee.webp"
+              alt="Carte du Sénégal en 3D : les établissements scolaires connectés au réseau Classora"
+              width={1672}
+              height={941}
+              loading="lazy"
+              decoding="async"
+              className="mx-auto mt-12 block h-auto w-full max-w-4xl"
+            />
           </Reveal>
 
           <Reveal delay={300}>
-            <div className="mt-12 grid sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {aboutStats.map((stat, i) => (
-                <Reveal key={stat.label} delay={i * 100}>
-                  <Counter value={stat.value} label={stat.label} delay={i * 200} />
-                </Reveal>
-              ))}
-            </div>
+            <blockquote className="mx-auto mt-10 max-w-4xl text-center">
+              <p className="text-xl font-semibold leading-relaxed text-white/90 italic sm:text-2xl">
+                "<span className="text-lime">2030</span> n'est pas une ligne d'arrivée. C'est une vision qui nous pousse à aller toujours plus loin. Chaque évolution de Classora nous en rapproche."
+              </p>
+            </blockquote>
           </Reveal>
         </div>
       </section>

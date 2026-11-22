@@ -9,6 +9,7 @@ const hero4Img = "/images/hero-4.webp";
 const hero5Img = "/images/hero-5.webp";
 const hero6Img = "/images/hero-6.webp";
 const aboutImg = "/images/about-home.webp";
+const aboutNumeriqueImg = "/images/about-numerique.webp";
 const authImg = "/images/auth.webp";
 // Fond des pages d'authentification : AVIF (98 Ko) pour les navigateurs
 // modernes, WebP (135 Ko) en repli. L'ancien SVG pesait 6,6 Mo.
@@ -22,6 +23,7 @@ const enseignantsImg = "/images/feature-enseignants.webp";
 export const images = {
   hero: heroImg,
   about: aboutImg,
+  aboutTeam: aboutNumeriqueImg,
   auth: authImg,
   authBackground: authBackgroundImg,
   authBackgroundFallback: authBackgroundFallbackImg,
@@ -33,7 +35,7 @@ export interface HeroSlide {
 }
 
 export const heroSlides: HeroSlide[] = [
-  { src: hero1Img, alt: "Élève consultant son téléphone dans une salle de classe au Sénégal" },
+  { src: hero1Img, alt: "Tout ce qu'il faut pour piloter votre école" },
   { src: hero2Img, alt: "Deux enseignants souriants devant un ordinateur portable dans une salle de classe" },
   { src: hero3Img, alt: "Deux membres de l'équipe Classora dans un couloir d'école" },
   { src: hero4Img, alt: "Quatre élèves travaillant sur des ordinateurs à la bibliothèque" },

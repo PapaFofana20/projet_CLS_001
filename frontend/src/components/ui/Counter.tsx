@@ -146,7 +146,7 @@ export function Counter({
       <p
         ref={valueRef}
         className={cn(
-          "text-4xl font-extrabold tabular-nums tracking-tight sm:text-5xl",
+          "text-4xl font-extrabold tabular-nums tracking-tight leading-none sm:text-5xl sm:leading-none",
           valueClassName,
         )}
       >
