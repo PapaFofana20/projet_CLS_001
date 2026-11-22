@@ -12,6 +12,7 @@ import { SchoolProvider } from "@/context/SchoolContext";
 import { ToastProvider } from "@/context/ToastContext";
 import { MustChangePasswordGuard, ProtectedRoute, PublicOnlyRoute, RoleRoute, ScrollToTop, SubscriptionGuard } from "@/routes/guards";
 import { AdminProtectedRoute, adminGuard } from "@/routes/adminGuards";
+import { MaintenanceGuard } from "@/routes/MaintenanceGuard";
 import { ROUTE_ROLES } from "@/routes/navigation";
 
 const HomePage = lazy(() => import("@/pages/public/HomePage"));
@@ -32,6 +33,7 @@ const ForgotPasswordPage = lazy(() => import("@/pages/auth/ForgotPasswordPage"))
 const ResetPasswordPage = lazy(() => import("@/pages/auth/ResetPasswordPage"));
 const ChangePasswordPage = lazy(() => import("@/pages/auth/ChangePasswordPage"));
 const AdminLoginPage = lazy(() => import("@/pages/auth/AdminLoginPage"));
+const MaintenancePage = lazy(() => import("@/pages/public/MaintenancePage"));
 const DashboardPage = lazy(() => import("@/pages/app/DashboardPage"));
 const StudentsPage = lazy(() => import("@/pages/app/StudentsPage"));
 const StudentDetailPage = lazy(() => import("@/pages/app/StudentDetailPage"));
@@ -101,17 +103,21 @@ export default function App() {
               <Routes>
             {/* PARTIE 1 : site public */}
             <Route element={<PublicLayout />}>
-              <Route index element={<HomePage />} />
-              <Route path="fonctionnalites" element={<FeaturesPage />} />
-              <Route path="tarifs" element={<PricingPage />} />
-              <Route path="ecoles" element={<SchoolsPage />} />
-              <Route path="a-propos" element={<AboutPage />} />
-              <Route path="contact" element={<ContactPage />} />
-              <Route path="cgu" element={<TermsPage />} />
-              <Route path="confidentialite" element={<PrivacyPage />} />
-              {/* 404 réelle (contenu + noindex) au lieu d'une redirection vers
-                  l'accueil, qui fabriquait des « soft 404 ». */}
-              <Route path="*" element={<NotFoundPage />} />
+              <Route element={<MaintenanceGuard />}>
+                <Route index element={<HomePage />} />
+                <Route path="fonctionnalites" element={<FeaturesPage />} />
+                <Route path="tarifs" element={<PricingPage />} />
+                <Route path="ecoles" element={<SchoolsPage />} />
+                <Route path="a-propos" element={<AboutPage />} />
+                <Route path="contact" element={<ContactPage />} />
+                <Route path="cgu" element={<TermsPage />} />
+                <Route path="confidentialite" element={<PrivacyPage />} />
+                {/* Page de maintenance affichée quand l'admin active le mode maintenance. */}
+                <Route path="maintenance" element={<MaintenancePage />} />
+                {/* 404 réelle (contenu + noindex) au lieu d'une redirection vers
+                    l'accueil, qui fabriquait des « soft 404 ». */}
+                <Route path="*" element={<NotFoundPage />} />
+              </Route>
             </Route>
 
             {/* PARTIE 2 : authentification scolaire (pas de session requise)} */}
@@ -157,8 +163,9 @@ export default function App() {
             {/* PARTIE 4 : tableau de bord scolaire protégé */}
             <Route path="app" element={<SchoolAuthWrapper />}>
               <Route element={<ProtectedRoute />}>
-                <Route element={<MustChangePasswordGuard />}>
-                  <Route path="mot-de-passe-temporaire" element={<ChangePasswordPage />} />
+                <Route element={<MaintenanceGuard />}>
+                  <Route element={<MustChangePasswordGuard />}>
+                    <Route path="mot-de-passe-temporaire" element={<ChangePasswordPage />} />
                   {/* Verrou d'abonnement (écoles bloquées/sans abonnement) :
                       il était défini mais jamais monté — les écrans dédiés
                       de SubscriptionScreens étaient du code mort. */}
@@ -188,6 +195,7 @@ export default function App() {
                   </Route>
                 </Route>
                 </Route>
+              </Route>
             </Route>
             {/* Le 404 racine est géré dans PublicLayout (catch-all ci-dessus). */}
             </Routes>

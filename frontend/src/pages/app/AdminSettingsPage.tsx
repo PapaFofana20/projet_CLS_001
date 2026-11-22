@@ -317,7 +317,7 @@ function SettingsForm({
             <Switch
               id="maintenance-mode"
               label="Mode maintenance"
-              description="Affiche un bandeau aux écoles connectées et ferme aussi les inscriptions. La console admin reste accessible."
+              description="Bloque l'accès à toute la plateforme pour les écoles, les familles et les visiteurs : une page de maintenance professionnelle s'affiche à la place (logo Classora + votre message personnalisé). La console admin reste accessible pour désactiver le mode maintenance."
               checked={draft.maintenanceMode}
               onChange={(value) => update("maintenanceMode", value)}
               disabled={locked}
