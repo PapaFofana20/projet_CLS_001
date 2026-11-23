@@ -15,7 +15,7 @@ export function FeaturesCarousel() {
           <h2 id="features-title" className="max-w-2xl text-3xl font-extrabold leading-tight tracking-tight sm:text-5xl">
             Tout ce qu'il faut pour <span className="text-forest-500">piloter</span> votre école.
           </h2>
-          <div className="mt-10 -mx-gutter overflow-hidden sm:mx-auto sm:max-w-4xl">
+          <div className="mt-10 sm:mx-auto sm:max-w-4xl">
             <img
               src={dashboardImg}
               alt="Tableau de bord Classora affiché sur un ordinateur portable"
@@ -23,7 +23,7 @@ export function FeaturesCarousel() {
               height={941}
               loading="lazy"
               decoding="async"
-              className="relative left-1/2 w-[125%] max-w-none -translate-x-1/2 sm:static sm:w-full sm:translate-x-0"
+              className="w-full"
             />
           </div>
         </Reveal>
@@ -34,7 +34,7 @@ export function FeaturesCarousel() {
         aria-label="Liste des fonctionnalités"
       >
         {features.map((f) => (
-          <Link key={f.id} to="/fonctionnalites" className="group relative aspect-[3/4] max-w-[280px] shrink-0 snap-start overflow-hidden rounded-3xl bg-forest sm:max-w-[320px]">
+          <Link key={f.id} to="/fonctionnalites" className="group relative aspect-[3/4] w-[280px] shrink-0 snap-start overflow-hidden rounded-3xl bg-forest sm:w-[320px]">
             <img src={f.image} alt={`Illustration : ${f.title}`} loading="lazy" decoding="async" className="absolute inset-0 size-full object-cover transition-transform duration-700 group-hover:scale-110" />
             <div className="absolute inset-0 bg-gradient-to-t from-forest via-forest/50 to-transparent" aria-hidden="true" />
             <div className="absolute inset-x-0 bottom-0 p-6 text-white">

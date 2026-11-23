@@ -103,7 +103,7 @@ export default function AboutPage() {
               height={941}
               loading="lazy"
               decoding="async"
-              className="mx-auto mt-12 block h-auto w-full max-w-4xl"
+              className="mt-12 block h-auto w-[calc(100%+8rem)] max-w-none -mx-12 sm:mx-auto sm:w-full sm:max-w-4xl"
             />
           </Reveal>
 
