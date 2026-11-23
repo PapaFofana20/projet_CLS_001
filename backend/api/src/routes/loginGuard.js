@@ -33,9 +33,10 @@ export default route(async (req, res) => {
       throw new Error("Impossible de vérifier le compte.");
     }
     if (!profile) {
-      // Séparation stricte des espaces : un agent Classora (admin_agents)
-      // n'a pas de profil scolaire — message dédié plutôt que « identifiants
-      // incorrects », et refus garanti de l'espace école.
+      // Aucun profil scolaire : l'appelant peut être un agent admin_agents
+      // (espace admin) ou un inconnu. On fait toujours la vérification
+      // admin_agents (pour l'audit) mais on renvoie UN MESSAGE UNIQUE — jamais
+      // de différenciation qui permettrait l'énumération d'emails.
       const { data: adminAgent } = await svc
         .from("admin_agents")
         .select("id")
@@ -50,9 +51,6 @@ export default route(async (req, res) => {
           entity: "admin_agents",
           entityId: user.id,
         });
-        return ok(res, {
-          error: "Les agents Classora se connectent sur la console d'administration (/admin/connexion).",
-        }, 403);
       }
       return unauthorized(res, "E-mail ou mot de passe incorrect.");
     }

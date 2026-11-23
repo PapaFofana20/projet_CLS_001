@@ -313,7 +313,13 @@ function mapAbsence(r: any): AbsenceRecord {
 }
 
 const HYDRATION_PAGE_SIZE = 500;
-const HYDRATION_MAX_ROWS = 100_000;
+/**
+ * Seuil de sécurité : au-delà de 20 000 lignes pour une seule table,
+ * l'hydratation est interrompue pour éviter de saturer la mémoire du
+ * navigateur (grosse école, onglet figé). L'alerte remonte via
+ * hydrationFailures et le bandeau « Réessayer ».
+ */
+const HYDRATION_MAX_ROWS = 20_000;
 
 /** Échecs d'hydratation depuis la dernière réussite (table → message d'erreur).
  *  Exposés au bandeau HydrationBanner : l'utilisateur ne doit jamais voir des

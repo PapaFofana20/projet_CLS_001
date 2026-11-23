@@ -45,13 +45,29 @@ export async function getAuthenticatedUser(svc, req) {
  * Best-effort : un échec ne bloque jamais l'opération métier, mais il est
  * journalisé (la RLS is_active_user() reste la barrière de fond).
  */
-export async function revokeUserSessions(svc, userId) {
-  try {
-    const { error } = await svc.rpc("admin_revoke_user_sessions", { p_user_id: userId });
-    if (error) console.warn("[revoke-sessions]", error.message ?? error);
-  } catch (e) {
-    console.warn("[revoke-sessions]", e?.message ?? e);
+/**
+ * Révoque les sessions (refresh tokens) d'un utilisateur via la RPC
+ * admin_revoke_user_sessions (migration 00043), réservée au service_role.
+ * Retry exponentiel (3 tentatives) en cas de blip réseau : une révocation
+ * ratée laisserait des refresh tokens valides après un changement de mot de
+ * passe ou une désactivation de compte.
+ */
+export async function revokeUserSessions(svc, userId, maxRetries = 3) {
+  let lastError;
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const { error } = await svc.rpc("admin_revoke_user_sessions", { p_user_id: userId });
+      if (!error) return;
+      lastError = new Error(error.message ?? error);
+    } catch (e) {
+      lastError = e instanceof Error ? e : new Error(String(e));
+    }
+    if (attempt < maxRetries) {
+      // Backoff exponentiel : 200ms, 400ms, 800ms.
+      await new Promise((resolve) => setTimeout(resolve, 200 * 2 ** (attempt - 1)));
+    }
   }
+  console.warn("[revoke-sessions]", lastError?.message ?? lastError);
 }
 
 /** Profil de l'appelant (JWT vérifié + ligne profiles). Entrée : svc, req. Sortie : profil normalisé ou null. */

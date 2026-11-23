@@ -75,7 +75,16 @@ export function getRequiredPlanLabel(feature: FeatureKey): string {
 
 /**
  * Vérifie et lève une erreur si la fonctionnalité n'est pas disponible.
- * À utiliser dans les actions critiques (création de compte staff, etc.)
+ *
+ * ⚠️  SÉCURITÉ : cette vérification est UNIQUEMENT destinée à l'UX (masquer
+ * / désactiver des boutons côté client). Elle ne constitue JAMAIS une
+ * barrière de sécurité : un utilisateur malveillant peut contourner le JS
+ * côté navigateur. La vérification AUTHORITATIVE doit toujours être faite
+ * côté backend (ex. createStaffAccount vérifie schoolIsWritable + plan via
+ * RPC server-side).
+ *
+ * À utiliser dans les actions critiques côté client pour afficher un message
+ * d'erreur avant l'appel API ; le backend reste la source de vérité.
  */
 export function requireFeature(feature: FeatureKey, schoolId: string): void {
   const has = hasFeature(feature, schoolId);

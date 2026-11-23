@@ -21,6 +21,9 @@ export default defineConfig({
   build: {
     // Cibles navigateurs modernes : moins de code de compatibilité à parser.
     target: "es2020",
+    // Sourcemaps désactivées en production : ne pas exposer le code source
+    // original (noms de fonctions, chemins de fichiers) aux navigateurs clients.
+    sourcemap: false,
     // Le JavaScript n'est plus inliné dans index.html : chaque page garde son
     // propre chunk, chargé à la demande et mis en cache séparément. L'ancien
     // build "singlefile" produisait un index.html de ~1,7 Mo à re-télécharger

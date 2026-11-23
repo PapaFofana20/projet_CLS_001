@@ -25,7 +25,12 @@ export function clientIp(req) {
   const real = typeof req.headers["x-real-ip"] === "string" ? req.headers["x-real-ip"].trim() : null;
   if (real) return real;
   const sock = req?.socket?.remoteAddress;
-  return typeof sock === "string" && sock.trim() ? sock.trim() : null;
+  if (typeof sock === "string" && sock.trim()) return sock.trim();
+  // Développement local : pas de proxy Render, l'IP est souvent ::1 ou 127.0.0.1.
+  // Tous les développeurs partageant la même clé briserait le rate limiting.
+  // On génère une clé stable par session (stockée sur l'objet req au premier appel).
+  if (!req.ipDevFallback) req.ipDevFallback = `dev:${crypto.randomUUID()}`;
+  return req.ipDevFallback;
 }
 
 /** Lève une erreur métier si la limite est atteinte pour (key) sur la fenêtre. */

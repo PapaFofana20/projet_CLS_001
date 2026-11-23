@@ -14,8 +14,13 @@ export default route(async (req, res) => {
   // (historique navigateur, logs d'accès, Referer).
   if (req.method !== "POST") return methodNotAllowed(res);
   const svc = serviceClient();
+  const ip = clientIp(req) ?? "sans-adresse";
   try {
-    await enforceRateLimit(svc, `verify-matricule:${clientIp(req) ?? "sans-adresse"}`, 20, 600);
+    // Rate limit GLOBAL par IP (tous matricules confondus) : empêche un
+    // attaquant de faire tourner 20 requêtes/matricule × N matricules depuis
+    // la même IP. Seuil 60 req/10min par IP.
+    await enforceRateLimit(svc, `verify-matricule:global:${ip}`, 60, 600);
+    await enforceRateLimit(svc, `verify-matricule:${ip}`, 20, 600);
 
     const raw = req.body?.matricule ?? null;
     if (typeof raw !== "string" || raw.trim() === "") {

@@ -135,27 +135,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [user],
   );
 
-  /** Recharge la session (après un changement de mot de passe ou une décision de la direction). */
+  /** Recharge la session (après un changement de mot de passe ou une décision de la direction).
+   *  Re-synchronise aussi schoolId et notifie les écrans dépendants (SchoolContext). */
   const refresh = useCallback(async () => {
     const stored = await authService.currentSession();
-    if (stored) setUser(stored);
+    if (stored) {
+      setUser(stored);
+      // Notifier le SchoolProvider et tous les abonnés que l'école de la session a changé.
+      window.dispatchEvent(new CustomEvent("school:reload"));
+    }
   }, []);
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
     authService.logout();
     // D'abord l'état React (déconnexion + navigation se peignent sans attendre),
-    // puis le vidage du cache, différé après le rendu : vider les 18 tables de
-    // façon synchrone dans le même geste bloquait le thread principal et
-    // provoquait un « lag » visible à chaque déconnexion.
+    // puis le vidage du cache. On attend la fin du vidage avant de naviguer
+    // pour éviter une race condition où l'onglet lirait des données résiduelles
+    // de l'ancien compte après une navigation immédiate.
     setJustLoggedOut(true);
     setUser(null);
     setHasSession(false);
-    // On vide le cache sans re-télécharger : resetDatabase() relançait une
-    // hydratation complète JUSTE après la déconnexion (appels RLS refusés) ;
-    // le prochain currentSession() rechargera ce qui est nécessaire.
-    window.setTimeout(() => {
-      void clearCache();
-    }, 0);
+    await clearCache();
   }, []);
 
   const value = useMemo(
