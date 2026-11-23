@@ -27,10 +27,12 @@ export function clientIp(req) {
   const sock = req?.socket?.remoteAddress;
   if (typeof sock === "string" && sock.trim()) return sock.trim();
   // Développement local : pas de proxy Render, l'IP est souvent ::1 ou 127.0.0.1.
-  // Tous les développeurs partageant la même clé briserait le rate limiting.
-  // On génère une clé stable par session (stockée sur l'objet req au premier appel).
-  if (!req.ipDevFallback) req.ipDevFallback = `dev:${crypto.randomUUID()}`;
-  return req.ipDevFallback;
+  // On utilise l'adresse socket (stable pour une machine donnée) plutôt qu'un
+  // UUID aléatoire par requête, sinon le rate limiting serait totalement
+  // inefficace en développement (chaque requête aurait une clé différente).
+  // Dernier recours : localhost générique (tous les devs partagent la même clé,
+  // ce qui est acceptable en local car non exposé sur Internet).
+  return "dev:localhost";
 }
 
 /** Lève une erreur métier si la limite est atteinte pour (key) sur la fenêtre. */

@@ -19,47 +19,30 @@ import { createPreAuthSession } from "../lib/mfa-sessions.js";
 const MATRICULE_RE = /^CLA-ADM-\d{6}$/;
 const GENERIC_ERROR = "Matricule/e-mail ou mot de passe incorrect.";
 
-/** Verrouillage progressif en mémoire : compteur d'échecs consécutifs par
- * identifiant. Après 3 échecs, le compte est verrouillé 15 minutes.
- * Réinitialisé à la première réussite. Pas de persistance (perdu au redémarrage),
- * mais suffit à freiner un bruteforce ciblé sans dépendance DB supplémentaire.
+/** Verrouillage progressif persistant : compteur d'échecs consécutifs par
+ * identifiant, stocké dans la table public.rate_limits via la RPC atomique
+ * sys_rate_limit (service_role uniquement). Survit aux redémarrages du
+ * processus (contrairement à une Map en mémoire).
+ * Après 3 échecs consécutifs, le compte est verrouillé 15 minutes.
+ * La fenêtre expire naturellement ; aucun reset manuel n'est requis après
+ * une réussite (la clé rate_limits est laissée en l'état, expiration au
+ * bout de 15 min).
  */
-const LOGIN_FAILURES = new Map();
-const LOCKOUT_WINDOW_MS = 15 * 60_000; // 15 minutes
-const MAX_FAILURES = 3;
+const LOCKOUT_MAX_FAILURES = 3;
+const LOCKOUT_WINDOW_SECONDS = 15 * 60; // 15 minutes
 
-/** Vrai si l'identifiant a dépassé le seuil d'échecs dans la fenêtre de verrouillage. */
-function isLockedOut(identifier) {
-  const entry = LOGIN_FAILURES.get(identifier);
-  if (!entry) return false;
-  if (entry.failures < MAX_FAILURES) return false;
-  if (Date.now() - entry.lastFailureAt > LOCKOUT_WINDOW_MS) {
-    LOGIN_FAILURES.delete(identifier);
-    return false;
-  }
-  return true;
-}
-
-/** Incrémente le compteur d'échecs de connexion pour cet identifiant. */
-function recordFailure(identifier) {
-  const entry = LOGIN_FAILURES.get(identifier) || { failures: 0, lastFailureAt: 0 };
-  entry.failures += 1;
-  entry.lastFailureAt = Date.now();
-  LOGIN_FAILURES.set(identifier, entry);
-  // Borne mémoire : un attaquant ne doit pas pouvoir remplir la Map avec
-  // des identifiants aléatoires (DoS mémoire). Au-delà de 10 000 entrées,
-  // purge des entrées expirées.
-  if (LOGIN_FAILURES.size > 10_000) {
-    const now = Date.now();
-    for (const [k, v] of LOGIN_FAILURES.entries()) {
-      if (now - v.lastFailureAt > LOCKOUT_WINDOW_MS) LOGIN_FAILURES.delete(k);
-    }
-  }
-}
-
-/** Efface le compteur d'échecs après une connexion réussie. */
-function clearFailures(identifier) {
-  LOGIN_FAILURES.delete(identifier);
+/** Vérifie si l'identifiant est verrouillé (3 échecs consécutifs dans la fenêtre).
+ * Appelle sys_rate_limit qui incrémente atomiquement le compteur.
+ * Retourne true si verrouillé, false sinon.
+ */
+async function isLockedOut(svc, identifier) {
+  const { data, error } = await svc.rpc("sys_rate_limit", {
+    p_key: `admin-login:lockout:${identifier}`,
+    p_max: LOCKOUT_MAX_FAILURES,
+    p_window_secs: LOCKOUT_WINDOW_SECONDS,
+  });
+  if (error) return false; // en cas de panne DB, on ne bloque pas (fail-open pour le verrouillage)
+  return data === false;
 }
 
 /** Vérifie (email, password) directement auprès de Supabase Auth. */
@@ -94,8 +77,9 @@ export default route(async (req, res) => {
     await enforceRateLimit(svc, `admin-login:ip:${clientIp(req) ?? "sans-adresse"}`, 20, 300);
     await enforceRateLimit(svc, `admin-login:id:${value}`, 10, 300);
 
-    // Verrouillage progressif après échecs consécutifs (H-03 de l'audit).
-    if (isLockedOut(value)) {
+    // Verrouillage progressif persistant après échecs consécutifs (H-03 de l'audit).
+    // sys_rate_limit incrémente atomiquement le compteur à chaque appel.
+    if (await isLockedOut(svc, value)) {
       return ok(res, { error: "Compte temporairement verrouillé. Réessayez dans 15 minutes." }, 429);
     }
 
@@ -112,7 +96,7 @@ export default route(async (req, res) => {
     }
 
     if (!(await passwordIsValid(agent.email, password))) {
-      recordFailure(value);
+      // L'appel à isLockedOut ci-dessus a déjà incrémenté le compteur via sys_rate_limit.
       await auditAdmin(svc, {
         actorId: agent.auth_user_id,
         actorRole: agent.role,
@@ -147,8 +131,8 @@ export default route(async (req, res) => {
       payload: { matricule: agent.matricule },
     });
 
-    // Connexion réussie : on efface le compteur d'échecs.
-    clearFailures(value);
+    // Connexion réussie : le compteur de verrouillage expire naturellement
+    // au bout de 15 minutes (pas de reset immédiat nécessaire).
 
     // Si le MFA est activé, on ne retourne pas encore l'email : il faut
     // d'abord valider le second facteur via POST /admin/mfa/verify.

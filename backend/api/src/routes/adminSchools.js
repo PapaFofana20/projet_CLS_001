@@ -260,12 +260,19 @@ export default route(async (req, res) => {
 
       const authUserIds = purge.auth_user_ids ?? [];
 
-      // Suppression des comptes Auth devenus orphelins (best-effort : les
-      // données sont déjà supprimées, un échec ne fait pas échouer l'opération).
+      // Suppression des comptes Auth devenus orphelins. Chaque échec est
+      // journalisé : les données scolaires sont déjà supprimées, mais un
+      // compte Auth résiduel resterait théoriquement utilisable.
       let authUsersRemoved = 0;
+      const authDeleteErrors = [];
       for (const userId of authUserIds) {
         const { error: userDeleteError } = await svc.auth.admin.deleteUser(userId);
-        if (!userDeleteError) authUsersRemoved += 1;
+        if (userDeleteError) {
+          authDeleteErrors.push(`Échec suppression Auth ${userId}: ${userDeleteError.message}`);
+          logError("admin-schools:delete-auth", userDeleteError);
+        } else {
+          authUsersRemoved += 1;
+        }
       }
 
       await auditAdmin(svc, {

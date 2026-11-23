@@ -9,7 +9,7 @@
  * Limité en débit par compte appelant.
  */
 
-import { audit, isStaffRole, requireDirecteur, schoolIsWritable, serviceClient } from "../lib/auth.js";
+import { audit, isStaffRole, requireDirecteur, revokeUserSessions, schoolIsWritable, serviceClient } from "../lib/auth.js";
 import { badRequest, forbidden, notFound, ok, route, serverError, RATE_LIMIT_RE, logError } from "../lib/http.js";
 import { enforceRateLimit } from "../lib/rateLimit.js";
 import { expectObject, requireUuid, ValidationError } from "../lib/validate.js";
@@ -51,6 +51,11 @@ export default route(async (req, res) => {
     if (userId === caller.id) {
       return badRequest(res, "Vous ne pouvez pas supprimer votre propre compte.");
     }
+
+    // Révoquer les sessions existantes (refresh tokens) avant suppression
+    // pour que l'utilisateur ne puisse pas rester connecté avec un token
+    // encore valide après la suppression de son compte.
+    await revokeUserSessions(svc, userId);
 
     const { error: deleteError } = await svc.auth.admin.deleteUser(userId);
     if (deleteError) return serverError(res);

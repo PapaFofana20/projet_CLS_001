@@ -10,13 +10,18 @@
 
 import { audit, getAuthenticatedUser, serviceClient } from "../lib/auth.js";
 import { methodNotAllowed, ok, route, serverError, unauthorized, RATE_LIMIT_RE, logError } from "../lib/http.js";
-import { enforceRateLimit } from "../lib/rateLimit.js";
+import { enforceRateLimit, clientIp } from "../lib/rateLimit.js";
 
 // Handler principal : POST /login-guard — vérifie le statut du compte après connexion.
 export default route(async (req, res) => {
   if (req.method !== "POST") return methodNotAllowed(res);
   const svc = serviceClient();
   try {
+    // Rate limit par adresse IP AVANT toute vérification d'authentification.
+    // Empêche le bruteforce ciblé sur des tokens volés ou des scans de sessions.
+    const ip = clientIp(req) ?? "sans-adresse";
+    await enforceRateLimit(svc, `login-guard:ip:${ip}`, 30, 300);
+
     const user = await getAuthenticatedUser(svc, req);
     if (!user) return unauthorized(res);
 

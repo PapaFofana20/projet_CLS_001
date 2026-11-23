@@ -63,11 +63,12 @@ export default route(async (req, res) => {
     // les refresh tokens existants (l'ancienne session ne prolonge plus rien).
     await revokeUserSessions(svc, userId);
 
-    // Le mot de passe vient du directeur (saisi côté client) : pas besoin de
-    // forcer un changement à la prochaine connexion.
+    // Le mot de passe vient du directeur (saisi côté client) : le compte
+    // repasse en « changement de mot de passe obligatoire » à sa prochaine
+    // connexion, afin que l'utilisateur s'approprie son propre secret.
     const { error: flagError } = await svc
       .from("profiles")
-      .update({ must_change_password: false })
+      .update({ must_change_password: true })
       .eq("id", userId);
     if (flagError) {
       logError("reset-staff-password", flagError);

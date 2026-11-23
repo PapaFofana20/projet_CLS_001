@@ -13,7 +13,10 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    persistSession: true,
+    // persistSession: false empêche le stockage du JWT et du refresh_token
+    // dans localStorage (vol total en cas de XSS). La session reste en
+    // mémoire uniquement pour l'onglet courant.
+    persistSession: false,
     autoRefreshToken: true,
     detectSessionInUrl: true,
     // PKCE : le code d'autorisation transite par l'URL (jamais le token en

@@ -8,8 +8,10 @@ import { ok, route, RATE_LIMIT_RE } from "../lib/http.js";
 import { DEFAULT_PLATFORM_SETTINGS, publicPlatformStatus, readPlatformSettings } from "../lib/platformSettings.js";
 import { clientIp, enforceRateLimit } from "../lib/rateLimit.js";
 
-// Cache mémoire partagé par les requêtes de ce processus (TTL 30 s).
-const CACHE_TTL_MS = 30_000;
+// Cache mémoire partagé par les requêtes de ce processus (TTL 5 s).
+// Un TTL court limite le risque de servir des valeurs périmées après un
+// changement de maintenance ou d'inscription côté base.
+const CACHE_TTL_MS = 5_000;
 let cache = null;
 
 // Handler principal : GET /platform-status — état public de la plateforme (maintenance, inscriptions).

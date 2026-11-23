@@ -114,7 +114,7 @@ app.use((req, res, next) => {
 // Sonde Render (keep-alive / déploiement) et état de configuration.
 // Route : GET /healthz — indique si l'API et la configuration Supabase sont prêtes.
 app.get("/healthz", (_req, res) => {
-  res.json({ ok: true, service: "scolia-api", supabaseConfigured: Boolean(SUPABASE_URL && SERVICE_KEY) });
+  res.json({ ok: true, service: "scolia-api" });
 });
 
 // Routes 1-à-1 avec les anciennes Edge Functions (contrat inchangé). Les

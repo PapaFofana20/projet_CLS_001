@@ -26,9 +26,15 @@ export default route(async (req, res) => {
     if (typeof raw !== "string" || raw.trim() === "") {
       return ok(res, { error: "Saisissez le matricule communiqué par votre école." }, 400);
     }
-    // Normalisation identique au rate-limit et aux routes register* :
-    // trim + majuscules + borne de longueur (anti-balayage).
-    const matricule = raw.trim().toUpperCase().slice(0, 20);
+    // Normalisation identique au frontend (schoolService.verifyMatricule) :
+    // trim + majuscules + suppression espaces/tirets + rejet des caractères
+    // ambigus (0/O/1/I) + borne de longueur (anti-balayage).
+    const matricule = raw
+      .trim()
+      .toUpperCase()
+      .replace(/[\s-]/g, "")
+      .replace(/[01OI]/g, "")
+      .slice(0, 20);
     await enforceRateLimit(svc, `verify-matricule:id:${matricule}`, 10, 600);
 
     const { data: result, error } = await svc.rpc("verify_matricule", { p_matricule: matricule });

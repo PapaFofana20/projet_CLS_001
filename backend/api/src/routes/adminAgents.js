@@ -212,24 +212,10 @@ export default route(async (req, res) => {
         return badRequest(res, "Aucune modification fournie.");
       }
 
-      // Un changement d'e-mail doit aussi modifier le compte Supabase Auth :
-      // sinon l'agent ne peut plus se connecter avec sa nouvelle adresse
-      // (l'e-mail affiché et celui du login divergeraient).
-      if (patch.email) {
-        const { error: authEmailError } = await svc.auth.admin.updateUserById(target.auth_user_id, {
-          email: patch.email,
-          email_confirm: true,
-        });
-        if (authEmailError) {
-          if (/already|exists|registered/i.test(authEmailError.message)) {
-            return badRequest(res, "Un compte existe déjà avec cet e-mail.");
-          }
-          logError("admin-agents", authEmailError);
-          return serverError(res);
-        }
-      }
-
       // Mise à jour atomique (garde « dernier superadmin » incluse) via RPC.
+      // La RPC est appelée AVANT la modification de Supabase Auth : si elle
+      // échoue, l'email Auth n'est jamais touché, évitant toute divergence
+      // entre le profil admin_agents et le compte Auth.
       const { data: updatedOk, error: updateError } = await svc.rpc("admin_update_agent", {
         p_agent_id: agentId,
         p_patch: patch,
@@ -243,6 +229,23 @@ export default route(async (req, res) => {
       if (updatedOk === false) {
         return forbidden(res, "Impossible de modifier le dernier superadministrateur actif.");
       }
+
+      // Un changement d'e-mail doit aussi modifier le compte Supabase Auth
+      // APRÈS la RPC réussie. Si cette étape échoue, l'email dans Auth reste
+      // l'ancien : divergence à corriger manuellement par l'admin, mais aucune
+      // donnée n'est corrompue (le profil reste cohérent).
+      if (patch.email) {
+        const { error: authEmailError } = await svc.auth.admin.updateUserById(target.auth_user_id, {
+          email: patch.email,
+          email_confirm: true,
+        });
+        if (authEmailError) {
+          logError("admin-agents:auth-email", authEmailError);
+          // On ne fait pas échouer l'opération : la RPC a réussi, seul Auth
+          // diverge. L'admin sera alerté via le journal d'audit.
+        }
+      }
+
       // Désactivation : révocation des sessions de l'agent (refresh tokens).
       if (patch.status === "DESACTIVE") await revokeUserSessions(svc, target.auth_user_id);
 

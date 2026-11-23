@@ -110,7 +110,12 @@ export function generateTOTPCode(secret, now = Date.now()) {
 
 /** Vérifie un code TOTP avec une fenêtre de tolérance (fenêtre ±1 step).
  * Anti-replay : chaque pas de temps accepté est mémorisé ; un même code ne
- * peut pas être réutilisé dans sa fenêtre de validité (90 s). */
+ * peut pas être réutilisé dans sa fenêtre de validité (90 s).
+ *
+ * Le nettoyage de USED_STEPS est déclenché à chaque vérification réussie
+ * (et non seulement au-delà de 10 000 entrées), évitant qu'une attaque par
+ * nombreux codes différents ne fasse croître la map sans borne efficace.
+ */
 const USED_STEPS = new Map(); // clé `${secret}` -> dernier step consommé
 export function verifyTOTPCode(secret, token, now = Date.now()) {
   if (typeof token !== "string" || !/^\d{6}$/.test(token)) return false;
@@ -122,10 +127,11 @@ export function verifyTOTPCode(secret, token, now = Date.now()) {
       const lastUsed = USED_STEPS.get(secret) ?? -Infinity;
       if (step <= lastUsed) return false; // déjà consommé : replay
       USED_STEPS.set(secret, step);
-      if (USED_STEPS.size > 10_000) {
-        for (const [k, v] of USED_STEPS.entries()) {
-          if (v < currentStep - TOTP_WINDOW - 1) USED_STEPS.delete(k);
-        }
+      // Nettoyage incrémental : supprime les entrées trop anciennes pour
+      // éviter la croissance illimitée de la map en cas d'attaque.
+      const cutoff = currentStep - TOTP_WINDOW - 1;
+      for (const [k, v] of USED_STEPS.entries()) {
+        if (v < cutoff) USED_STEPS.delete(k);
       }
       return true;
     }
