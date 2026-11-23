@@ -4,6 +4,7 @@ import type { Plan, School, SchoolSettings, SubscriptionStatus } from "@/types";
 import { useAsync } from "@/hooks/useAsync";
 import { getSchoolOverview } from "@/services/schoolService";
 import { getStatus } from "@/services/subscriptionService";
+import { subscribeToAnnouncements, unsubscribe } from "@/lib/realtime";
 import { useAuth } from "./AuthContext";
 
 export interface SchoolState {
@@ -81,6 +82,17 @@ export function SchoolProvider({ children }: { children: ReactNode }) {
     window.addEventListener("school:reload", handleReload);
     return () => window.removeEventListener("school:reload", handleReload);
   }, [reload]);
+
+  // Realtime : nouvelle annonce publiée → recharger les données de l'école
+  useEffect(() => {
+    if (!schoolId) return undefined;
+    const channel = subscribeToAnnouncements(schoolId, () => {
+      void reload();
+    });
+    return () => {
+      unsubscribe(channel);
+    };
+  }, [schoolId, reload]);
 
   const value = useMemo<SchoolContextValue>(() => {
     if (!user || !state.data) return { ...EMPTY, schoolId, schoolName: "", loading: state.loading, reload };
