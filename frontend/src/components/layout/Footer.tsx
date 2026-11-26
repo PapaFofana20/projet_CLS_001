@@ -33,8 +33,17 @@ export function Footer() {
         </div>
         <div className="mt-10 flex flex-col items-start justify-between gap-4 border-t border-white/15 pt-6 text-xs text-white/60 sm:flex-row sm:items-center">
           <p>© 2026 Classora. Tous droits réservés.</p>
-          <p className="flex items-center gap-1 text-[11px]">
-            Développé par <span className="font-semibold text-lime">BluePixel</span>
+          <p className="flex items-center gap-2 text-[11px]">
+            Développé par
+            <img
+              src="/images/bluepixel-logo.webp"
+              alt="BluePixel"
+              width={480}
+              height={162}
+              loading="lazy"
+              decoding="async"
+              className="h-4 w-auto sm:h-5"
+            />
           </p>
         </div>
         </div>
