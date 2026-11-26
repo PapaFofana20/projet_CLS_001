@@ -16,9 +16,13 @@ export function CtaSection() {
           {/* Titre visuel en <p> : ce même texte apparaissait en H2 sur cinq
               pages ; le niveau de titre était surutilisé sans bénéfice. */}
           <p id="cta-title" className="relative mx-auto max-w-3xl font-display text-3xl font-extrabold leading-tight tracking-tight text-forest sm:text-5xl">
-            Prêt à digitaliser votre <span className="text-forest-600">école</span> pour 2026-2027 ?
+            Prêt à digitaliser votre <span className="text-forest">école</span> pour 2026-2027 ?
           </p>
-          <p className="relative mx-auto mt-4 max-w-xl text-forest/80">Créez votre compte en 2 minutes.</p>
+          <p className="relative mx-auto mt-4 max-w-2xl text-forest/80">
+            Un seul espace pour les inscriptions, les notes et les paiements.
+            <br className="hidden sm:block" />
+            Créez votre compte en 2 minutes et démarrez dès la rentrée.
+          </p>
           <div className="relative mt-8 flex flex-wrap justify-center gap-3">
             <ArrowButton to="/inscription" tone="forest">
               Créer un compte
