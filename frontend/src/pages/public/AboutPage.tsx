@@ -96,6 +96,7 @@ export default function AboutPage() {
           </Reveal>
 
           <Reveal delay={200}>
+            {/* Sur ordinateur, la carte reste contenue et centrée (mobile/tablette inchangés). */}
             <img
               src="/images/carte-senegal-connectee.webp"
               alt="Carte du Sénégal en 3D : les établissements scolaires connectés au réseau Classora"
@@ -103,7 +104,7 @@ export default function AboutPage() {
               height={941}
               loading="lazy"
               decoding="async"
-              className="mt-12 block h-auto w-full max-w-full mx-auto sm:w-[calc(100%+8rem)] sm:-mx-12 sm:max-w-none sm:max-w-4xl"
+              className="mt-12 block h-auto w-full max-w-full mx-auto sm:w-[calc(100%+8rem)] sm:-mx-12 sm:max-w-none sm:max-w-4xl lg:mx-auto lg:w-full lg:max-w-2xl"
             />
           </Reveal>
 
