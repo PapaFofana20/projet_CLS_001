@@ -36,13 +36,13 @@ export function Footer() {
           <p className="flex items-center gap-2 text-[11px]">
             Développé par
             <img
-              src="/images/bluepixel-logo.webp"
+              src="/images/bluepixel-wordmark.webp"
               alt="BluePixel"
-              width={480}
-              height={162}
+              width={475}
+              height={111}
               loading="lazy"
               decoding="async"
-              className="h-4 w-auto sm:h-5"
+              className="h-5 w-auto sm:h-6"
             />
           </p>
         </div>

@@ -1,6 +1,6 @@
 // Notifications temporaires visibles partout dans l'application.
-import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from "react";
-import { ToastViewport, type ToastItem, type ToastTone } from "@/components/ui/Toast";
+import { createContext, useCallback, useContext, useMemo, type ReactNode } from "react";
+import type { ToastTone } from "@/components/ui/Toast";
 
 interface ToastContextValue {
   toast: (message: string, tone?: ToastTone) => void;
@@ -8,28 +8,22 @@ interface ToastContextValue {
 
 const ToastContext = createContext<ToastContextValue | null>(null);
 
-// Fournit la fonction toast() et affiche la pile de notifications.
+/**
+ * Fournit la fonction toast() sans rien afficher.
+ *
+ * Les appels à toast() sont conservés un peu partout dans l'application, mais
+ * l'utilisateur ne souhaite plus voir ces petites notifications (accueil,
+ * connexion, actions…). Le fournisseur reste en place pour que useToast()
+ * continue de fonctionner ; seul l'affichage est désactivé. Pour réactiver les
+ * notifications, il suffit de restaurer la pile et le <ToastViewport />.
+ */
 export function ToastProvider({ children }: { children: ReactNode }) {
-  const [items, setItems] = useState<ToastItem[]>([]);
-  const counter = useRef(0);
-
-  const dismiss = useCallback((id: number) => setItems((l) => l.filter((t) => t.id !== id)), []);
-  const toast = useCallback(
-    (message: string, tone: ToastTone = "success") => {
-      const id = ++counter.current;
-      setItems((l) => [...l, { id, message, tone }]);
-      setTimeout(() => dismiss(id), 4200);
-    },
-    [dismiss],
-  );
+  const toast = useCallback((_message: string, _tone?: ToastTone) => {
+    // Volontairement vide : aucun pop-up n'est affiché.
+  }, []);
 
   const value = useMemo(() => ({ toast }), [toast]);
-  return (
-    <ToastContext.Provider value={value}>
-      {children}
-      <ToastViewport items={items} onDismiss={dismiss} />
-    </ToastContext.Provider>
-  );
+  return <ToastContext.Provider value={value}>{children}</ToastContext.Provider>;
 }
 
 // Raccourci pour afficher une notification depuis n'importe quel composant.

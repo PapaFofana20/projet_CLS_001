@@ -43,14 +43,16 @@ export default function FeaturesPage() {
                 </p>
               </div>
             </div>
+            {/* Mobile : l'image occupe toute la largeur du panneau sans le déborder, avec son ratio d'origine.
+                À partir de sm, les hauteurs restent inchangées (proportion conservée sur ordinateur). */}
             <img
-              src="/images/features-dashboard.webp"
-              alt="Tableau de bord Classora : effectifs, recouvrement, bulletins, présences et emploi du temps consultables selon son rôle"
-              width={1600}
-              height={900}
+              src="/images/features-dashboard-mobile.webp"
+              alt="Application Classora tenue en main : paiements reçus, nouvelles inscriptions, présences et résultats scolaires en temps réel"
+              width={1672}
+              height={941}
               loading="lazy"
               decoding="async"
-              className="relative -mx-[30%] mt-8 block h-auto w-[160%] max-w-none sm:mx-auto sm:h-72 sm:w-auto md:h-[380px] lg:h-[520px]"
+              className="relative -mx-6 mt-8 block h-auto w-[calc(100%+3rem)] max-w-none sm:mx-auto sm:h-72 sm:w-auto md:h-[380px] lg:h-[520px]"
             />
           </div>
         </Reveal>

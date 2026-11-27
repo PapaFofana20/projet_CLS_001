@@ -40,12 +40,14 @@ export function AboutSection() {
               </div>
               <div className="grid sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-3 rounded-3xl bg-lime p-2">
                 {aboutStats.map((s, i) => (
+                  /* Desktop : les cartes sont étirées par la grille ; on regroupe
+                     le nombre et sa légende au centre au lieu de les centrer séparément. */
                   <Counter
                     key={s.label}
                     value={s.value}
                     label={s.label}
                     delay={i * 150}
-                    className="grid place-items-center rounded-2xl bg-white px-2 py-4 text-forest"
+                    className="grid place-items-center rounded-2xl bg-white px-2 py-4 text-forest lg:flex lg:flex-col lg:justify-center"
                     valueClassName="text-4xl sm:text-5xl"
                     labelClassName="mt-0 text-xs sm:text-sm"
                   />
