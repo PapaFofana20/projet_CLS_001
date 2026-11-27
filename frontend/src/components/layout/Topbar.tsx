@@ -41,29 +41,26 @@ export function Topbar({ user, onMenu }: { user: SessionUser; onMenu: () => void
 
   return (
     <>
-    <header className="no-print sticky top-0 z-30 -mx-4 mb-4 border-b border-forest/10 bg-white/90 px-4 pb-2.5 pt-[calc(0.75rem+env(safe-area-inset-top))] shadow-card backdrop-blur-xl md:-mx-8 md:mb-6 md:px-8 md:pb-3 md:pt-[calc(1rem+env(safe-area-inset-top))] lg:pb-4">
-      <div className="flex items-center gap-3 sm:gap-4">
-        <button type="button" onClick={onMenu} aria-label="Ouvrir le menu" className="grid size-11 shrink-0 place-items-center rounded-full bg-white shadow-card ring-1 ring-forest/10 transition hover:bg-lime-soft lg:hidden">
+    <header className="no-print sticky top-0 z-30 -mx-4 mb-4 border-b border-neutral-200/60 bg-mist/90 px-4 pb-2 pt-[calc(0.5rem+env(safe-area-inset-top))] backdrop-blur md:-mx-8 md:mb-6 md:px-8 md:pb-3 md:pt-[calc(0.75rem+env(safe-area-inset-top))] lg:py-3">
+      <div className="flex items-center gap-2 sm:gap-3">
+        <button type="button" onClick={onMenu} aria-label="Ouvrir le menu" className="grid size-11 shrink-0 place-items-center rounded-full bg-white shadow-card lg:hidden">
           <Icon name="menu" />
         </button>
         <div className="min-w-0">
-          <SchoolMark name={school.schoolName || "Mon école"} matricule={school.school?.matricule || undefined} size={42} className="rounded-xl ring-4 ring-lime/25" />
-          <div className="mt-1.5 hidden items-center gap-1.5 rounded-full bg-lime-soft px-2.5 py-1 text-[11px] font-bold text-forest-500 sm:inline-flex">
-            <Icon name="calendar_month" className="text-[14px]" />
-            {formatLongDate(todayIso())}
-          </div>
+          <SchoolMark name={school.schoolName || "Mon école"} matricule={school.school?.matricule || undefined} size={40} />
+          <p className="mt-1 hidden text-sm font-semibold text-neutral-600 sm:block sm:text-base">{formatLongDate(todayIso())}</p>
         </div>
         <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
           {user.role === "professeur" && <ContextSwitcher id="ctx-desktop" contexts={contexts} value={active?.key} onChange={setActiveKey} className="hidden w-60 md:block" />}
           {user.role === "parent" && <ChildSwitcher id="child-desktop" className="hidden w-52 md:block" />}
           <div className="relative" ref={ref}>
-            <button type="button" onClick={() => setMenu((m) => !m)} aria-haspopup="menu" aria-expanded={menu} className="group flex min-h-11 items-center gap-3 rounded-full bg-white py-1 pl-1 pr-1 shadow-card ring-1 ring-forest/10 transition hover:ring-forest/25 sm:pr-4">
-              <Avatar name={fullName} size={36} className="ring-2 ring-lime/60" />
+            <button type="button" onClick={() => setMenu((m) => !m)} aria-haspopup="menu" aria-expanded={menu} className="flex min-h-11 items-center gap-3 rounded-full bg-white py-1 pl-1 pr-1 shadow-card sm:pr-4">
+              <Avatar name={fullName} size={36} />
               <span className="hidden text-left sm:block">
                 <span className="block text-sm font-bold leading-tight text-ink">{fullName}</span>
-                <span className="mt-0.5 inline-flex w-fit items-center rounded-full bg-lime-soft px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-forest-500">{ROLE_LABELS[user.role]}</span>
+                <span className="block text-xs text-neutral-500">{ROLE_LABELS[user.role]}</span>
               </span>
-              <Icon name="expand_more" className="hidden text-[20px] text-forest-500 transition-transform group-hover:translate-y-0.5 sm:block" />
+              <Icon name="expand_more" className="hidden text-[20px] sm:block" />
             </button>
             {menu && (
               <div role="menu" className="absolute right-0 mt-2 w-56 dropdown-enter rounded-2xl bg-white p-2 shadow-soft ring-1 ring-black/5">
