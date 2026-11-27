@@ -32,13 +32,15 @@ select is(
   public.subscription_status_of(null::uuid, '2027-01-01'::date, '2026-12-15'::date),
   'ACTIF', 'échéance à plus de 7 jours → ACTIF'
 );
+-- Depuis 00021, une échéance dépassée est EXPIRE (la fenêtre de 7 jours est
+-- gérée par school_is_readable, pas par subscription_status_of).
 select is(
   public.subscription_status_of(null::uuid, '2026-12-16'::date, '2026-12-15'::date),
-  'EXPIRE_BIENTOT', 'échéance à 1 jour → EXPIRE_BIENTOT'
+  'EXPIRE', 'échéance dépassée → EXPIRE'
 );
 select is(
-  public.subscription_status_of(null::uuid, '2026-12-22'::date, '2026-12-15'::date),
-  'EXPIRE_BIENTOT', 'échéance à 7 jours → EXPIRE_BIENTOT'
+  public.subscription_status_of(null::uuid, '2026-12-08'::date, '2026-12-15'::date),
+  'EXPIRE', 'échéance de 7 jours passée → EXPIRE (lecture seule gérée ailleurs)'
 );
 select is(
   public.subscription_status_of(null::uuid, '2026-12-14'::date, '2026-12-15'::date),

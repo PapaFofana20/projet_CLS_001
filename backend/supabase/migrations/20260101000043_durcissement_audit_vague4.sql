@@ -193,10 +193,25 @@ returns trigger
 language plpgsql volatile security definer
 set search_path = ''
 as $$
+declare
+  -- En-tête positionné par PostgREST ; '' n'est pas du JSON valide, d'où
+  -- le nullif() avant le cast.
+  v_headers jsonb := nullif(current_setting('request.headers', true), '')::jsonb;
+  v_ip      text := nullif(trim(split_part(coalesce(v_headers ->> 'x-forwarded-for', ''), ',', 1)), '');
 begin
+  -- (M16) Rate limit par IP (3 / heure) en plus de la limite par e-mail.
+  -- Si l'IP n'est pas transmise, on retombe sur une limite e-mail plus stricte.
+  if v_ip is not null then
+    if not public.sys_rate_limit('contact:' || v_ip, 3, 3600) then
+      raise exception 'Trop de messages en peu de temps. Réessayez plus tard.';
+    end if;
+  elsif not public.sys_rate_limit('contact:' || lower(trim(new.email)), 2, 3600) then
+    raise exception 'Trop de messages en peu de temps. Réessayez plus tard.';
+  end if;
+
   if (select count(*) from public.contact_messages
       where email = new.email
-        and created_at > now() - interval '1 hour') >= 3 then
+        and created_at > pg_catalog.now() - interval '1 hour') >= 3 then
     raise exception 'Trop de messages en peu de temps. Réessayez plus tard.';
   end if;
   return new;

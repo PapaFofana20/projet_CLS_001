@@ -70,7 +70,7 @@ function Content({ s }: { s: AdminOverviewStats }) {
   const cutoff = now - 24 * 60 * 60 * 1000;
   const recent = s.recentActivity.filter((a) => new Date(a.createdAt).getTime() > cutoff);
   const activePct = s.schools.total > 0 ? Math.round((s.schools.active / s.schools.total) * 100) : 0;
-  const suspendedPct = s.schools.total > 0 ? 100 - activePct : 0;
+  const suspendedPct = s.schools.total > 0 ? Math.round((s.schools.suspended / s.schools.total) * 100) : 0;
 
   return (
     <div className="space-y-4">

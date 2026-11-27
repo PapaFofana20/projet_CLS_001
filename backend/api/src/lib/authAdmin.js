@@ -6,8 +6,24 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { SUPABASE_URL, SERVICE_KEY } from "../config.js";
-import { unauthorized, forbidden } from "./http.js";
+import { unauthorized, forbidden, ok, logError } from "./http.js";
 import { decryptTOTPSecret } from "./secretCrypto.js";
+
+/**
+ * Chemins qui doivent rester accessibles sans session MFA : ils servent
+ * précisément à s'authentifier (mot de passe, second facteur) ou à révoquer
+ * le MFA. /admin/mfa/disable est volontairement inclus pour permettre la
+ * révocation même quand le second facteur n'est plus utilisable.
+ */
+const MFA_EXEMPT_PATHS = new Set([
+  "/admin/login",
+  "/admin/mfa/status",
+  "/admin/mfa/setup",
+  "/admin/mfa/verify-setup",
+  "/admin/mfa/verify",
+  "/admin/mfa/disable",
+  "/admin/auth",
+]);
 
 /** Client service_role pour les routes admin (même principe que lib/auth.js). Entrée : options. Sortie : client Supabase. */
 export function serviceClient(options = {}) {
@@ -45,6 +61,19 @@ export async function getCallerAdminAgent(svc, req) {
 
   if (error || !agent) return null;
 
+  // Une clé de chiffrement absente ou tournée ne doit pas provoquer un 500
+  // global : on neutralise le MFA de cet agent et on journalise l'échec.
+  let totpSecret = null;
+  let totpEnabled = agent.totp_enabled === true;
+  if (agent.totp_secret) {
+    try {
+      totpSecret = decryptTOTPSecret(agent.totp_secret);
+    } catch (e) {
+      logError("auth-admin:decrypt-totp", e);
+      totpEnabled = false;
+    }
+  }
+
   return {
     caller: {
       id: agent.auth_user_id,
@@ -68,12 +97,29 @@ export async function getCallerAdminAgent(svc, req) {
       email: agent.email,
       phone: agent.phone,
       authUserId: agent.auth_user_id,
-      totpSecret: agent.totp_secret ? decryptTOTPSecret(agent.totp_secret) : null,
-      totpEnabled: agent.totp_enabled === true,
+      totpSecret,
+      totpEnabled,
       totpEnabledAt: agent.totp_enabled_at ?? null,
       createdAt: agent.created_at,
     },
   };
+}
+
+/**
+ * Vérifie qu'une session MFA vérifiée et non expirée existe pour l'agent.
+ * Factorisé depuis routes/adminAuth.js pour être utilisé par toutes les
+ * routes admin protégées. `.limit(1)` plutôt que `.maybeSingle()` : deux
+ * lignes actives feraient renvoyer PGRST116 (data = null) et verrouilleraient
+ * la console en boucle « Second facteur requis ».
+ */
+export async function hasValidMfaSession(svc, agentId) {
+  const { data: mfaRows } = await svc
+    .from("admin_mfa_sessions")
+    .select("id")
+    .eq("agent_id", agentId)
+    .gt("expires_at", new Date().toISOString())
+    .limit(1);
+  return Boolean(mfaRows && mfaRows.length > 0);
 }
 
 /**
@@ -96,6 +142,16 @@ export async function requireAdminRole(svc, req, res, roles = ["superadmin", "ad
   if (!roles.includes(agent.role)) {
     forbidden(res, "Votre rôle ne permet pas d'accéder à cette ressource.");
     return null;
+  }
+
+  // Un agent ayant activé le MFA doit avoir validé le second facteur pour
+  // accéder aux routes métier. Les chemins d'authentification / de révocation
+  // restent accessibles (voir MFA_EXEMPT_PATHS), sinon on ne pourrait plus
+  // ni se connecter ni désactiver le MFA.
+  if (agent.totpEnabled === true && !MFA_EXEMPT_PATHS.has(req.path)) {
+    if (!(await hasValidMfaSession(svc, agent.id))) {
+      return ok(res, { error: "Second facteur requis.", mfaRequired: true }, 403);
+    }
   }
   return { caller, agent };
 }

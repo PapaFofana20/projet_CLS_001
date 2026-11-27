@@ -2,6 +2,7 @@
 
 import { AsyncView } from "@/components/ui/AsyncView";
 import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import { Table, type Column } from "@/components/ui/Table";
@@ -36,6 +37,17 @@ export function ParentGrades({ period }: { period: string }) {
   }, [studentId, period, self.data]);
 
   if (!loading && !isStudent && children.length === 0) return <EmptyState icon="child_care" title="Aucun élève rattaché" />;
+  // Une erreur de chargement du dossier ne doit pas être confondue avec
+  // « pas encore de notes » : on propose un réessai explicite.
+  if (isStudent && self.error && !self.loading)
+    return (
+      <EmptyState
+        icon="cloud_off"
+        title="Impossible de charger vos notes"
+        text={self.error}
+        action={<Button variant="outline" icon="refresh" onClick={self.reload}>Réessayer</Button>}
+      />
+    );
   if (state.loading && !state.error) return <SkeletonTable rows={7} />;
 
   return (

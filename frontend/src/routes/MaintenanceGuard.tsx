@@ -49,7 +49,6 @@ export function MaintenanceWatcher() {
     if (!status.maintenanceMode) return;
     if (pathname.startsWith("/admin")) return;
     if (ALLOWED_PATHS.includes(pathname)) return;
-    // eslint-disable-next-line no-restricted-globals
     window.location.replace("/maintenance");
   }, [status.maintenanceMode, pathname]);
 

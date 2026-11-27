@@ -47,6 +47,8 @@ function Sheet({ sheet, period }: { sheet: GradeSheet; period: string }) {
   const [status, setStatus] = useState<Status>("idle");
   const [savedAt, setSavedAt] = useState("");
   const timers = useRef(new Map<string, number>());
+  /** Version de la dernière frappe par cellule : permet d'ignorer une réponse obsolète. */
+  const versions = useRef(new Map<string, number>());
   const inFlight = useRef(0);
 
   useEffect(() => {
@@ -63,15 +65,19 @@ function Sheet({ sheet, period }: { sheet: GradeSheet; period: string }) {
     return v === null || v === undefined ? "" : String(v).replace(".", ",");
   };
 
-  const persist = async (studentId: string, field: Field, value: number | null, k: string) => {
+  const persist = async (studentId: string, field: Field, value: number | null, k: string, version: number) => {
     inFlight.current += 1;
     try {
       await saveGrade(user, { studentId, classId: sheet.classRoom.id, subjectId: sheet.subject.id, period, field, value });
-      setDraft((d) => {
-        const n = { ...d };
-        delete n[k];
-        return n;
-      });
+      // Une frappe plus récente a pu survenir pendant la sauvegarde : dans ce
+      // cas on ne touche ni au brouillon ni aux notes (réponse obsolète).
+      if (versions.current.get(k) === version) {
+        setDraft((d) => {
+          const n = { ...d };
+          delete n[k];
+          return n;
+        });
+      }
       inFlight.current -= 1;
       if (inFlight.current === 0 && timers.current.size === 0) {
         setStatus("saved");
@@ -86,6 +92,8 @@ function Sheet({ sheet, period }: { sheet: GradeSheet; period: string }) {
 
   const onChange = (studentId: string, field: Field, text: string) => {
     const k = keyOf(studentId, field);
+    const version = (versions.current.get(k) ?? 0) + 1;
+    versions.current.set(k, version);
     setDraft((d) => ({ ...d, [k]: text }));
     const max = cycle === "elementaire" ? 10 : 20;
     const r = parseGradeInput(text, max);
@@ -109,7 +117,7 @@ function Sheet({ sheet, period }: { sheet: GradeSheet; period: string }) {
       k,
       window.setTimeout(() => {
         timers.current.delete(k);
-        void persist(studentId, field, r.value, k);
+        void persist(studentId, field, r.value, k, version);
       }, 450),
     );
   };
@@ -121,7 +129,10 @@ function Sheet({ sheet, period }: { sheet: GradeSheet; period: string }) {
     document.querySelector<HTMLInputElement>(`[data-cell="${row + delta}:${field}"]`)?.focus();
   };
 
-  const averages = sheet.students.map((s) => ({ id: s.id, value: subjectAverage(gradeOf(s.id), cycle) }));
+  const averages = useMemo(
+    () => sheet.students.map((s) => ({ id: s.id, value: subjectAverage(grades.find((g) => g.studentId === s.id) ?? undefined, cycle) })),
+    [sheet.students, grades, cycle],
+  );
   const ranks = useMemo(() => computeRanks(averages), [averages]);
   const valid = averages.map((a) => a.value).filter((v): v is number => v !== null);
   const classAvg = valid.length ? round2(valid.reduce((a, b) => a + b, 0) / valid.length) : null;
@@ -243,7 +254,7 @@ function Sheet({ sheet, period }: { sheet: GradeSheet; period: string }) {
             </tbody>
           </table>
         </div>
-        <p className="px-4 py-3 text-xs text-neutral-500">Astuce : Tab pour passer à la colonne suivante, Entrée ou ↓ pour descendre à l'élève suivant. Les notes sont enregistrées automatiquement (0 à 20).</p>
+        <p className="px-4 py-3 text-xs text-neutral-500">Astuce : Tab pour passer à la colonne suivante, Entrée ou ↓ pour descendre à l'élève suivant. Les notes sont enregistrées automatiquement (0 à {cycle === "elementaire" ? 10 : 20}).</p>
       </Card>
     </div>
   );

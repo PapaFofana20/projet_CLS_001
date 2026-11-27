@@ -148,7 +148,11 @@ export default route(async (req, res) => {
       }
       await svc.auth.admin.deleteUser(created.user.id);
       const message = sqlError instanceof Error ? sqlError.message : undefined;
-      if (message && /un compte existe déjà/i.test(message)) return badRequest(res, message);
+      if (message && /un compte existe déjà/i.test(message)) {
+        // Détail SQL uniquement dans les logs, message générique au client.
+        logError("register-director:rpc", sqlError);
+        return badRequest(res, "Impossible de finaliser la création du compte. Réessayez.");
+      }
       logError("register-director", sqlError);
       return serverError(res);
     }

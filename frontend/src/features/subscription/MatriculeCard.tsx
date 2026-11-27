@@ -9,7 +9,7 @@ import type { School } from "@/types";
 
 /** Lien d'inscription pré-rempli avec le matricule. */
 export function signupLink(matricule: string): string {
-  return `${window.location.origin}${import.meta.env.BASE_URL}inscription?matricule=${matricule}`;
+  return `${window.location.origin}${import.meta.env.BASE_URL}inscription?matricule=${encodeURIComponent(matricule)}`;
 }
 
 /** Message WhatsApp prêt à envoyer aux familles. */
@@ -27,8 +27,6 @@ export function whatsappMessage(school: School): string {
 
 interface Props {
   school: School;
-  canManage?: boolean;
-  onChanged?: () => void;
 }
 
 /**

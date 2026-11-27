@@ -20,8 +20,9 @@ import {
   auditAdmin,
   serviceClient,
 } from "../lib/authAdmin.js";
-import { generateTOTPSecret, buildOTPAuthURI, verifyTOTPCode } from "../lib/totp.js";
-import { createPreAuthSession, consumePreAuthSession, peekPreAuthSession } from "../lib/mfa-sessions.js";
+import { generateTOTPSecret, buildOTPAuthURI } from "../lib/totp.js";
+import { verifyTotpForAgent } from "../lib/totpStore.js";
+import { consumePreAuthSession, peekPreAuthSession } from "../lib/mfa-sessions.js";
 import { encryptTOTPSecret, decryptTOTPSecret } from "../lib/secretCrypto.js";
 
 const PRE_AUTH_TTL_MS = 5 * 60_000; // durée de vie d'une session MFA vérifiée (alignée sur le pré-auth)
@@ -124,7 +125,7 @@ async function handleVerifySetup(svc, req, res) {
     return badRequest(res, "Aucun secret TOTP configuré. Lancez d'abord la configuration.");
   }
 
-  if (!verifyTOTPCode(agent.totpSecret, token)) {
+  if (!(await verifyTotpForAgent(svc, agent.id, agent.totpSecret, token))) {
     await auditAdmin(svc, {
       actorId: agent.authUserId,
       actorRole: agent.role,
@@ -188,7 +189,7 @@ async function handleVerify(svc, req, res) {
     return badRequest(res, "Le MFA n'est pas activé pour ce compte.");
   }
 
-  if (!verifyTOTPCode(decryptTOTPSecret(agent.totp_secret), token)) {
+  if (!(await verifyTotpForAgent(svc, agent.id, decryptTOTPSecret(agent.totp_secret), token))) {
     return badRequest(res, "Code TOTP invalide.");
   }
 
@@ -227,7 +228,7 @@ async function handleDisable(svc, req, res) {
     return badRequest(res, "Le MFA n'est pas activé pour ce compte.");
   }
 
-  if (!verifyTOTPCode(agent.totpSecret, token)) {
+  if (!(await verifyTotpForAgent(svc, agent.id, agent.totpSecret, token))) {
     return badRequest(res, "Code TOTP invalide.");
   }
 

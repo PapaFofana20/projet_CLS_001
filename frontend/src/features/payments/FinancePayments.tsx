@@ -31,12 +31,24 @@ import { Receipt } from "./Receipt";
 
 const PAGE = 12;
 
-// Libellés pour le statut manuel (dropdown)
-const MANUAL_STATUS_LABELS: Record<"a_venir" | "paye" | "impaye", string> = {
+// Statut affiché dans le dropdown : le choix manuel prime, sinon on traduit
+// le statut automatique (équivalent local de `manualChoiceOf`).
+type ManualChoice = "a_venir" | "paye" | "impaye" | "acompte" | "partiel";
+const MANUAL_STATUS_LABELS: Record<ManualChoice, string> = {
   a_venir: "Non payé",
   paye: "Payé",
   impaye: "En retard",
+  acompte: "Acompte",
+  partiel: "Partiel",
 };
+
+function manualChoiceOfRow(p: PaymentRow): ManualChoice {
+  if (p.manualStatus) return p.manualStatus;
+  if (p.status === "paye") return "paye";
+  if (p.status === "en_retard") return "impaye";
+  if (p.status === "partiel") return "partiel";
+  return "a_venir";
+}
 
 interface Debtor {
   studentId: string;
@@ -99,7 +111,8 @@ export function FinancePayments({ schoolName, canAct }: { schoolName: string; ca
   const debtors = useMemo<Debtor[]>(() => {
     const map = new Map<string, Debtor>();
     currentMonthRows.filter((p) => p.dueDate <= todayIso() && remaining(p) > 0).forEach((p) => {
-      const d = map.get(p.studentId) ?? { studentId: p.studentId, studentName: p.studentName, className: p.className, parentName: p.parentName, parentFirstName: p.parentName.split(" ")[0] ?? p.parentName, parentPhone: p.parentPhone, count: 0, total: 0, lines: [], maxOverdueDays: 0 };
+      const first = p.parentName.trim().split(/\s+/)[0] ?? "";
+      const d = map.get(p.studentId) ?? { studentId: p.studentId, studentName: p.studentName, className: p.className, parentName: p.parentName, parentFirstName: first && first !== "—" ? first : "", parentPhone: p.parentPhone, count: 0, total: 0, lines: [], maxOverdueDays: 0 };
       d.count += 1;
       d.total += remaining(p);
       d.lines.push({ label: p.label, dueDate: p.dueDate, amount: p.amount, paidAmount: p.paidAmount });
@@ -141,7 +154,11 @@ export function FinancePayments({ schoolName, canAct }: { schoolName: string; ca
     }
   };
 
-  const messageOf = (d: Debtor) => buildReminderMessage({ schoolName, studentName: d.studentName, className: d.className, parentFirstName: d.parentFirstName, total: d.total, lines: d.lines, maxOverdueDays: d.maxOverdueDays });
+  const messageOf = (d: Debtor) => {
+    const message = buildReminderMessage({ schoolName, studentName: d.studentName, className: d.className, parentFirstName: d.parentFirstName, total: d.total, lines: d.lines, maxOverdueDays: d.maxOverdueDays });
+    // Sans parent rattaché, évite un « Bonjour — » / « Bonjour , » dans le message.
+    return d.parentFirstName ? message : message.replace(/^Bonjour[\s—]*(,?)/, (_, comma: string) => (comma ? "Bonjour," : "Bonjour "));
+  };
   const waLinkOf = (d: Debtor) => whatsappReminderLink(d.parentPhone, messageOf(d));
   const [preview, setPreview] = useState<Debtor | null>(null);
 
@@ -155,8 +172,16 @@ export function FinancePayments({ schoolName, canAct }: { schoolName: string; ca
   };
 
   // Changement de statut manuel via dropdown
-  const changeManualStatus = async (row: PaymentRow, next: "a_venir" | "paye" | "impaye") => {
+  const changeManualStatus = async (row: PaymentRow, next: ManualChoice) => {
     if (!canAct) return;
+    if (next === "partiel") {
+      toast("Le statut « Partiel » est calculé automatiquement à partir du montant déjà payé.");
+      return;
+    }
+    if (next === "acompte") {
+      toast("Choisissez « Encaisser » pour enregistrer un acompte et son montant.");
+      return;
+    }
     setBusyStatus((s) => new Set(s).add(row.id));
     try {
       await setPaymentManualStatus(user, row.id, next);
@@ -176,22 +201,18 @@ export function FinancePayments({ schoolName, canAct }: { schoolName: string; ca
     </div>
   );
 
-  const manualStatusOptions = [
-    { value: "a_venir", label: "Non payé" },
-    { value: "paye", label: "Payé" },
-    { value: "impaye", label: "En retard" },
-  ] as const;
+  const manualStatusOptions = (Object.keys(MANUAL_STATUS_LABELS) as ManualChoice[]).map((value) => ({ value, label: MANUAL_STATUS_LABELS[value] }));
 
   const manualStatusCell = (p: PaymentRow) => {
-    const ms = p.manualStatus ?? "a_venir";
+    const ms = manualChoiceOfRow(p);
     const isBusy = busyStatus.has(p.id);
     return (
       <Select
         compact
         value={ms}
-        onChange={(e) => void changeManualStatus(p, e.target.value as "a_venir" | "paye" | "impaye")}
+        onChange={(e) => void changeManualStatus(p, e.target.value as ManualChoice)}
         disabled={!canAct || isBusy}
-        options={manualStatusOptions.map((o) => ({ value: o.value, label: o.label }))}
+        options={manualStatusOptions}
         className="min-w-[130px]"
       />
     );
@@ -239,6 +260,12 @@ export function FinancePayments({ schoolName, canAct }: { schoolName: string; ca
   ];
 
   const list = tab === "recus" ? receiptRows : filtered;
+  // Une mise à jour des données peut réduire la liste : on borne la page courante.
+  useEffect(() => {
+    setPage((p) => Math.min(p, Math.max(1, Math.ceil(list.length / PAGE))));
+  }, [list.length]);
+
+  const allDebtorsPicked = picked.length > 0 && debtors.every((d) => picked.includes(d.studentId));
   const activeFilters = cls ? 1 : 0;
   const filterFields = (
     <Select compact aria-label="Classe" placeholder="Toutes les classes" value={cls} onChange={(e) => setCls(e.target.value)} options={classes.map((c) => ({ value: c, label: c }))} />
@@ -319,7 +346,7 @@ export function FinancePayments({ schoolName, canAct }: { schoolName: string; ca
           {tab === "impayes" ? (
             <>
               <div className="flex flex-wrap items-center gap-3">
-                <Button variant="outline" onClick={() => setPicked(picked.length === debtors.length ? [] : debtors.map((d) => d.studentId))}>{picked.length === debtors.length && debtors.length ? "Tout désélectionner" : "Tout sélectionner"}</Button>
+                <Button variant="outline" onClick={() => setPicked(allDebtorsPicked ? [] : debtors.map((d) => d.studentId))}>{allDebtorsPicked ? "Tout désélectionner" : "Tout sélectionner"}</Button>
                 {canAct && <Button icon="send" disabled={picked.length === 0 || !canAutoRemind} loading={busy} onClick={() => void remind()} title={canAutoRemind ? undefined : "Disponible à partir du plan Pro"}>Tracer la relance ({picked.length})</Button>}
                 <Button variant="outline" icon="download" disabled={debtors.length === 0 || !canExportData} onClick={() => downloadDebtorsCsv(debtors)} title={canExportData ? undefined : "Disponible à partir du plan Premium"}>Exporter la liste</Button>
               </div>

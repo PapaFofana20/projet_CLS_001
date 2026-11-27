@@ -73,7 +73,8 @@ export function SchoolProvider({ children }: { children: ReactNode }) {
     return { overview, info };
   }, [schoolId]);
 
-  const reload = useCallback(() => state.reload(), [state.reload]);
+  const { reload: reloadState } = state;
+  const reload = useCallback(() => reloadState(), [reloadState]);
 
   // Écouter l'événement de rechargement après inscription directeur
   useEffect(() => {

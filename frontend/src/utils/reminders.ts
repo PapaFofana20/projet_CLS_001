@@ -87,8 +87,13 @@ export function debtorsToCsv(rows: Array<{ studentName: string; className: strin
   // viennent de saisies tiers). Préfixe apostrophe dans ce cas.
   const esc = (v: string | number) => {
     let text = String(v);
-    if (/^[=+\-@]/.test(text.trimStart())) text = `'${text}`;
-    return /[;"\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+    // Neutralise les formules même si elles sont précédées d'espaces,
+    // de tabulations ou d'autres caractères de contrôle.
+    const withoutLeadingControls = text.trimStart();
+    if (/^[=+\-@]/.test(withoutLeadingControls)) text = `'${text}`;
+    // \r et \t doivent aussi forcer le guillemage (sinon une cellule
+    // contenant un retour chariot casse la ligne CSV).
+    return /[;"\n\r\t]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
   };
   const header = ["eleve", "classe", "parent", "telephone", "echeances", "total_du"];
   const lines = rows.map((r) => [r.studentName, r.className, r.parentName, r.parentPhone, r.count, r.total].map(esc).join(";"));

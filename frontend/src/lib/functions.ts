@@ -24,6 +24,9 @@ export async function callFunction<T>(
 
   let res: Response;
   try {
+    // `name` peut contenir des segments dynamiques (ids) : l'appelant doit les
+    // encoder avec encodeURIComponent() avant de les interpoler (voir
+    // timetableService) afin qu'un '/' ou '?' dans un id ne change pas la route.
     res = await fetch(`${base}/${name}`, {
       method,
       headers: {

@@ -229,19 +229,19 @@ export async function createTimetable(input: CreateTimetableInput, schoolId: str
 // Publie un emploi du temps (visible par la classe) — API sécurisée.
 export async function publishTimetable(timetableId: string, schoolId: string): Promise<void> {
   void schoolId;
-  await callFunction(`api/timetables/${timetableId}/publish`, {});
+  await callFunction(`api/timetables/${encodeURIComponent(timetableId)}/publish`, {});
 }
 
 // Repasse un emploi du temps en brouillon (le dépublie) — API sécurisée.
 export async function unpublishTimetable(timetableId: string, schoolId: string): Promise<void> {
   void schoolId;
-  await callFunction(`api/timetables/${timetableId}/unpublish`, {});
+  await callFunction(`api/timetables/${encodeURIComponent(timetableId)}/unpublish`, {});
 }
 
 // Ajoute un cours (matière, enseignant, jour, horaires) à un emploi du temps — API sécurisée.
 export async function createCourse(timetableId: string, schoolId: string, input: CourseInput): Promise<void> {
   void schoolId;
-  await callFunction(`api/timetables/${timetableId}/slots`, {
+  await callFunction(`api/timetables/${encodeURIComponent(timetableId)}/slots`, {
     subjectId: input.subjectId,
     teacherId: input.teacherId,
     day: input.day,
@@ -265,7 +265,7 @@ export async function updateCourse(courseId: string, schoolId: string, input: Co
   if (error) throw error;
   const timetableId = (data as { timetable_id: string } | null)?.timetable_id;
   if (!timetableId) throw new Error("Cours introuvable.");
-  await callFunction(`api/timetables/${timetableId}/slots/${courseId}`, {
+  await callFunction(`api/timetables/${encodeURIComponent(timetableId)}/slots/${encodeURIComponent(courseId)}`, {
     subjectId: input.subjectId,
     teacherId: input.teacherId,
     day: input.day,
@@ -287,11 +287,11 @@ export async function deleteCourse(courseId: string, schoolId: string): Promise<
   if (error) throw error;
   const timetableId = (data as { timetable_id: string } | null)?.timetable_id;
   if (!timetableId) throw new Error("Cours introuvable.");
-  await callFunction(`api/timetables/${timetableId}/slots/${courseId}`, undefined, "DELETE");
+  await callFunction(`api/timetables/${encodeURIComponent(timetableId)}/slots/${encodeURIComponent(courseId)}`, undefined, "DELETE");
 }
 
 // Supprime définitivement un emploi du temps (et ses cours, par cascade côté base) — API sécurisée.
 export async function deleteTimetable(timetableId: string, schoolId: string): Promise<void> {
   void schoolId;
-  await callFunction(`api/timetables/${timetableId}`, undefined, "DELETE");
+  await callFunction(`api/timetables/${encodeURIComponent(timetableId)}`, undefined, "DELETE");
 }

@@ -78,6 +78,9 @@ export default route(async (req, res) => {
       );
     }
 
+    // Déclaré avant le try : le repli « RPC réussie malgré le timeout » doit
+    // pouvoir relire la valeur même si l'affectation ci-dessous n'a pas eu lieu.
+    let result = null;
     try {
       const { data, error } = await svc.rpc("finish_enrolled_student_registration", {
         p_user_id: created.user.id,
@@ -88,7 +91,7 @@ export default route(async (req, res) => {
         p_phone: phone,
       });
       if (error || !data) throw new Error(error?.message ?? "Création incomplète.");
-      const result = data;
+      result = data;
       return ok(res, {
         user: {
           id: created.user.id,
@@ -132,7 +135,10 @@ export default route(async (req, res) => {
       await svc.auth.admin.deleteUser(created.user.id);
       const message = sqlError instanceof Error ? sqlError.message : undefined;
       if (message && /matricule|compte|école|identité|abonnement|naissance/i.test(message)) {
-        return badRequest(res, message);
+        // Le libellé SQL reste dans les logs serveur ; le client ne reçoit
+        // qu'un message générique (aucun fragment de requête / de schéma).
+        logError("register-enrolled-student:rpc", sqlError);
+        return badRequest(res, "Impossible de finaliser la création du compte. Vérifiez les informations saisies et réessayez.");
       }
       logError("register-enrolled-student", sqlError);
       return serverError(res);

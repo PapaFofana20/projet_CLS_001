@@ -14,6 +14,7 @@ import { Tabs } from "@/components/ui/Tabs";
 import { KpiTile } from "@/features/admin/adminUi";
 import { useCurrentUser } from "@/context/AuthContext";
 import { useChild } from "@/context/ChildContext";
+import { useSchool } from "@/context/SchoolContext";
 import { todayIso } from "@/data/school";
 import { useAsync } from "@/hooks/useAsync";
 import { listParentPayments } from "@/services/paymentService";
@@ -28,6 +29,8 @@ export const PAY_TONE = { paye: "success", partiel: "warning", en_retard: "dange
 export function ParentPayments({ schoolName, self = false }: { schoolName: string; self?: boolean }) {
   const user = useCurrentUser();
   const { activeChild, children, loading } = useChild();
+  const { settings } = useSchool();
+  const siblingDiscount = settings?.siblingDiscount ?? 0;
   const childId = self ? user.studentId : activeChild?.id;
   const state = useAsync(() => listParentPayments(user), [user.id]);
   const [tab, setTab] = useState("echeancier");
@@ -81,7 +84,12 @@ export function ParentPayments({ schoolName, self = false }: { schoolName: strin
               tone="neutral"
             />
           </div>
-          {children.length > 1 && !self && <p className="flex items-center gap-2 rounded-2xl bg-lime-soft p-4 text-sm font-medium text-forest"><Icon name="family_restroom" className="text-[20px]" />Réduction fratrie de 10 % appliquée sur la mensualité à partir du 2e élève inscrit dans l'école.</p>}
+          {children.length > 1 && !self && siblingDiscount > 0 && (
+            <p className="flex items-center gap-2 rounded-2xl bg-lime-soft p-4 text-sm font-medium text-forest">
+              <Icon name="family_restroom" className="text-[20px]" />
+              Réduction fratrie de {siblingDiscount} % appliquée sur la mensualité à partir du 2e élève inscrit dans l'école.
+            </p>
+          )}
           <Tabs label="Paiements" value={tab} onChange={setTab} items={[{ id: "echeancier", label: "Échéancier", icon: "calendar_month" }, { id: "historique", label: "Historique et reçus", icon: "receipt_long" }]} />
           {tab === "echeancier" ? (
             <>

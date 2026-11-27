@@ -112,7 +112,7 @@ create or replace function public.save_grade(
   p_value      numeric
 )
 returns void
-language plpgsql volatile security definer set search_path = public as $$
+language plpgsql volatile security definer set search_path = '' as $$
 declare
   v_school  uuid := public.current_school_id();
   v_teacher uuid := public.current_teacher_id();
@@ -180,7 +180,7 @@ create or replace function public.update_report_meta(
   p_comment    text default null
 )
 returns void
-language plpgsql volatile security definer set search_path = public as $$
+language plpgsql volatile security definer set search_path = '' as $$
 declare
   v_school  uuid := public.current_school_id();
   v_teacher uuid := public.current_teacher_id();
@@ -229,7 +229,7 @@ grant execute on function public.update_report_meta(uuid, text, text, int, text)
 -- ----------------------------------------------------------------------------
 create or replace function public.class_report_cards(p_class_id uuid, p_period text)
 returns jsonb
-language plpgsql volatile security definer set search_path = public as $$
+language plpgsql volatile security definer set search_path = '' as $$
 declare
   v_school  uuid := public.current_school_id();
   v_role    text := public.current_role();
@@ -283,6 +283,17 @@ begin
     raise exception 'Vous n''avez pas accès aux bulletins de cette classe.';
   end if;
 
+  -- (C2) Verrouillage des bulletins : la RLS protège la lecture directe de
+  -- `grades` / `report_metas`, mais cette RPC est SECURITY DEFINER et
+  -- contourne la RLS. Le contrôle doit donc être refait ici, sinon un parent
+  -- ou un élève contourne le blocage décidé par la direction.
+  if v_scope in ('parent','eleve')
+     and coalesce((select ss.block_student_bulletins
+                     from public.school_settings ss
+                    where ss.school_id = v_school), false) then
+    raise exception 'Les bulletins sont temporairement indisponibles.';
+  end if;
+
   select period_type into v_period_type from public.school_settings where school_id = v_school;
   v_allowed := case when v_period_type = 'trimestre' then array['T1','T2','T3'] else array['S1','S2'] end;
   if not (p_period = any (v_allowed)) then
@@ -301,19 +312,27 @@ begin
     from public.class_subjects c
     where c.class_id = p_class_id and c.school_id = v_school
   ),
-  students as (
-    select s.id, s.matricule, s.first_name, s.last_name
+  -- (A5) LA CLASSE ENTIÈRE sert de référence aux rangs et à la moyenne de
+  -- classe. Le filtre de portée (parent / élève) ne s'applique qu'au retour :
+  -- sinon un parent ne verrait que son enfant avec le rang 1 et une moyenne
+  -- de classe erronée.
+  class_students as (
+    select s.id, s.matricule, s.first_name, s.last_name, s.parent_id
     from public.students s
     where s.school_id = v_school and s.class_id = p_class_id
-      and (v_scope = 'staff'
-        or (v_scope = 'parent' and s.parent_id = v_partner)
-        or (v_scope = 'eleve' and s.id = v_partner))
+  ),
+  students as (
+    select cs2.id, cs2.matricule, cs2.first_name, cs2.last_name
+    from class_students cs2
+    where v_scope = 'staff'
+       or (v_scope = 'parent' and cs2.parent_id = v_partner)
+       or (v_scope = 'eleve' and cs2.id = v_partner)
   ),
   lines as (
     select st.id as student_id, c.subject_id, c.subject_name, c.coefficient, c.teacher_name,
            g.devoir1, g.devoir2, g.composition,
            public.grade_subject_average(g.devoir1, g.devoir2, g.composition, v_cycle) as average
-    from students st cross join cs c
+    from class_students st cross join cs c
     left join public.grades g
       on g.student_id = st.id and g.subject_id = c.subject_id
      and g.class_id = p_class_id and g.period = p_period

@@ -113,8 +113,9 @@ export function SubscriptionGuard() {
   // Déconnexion automatique après inactivité (M-07 de l'audit).
   // Le délai est le réglage plateforme session_timeout_minutes (éditable dans
   // /admin/parametres) — le réglage s'applique désormais aussi à l'espace
-  // école, pas seulement à la console admin. 30 min par défaut tant que le
-  // statut n'est pas chargé.
+  // école, pas seulement à la console admin. Harmonisé avec AdminLayout :
+  // `|| 30` couvre le statut non chargé (0) ; useIdleLogout borne ensuite à
+  // au moins 1 minute (protection UX, jamais une désactivation).
   useIdleLogout(status.sessionTimeoutMinutes || 30, () => {
     logout();
     window.location.replace("/connexion");
@@ -124,10 +125,19 @@ export function SubscriptionGuard() {
   // Tant que l'abonnement n'est pas chargé, on laisse la page afficher ses skeletons.
   if (school.loading) return <Outlet />;
 
+  // `status === "AUCUN"` produit désormais readOnly ET blocked (aucune écriture
+  // possible), mais l'écran d'attente "choisir une formule" reste le bon
+  // message pour le directeur : on teste `missing` AVANT `blocked`.
+  if (school.missing && school.schoolId) {
+    return user?.role === "directeur" ? (
+      <SubscriptionRequiredScreen schoolName={school.schoolName} />
+    ) : (
+      <ContactSchoolScreen schoolName={school.schoolName} />
+    );
+  }
   if (school.blocked && school.schoolId) {
     return user?.role === "directeur" ? <RenewScreen schoolName={school.schoolName} status={school.status} isDirector /> : <ContactSchoolScreen schoolName={school.schoolName} />;
   }
-  if (school.missing && school.schoolId) return <SubscriptionRequiredScreen schoolName={school.schoolName} />;
   return <Outlet />;
 }
 

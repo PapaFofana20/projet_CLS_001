@@ -348,10 +348,11 @@ grant execute on function public.post_announcement(text, text, boolean, text[]) 
 -- ----------------------------------------------------------------------------
 create or replace function public.admin_dashboard(p_period_id text)
 returns jsonb
-language plpgsql volatile security definer set search_path = public as $$
+language plpgsql volatile security definer set search_path = '' as $$
 declare
   v_role text := public.current_role();
   v_school uuid := public.current_school_id();
+  v_period text;
   v_settings record;
   v_y1 int;
   v_y2 int;
@@ -373,6 +374,24 @@ begin
   v_y1 := left(v_settings.school_year, 4)::int;
   v_y2 := right(v_settings.school_year, 4)::int;
 
+  -- (M13) Le front envoie 'semestre1' / 'trimestre2', mais class_report_cards
+  -- n'accepte que les codes S1..S3 / T1..T3. Anciennement
+  -- coalesce(p_period_id, 'semestre1') → « Période invalide » dès que le
+  -- paramètre était fourni.
+  v_period := case lower(trim(coalesce(p_period_id, 'semestre1')))
+    when 'semestre1' then 'S1'
+    when 'semestre2' then 'S2'
+    when 'trimestre1' then 'T1'
+    when 'trimestre2' then 'T2'
+    when 'trimestre3' then 'T3'
+    when 's1' then 'S1'
+    when 's2' then 'S2'
+    when 't1' then 'T1'
+    when 't2' then 'T2'
+    when 't3' then 'T3'
+    else 'S1'
+  end;
+
   -- Moyenne générale de l'école : moyenne des moyennes de classes (bulletins).
   -- Reprise du calcul serveur (class_report_cards), comme le front.
   for v_class in
@@ -381,7 +400,7 @@ begin
     for v_card in
       select jn
       from jsonb_array_elements(
-        public.class_report_cards(v_class.id, coalesce(p_period_id, 'semestre1'))
+        public.class_report_cards(v_class.id, v_period)
       ) jn
     loop
       if jsonb_typeof(v_card.jn->'generalAverage') = 'number' then

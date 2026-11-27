@@ -4,7 +4,7 @@
  * par Supabase Auth — jamais décodée sans signature.
  */
 import { audit, getAuthenticatedUser, serviceClient } from "../lib/auth.js";
-import { auditAdmin } from "../lib/authAdmin.js";
+import { auditAdmin, hasValidMfaSession } from "../lib/authAdmin.js";
 import { ok, RATE_LIMIT_RE, route, serverError, unauthorized, logError } from "../lib/http.js";
 import { enforceRateLimit } from "../lib/rateLimit.js";
 
@@ -69,18 +69,10 @@ export default route(async (req, res) => {
 
     // Si le MFA est activé pour cet agent, exiger une session MFA vérifiée
     // (créée via POST /admin/mfa/verify après validation du second facteur).
-    // `.limit(1)` plutôt que `.maybeSingle()` : deux lignes actives (ancien
-    // doublon, ou course entre deux onglets) feraient renvoyer PGRST116
-    // (data = null) et verrouilleraient la console en boucle « Second
-    // facteur requis » jusqu'à expiration des lignes.
+    // Le contrôle est factorisé dans authAdmin.hasValidMfaSession() et
+    // appliqué aussi par requireAdminRole() sur toutes les routes admin.
     if (agent.totp_enabled === true) {
-      const { data: mfaRows } = await svc
-        .from("admin_mfa_sessions")
-        .select("id")
-        .eq("agent_id", agent.id)
-        .gt("expires_at", new Date().toISOString())
-        .limit(1);
-      if (!mfaRows || mfaRows.length === 0) {
+      if (!(await hasValidMfaSession(svc, agent.id))) {
         await auditAdmin(svc, {
           actorId: user.id,
           actorRole: agent.role,

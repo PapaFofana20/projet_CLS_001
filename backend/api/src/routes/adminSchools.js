@@ -264,11 +264,9 @@ export default route(async (req, res) => {
       // journalisé : les données scolaires sont déjà supprimées, mais un
       // compte Auth résiduel resterait théoriquement utilisable.
       let authUsersRemoved = 0;
-      const authDeleteErrors = [];
       for (const userId of authUserIds) {
         const { error: userDeleteError } = await svc.auth.admin.deleteUser(userId);
         if (userDeleteError) {
-          authDeleteErrors.push(`Échec suppression Auth ${userId}: ${userDeleteError.message}`);
           logError("admin-schools:delete-auth", userDeleteError);
         } else {
           authUsersRemoved += 1;

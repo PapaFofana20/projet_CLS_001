@@ -9,9 +9,10 @@
  * jetons de session restent gérés par Supabase côté navigateur, rien ne
  * change pour /admin/auth.
  */
+import { createHash } from "node:crypto";
 import { SERVICE_KEY, SUPABASE_URL } from "../config.js";
 import { auditAdmin, serviceClient } from "../lib/authAdmin.js";
-import { ok, route, serverError, RATE_LIMIT_RE, logError } from "../lib/http.js";
+import { badRequest, ok, route, serverError, RATE_LIMIT_RE, logError } from "../lib/http.js";
 import { clientIp, enforceRateLimit } from "../lib/rateLimit.js";
 import { expectObject, requireString } from "../lib/validate.js";
 import { createPreAuthSession } from "../lib/mfa-sessions.js";
@@ -23,26 +24,46 @@ const GENERIC_ERROR = "Matricule/e-mail ou mot de passe incorrect.";
  * identifiant, stocké dans la table public.rate_limits via la RPC atomique
  * sys_rate_limit (service_role uniquement). Survit aux redémarrages du
  * processus (contrairement à une Map en mémoire).
- * Après 3 échecs consécutifs, le compte est verrouillé 15 minutes.
- * La fenêtre expire naturellement ; aucun reset manuel n'est requis après
- * une réussite (la clé rate_limits est laissée en l'état, expiration au
- * bout de 15 min).
+ * Après 3 échecs consécutifs, le compte est verrouillé 15 minutes. Le
+ * compteur n'est incrémenté QU'EN cas d'échec réel (mot de passe invalide ou
+ * identifiant inconnu) ; une connexion réussie supprime la ligne (reset
+ * immédiat), ce qui évite de verrouiller un agent légitime après des
+ * tentatives réussies.
  */
 const LOCKOUT_MAX_FAILURES = 3;
 const LOCKOUT_WINDOW_SECONDS = 15 * 60; // 15 minutes
+const LOCKOUT_KEY_PREFIX = "admin-login:lockout:";
 
-/** Vérifie si l'identifiant est verrouillé (3 échecs consécutifs dans la fenêtre).
- * Appelle sys_rate_limit qui incrémente atomiquement le compteur.
- * Retourne true si verrouillé, false sinon.
- */
+const lockoutKey = (identifier) => `${LOCKOUT_KEY_PREFIX}${identifier}`;
+
+/** LIT le compteur sans l'incrémenter. Interroge directement rate_limits en
+ * service_role (les anon/authenticated n'ont aucun accès à cette table).
+ * La fenêtre est vérifiée côté lecture pour ignorer une ligne périmée. */
+async function readLockoutCount(svc, identifier) {
+  const since = new Date(Date.now() - LOCKOUT_WINDOW_SECONDS * 1000).toISOString();
+  const { data, error } = await svc
+    .from("rate_limits")
+    .select("count")
+    .eq("key", lockoutKey(identifier))
+    .gte("window_start", since)
+    .maybeSingle();
+  if (error) return 0; // panne DB : on ne bloque pas (fail-open pour le verrouillage)
+  return Math.max(0, Number(data?.count ?? 0));
+}
+
+/** Vérifie si l'identifiant est verrouillé (3 échecs consécutifs dans la fenêtre). */
 async function isLockedOut(svc, identifier) {
-  const { data, error } = await svc.rpc("sys_rate_limit", {
-    p_key: `admin-login:lockout:${identifier}`,
+  return (await readLockoutCount(svc, identifier)) >= LOCKOUT_MAX_FAILURES;
+}
+
+/** Incrémente atomiquement le compteur d'échecs via sys_rate_limit. */
+async function recordFailedLogin(svc, identifier) {
+  const { error } = await svc.rpc("sys_rate_limit", {
+    p_key: lockoutKey(identifier),
     p_max: LOCKOUT_MAX_FAILURES,
     p_window_secs: LOCKOUT_WINDOW_SECONDS,
   });
-  if (error) return false; // en cas de panne DB, on ne bloque pas (fail-open pour le verrouillage)
-  return data === false;
+  if (error) logError("admin-login:lockout", error);
 }
 
 /** Vérifie (email, password) directement auprès de Supabase Auth. */
@@ -78,7 +99,8 @@ export default route(async (req, res) => {
     await enforceRateLimit(svc, `admin-login:id:${value}`, 10, 300);
 
     // Verrouillage progressif persistant après échecs consécutifs (H-03 de l'audit).
-    // sys_rate_limit incrémente atomiquement le compteur à chaque appel.
+    // isLockedOut() LIT seulement le compteur : l'incrément a lieu plus bas,
+    // uniquement sur échec avéré du mot de passe ou identifiant inconnu.
     if (await isLockedOut(svc, value)) {
       return ok(res, { error: "Compte temporairement verrouillé. Réessayez dans 15 minutes." }, 429);
     }
@@ -92,11 +114,25 @@ export default route(async (req, res) => {
       // trouvé » : sans cela, la latence trahissait l'existence d'une
       // matricule — or elles sont séquentielles et donc énumérables.
       await passwordIsValid("matricule-inconnue@classora.invalid", password);
+      // Un identifiant inconnu compte aussi comme un échec : sans cela, un
+      // attaquant pourrait contourner le verrouillage en changeant de clé.
+      await recordFailedLogin(svc, value);
+      await auditAdmin(svc, {
+        actorId: null,
+        actorRole: null,
+        action: "admin_login_failed",
+        entity: "admin_agents",
+        entityId: null,
+        payload: {
+          // Empreinte courte plutôt que l'e-mail/matricule en clair dans le journal.
+          identifierHash: createHash("sha256").update(value).digest("hex").slice(0, 12),
+        },
+      });
       return ok(res, { error: GENERIC_ERROR }, 401);
     }
 
     if (!(await passwordIsValid(agent.email, password))) {
-      // L'appel à isLockedOut ci-dessus a déjà incrémenté le compteur via sys_rate_limit.
+      await recordFailedLogin(svc, value);
       await auditAdmin(svc, {
         actorId: agent.auth_user_id,
         actorRole: agent.role,
@@ -131,8 +167,11 @@ export default route(async (req, res) => {
       payload: { matricule: agent.matricule },
     });
 
-    // Connexion réussie : le compteur de verrouillage expire naturellement
-    // au bout de 15 minutes (pas de reset immédiat nécessaire).
+    // Connexion réussie : reset immédiat du compteur de verrouillage. Sans
+    // cette suppression, des échecs anciens (encore dans la fenêtre de 15 min)
+    // continuaient de faire verrouiller un agent pourtant authentifié.
+    const { error: resetError } = await svc.from("rate_limits").delete().eq("key", lockoutKey(value));
+    if (resetError) logError("admin-login:reset-lockout", resetError);
 
     // Si le MFA est activé, on ne retourne pas encore l'email : il faut
     // d'abord valider le second facteur via POST /admin/mfa/verify.
@@ -151,6 +190,7 @@ export default route(async (req, res) => {
 
     return ok(res, { email: agent.email });
   } catch (e) {
+    if (e?.name === "ValidationError") return badRequest(res, e.message);
     if (e instanceof Error && RATE_LIMIT_RE.test(e.message)) return ok(res, { error: e.message }, 429);
     logError("admin-login", e);
     return serverError(res);

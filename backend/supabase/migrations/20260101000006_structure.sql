@@ -582,10 +582,13 @@ $$;
 -- Classes ouvertes aux inscriptions (publique : page /inscription).
 -- Ne retourne que {id, name, cycle, level_label, capacity, filled} —
 -- aucune donnée personnelle. Cette fonction est callable par anon.
+-- SCOLIA (audit M15) : p_matricule est optionnel pour compatibilité avec les
+-- appels historiques (page /inscription) ; lorsqu'il est fourni, il DOIT
+-- correspondre au matricule de l'école. registration_open reste exigé.
 -- ----------------------------------------------------------------------------
-create or replace function public.open_classes(p_school_id uuid)
+create or replace function public.open_classes(p_school_id uuid, p_matricule text default null)
 returns table (class_id uuid, name text, cycle app_cycle, level_label text, capacity int, filled int)
-language sql stable security definer set search_path = public as $$
+language sql stable security definer set search_path = '' as $$
   select c.id, c.name, c.cycle, l.label, c.capacity,
          (select count(*) from public.students st where st.class_id = c.id)::int as filled
   from public.class_rooms c
@@ -593,12 +596,18 @@ language sql stable security definer set search_path = public as $$
   join public.schools sc on sc.id = c.school_id
   where c.school_id = p_school_id
     and sc.registration_open
+    and (p_matricule is null
+         or (sc.matricule is not null
+             and upper(trim(p_matricule)) = upper(trim(sc.matricule))))
     and (select count(*) from public.students st where st.class_id = c.id) < c.capacity
   order by c.name
 $$;
 
-revoke execute on function public.open_classes(uuid) from public;
-grant execute on function public.open_classes(uuid) to anon, authenticated;
+-- Ancienne signature supprimée : l'appel à un argument est couvert par le
+-- défaut p_matricule = null (une seule signature = pas d'ambiguïté RPC).
+drop function if exists public.open_classes(uuid);
+revoke execute on function public.open_classes(uuid, text) from public;
+grant execute on function public.open_classes(uuid, text) to anon, authenticated;
 
 revoke execute on function public.enroll_student(uuid, text, text, text, date, jsonb, uuid, text, text, text, text, text) from anon, public;
 grant execute on function public.enroll_student(uuid, text, text, text, date, jsonb, uuid, text, text, text, text, text) to authenticated;

@@ -11,6 +11,8 @@
 begin;
 set local search_path = pgtap, public, extensions;
 grant usage on schema pgtap to public;
+-- 39 assertions : b22 / b23 (start_installment_payments supprimé en 00016)
+-- sont remplacées par 2 assertions sur block_student_bulletins via RPC (C2).
 select plan(39);
 
 -- ----------------------------------------------------------------------------
@@ -29,8 +31,8 @@ begin
   insert into public.level_fees (school_id, level_id, inscription, mensualite)
     values (a, 'cm1', 30000, 20000), (a, '6e', 40000, 30000), (b, 'cm1', 30000, 20000);
   insert into public.subscriptions (school_id, plan_id, starts_at, ends_at, student_limit)
-    values (a, 'pro', current_date, current_date + 30, 300),
-           (b, 'pro', current_date, current_date + 30, 300);
+    values (a, 'essentiel', current_date, current_date + 30, 300),
+           (b, 'essentiel', current_date, current_date + 30, 300);
 
   insert into public.teachers (id, school_id, kind, first_name, last_name, email) values
     ('dddddd44-0000-0000-0000-0000000000aa', a, 'instituteur', 'Titu', 'A', 'titu.a@a.sn'),
@@ -217,6 +219,25 @@ select is(
   1::bigint, 'le parent voit les notes de ses enfants'
 ) as b10;
 
+-- (C2) Blocage des bulletins : la RLS seule ne protège pas class_report_cards
+-- (SECURITY DEFINER). Le verrou doit être appliqué dans la RPC.
+select pg_temp.temp_role('postgres');
+update public.school_settings set block_student_bulletins = true
+ where school_id = 'aaaaaa11-0000-0000-0000-0000000000a1';
+select pg_temp.temp_statu('faa11111-0000-0000-0000-0000000000a5'); -- parent de A
+select is(
+  (select pg_temp.temp_try($$select public.class_report_cards('aaaaaa11-0000-0000-0000-0000000000ca', 'S1')$$)),
+  'refusé'::text, 'bulletins bloqués : la RPC refuse l''accès au parent'
+) as b10b;
+select pg_temp.temp_role('postgres');
+update public.school_settings set block_student_bulletins = false
+ where school_id = 'aaaaaa11-0000-0000-0000-0000000000a1';
+select pg_temp.temp_statu('faa11111-0000-0000-0000-0000000000a5');
+select is(
+  (select pg_temp.temp_try($$select public.class_report_cards('aaaaaa11-0000-0000-0000-0000000000ca', 'S1')$$)),
+  'ok'::text, 'bulletins débloqués : la RPC répond à nouveau'
+) as b10c;
+
 select is(
   (select pg_temp.temp_try($$select public.save_grade(
        'eeeeee55-0000-0000-0000-0000000000a1', 'aaaaaa11-0000-0000-0000-0000000000ca',
@@ -237,8 +258,8 @@ insert into public.payments (school_id, student_id, kind, label, due_date, amoun
           'mensualite', 'Octobre', current_date, 20000, 0);
 select pg_temp.temp_statu('faa11111-0000-0000-0000-0000000000a5');
 select is(
-  (select pg_temp.temp_try($$select public.link_child('ABCDB2', '2015-01-01')$$)),
-  'refusé'::text, 'un parent ne rattache pas un élève d''une autre école'
+  (select pg_temp.temp_try($$select public.link_child('ECB0001', '2014-01-01')$$)),
+  'refusé'::text, 'un parent ne rattache pas un élève d''une autre école (matricule + naissance)'
 ) as b13;
 
 -- ===========================================================================
@@ -290,26 +311,9 @@ select is(
 -- ===========================================================================
 -- 7. IDOR : les RPC vérifient l'appartenance à l'école / au rôle
 -- ===========================================================================
-select pg_temp.temp_statu('faa11111-0000-0000-0000-0000000000a5'); -- parent
-select is(
-  (select pg_temp.temp_try($$select public.start_installment_payments(
-       array[(select id from public.payments limit 1)]::uuid[], 'wave', '7012345678')$$)),
-  'ok'::text, 'le parent peut payer l''échéance de son enfant'
-) as b22;
-
--- Un parent ne peut pas payer l'échéance d'un élève qui n'est pas le sien :
--- on vérifie qu'aucune transaction n'est ouverte pour un élève de B.
-select pg_temp.temp_role('postgres');
-insert into public.payments (id, school_id, student_id, kind, label, due_date, amount, paid_amount)
-  values ('99999999-0000-0000-0000-0000000000b1', 'bbbbbb22-0000-0000-0000-0000000000b1', 'eeeeee55-0000-0000-0000-0000000000b1',
-          'mensualite', 'Octobre', current_date, 20000, 0);
-select pg_temp.temp_statu('faa11111-0000-0000-0000-0000000000a5');
-select is(
-  (select pg_temp.temp_try($$select public.start_installment_payments(
-       array['99999999-0000-0000-0000-0000000000b1']::uuid[],
-       'wave', '7012345678')$$)),
-  'refusé'::text, 'un parent ne peut pas payer l''échéance d''un élève d''une autre école'
-) as b23;
+-- b22 / b23 retirés : start_installment_payments et le registre
+-- payment_transactions n'existent plus depuis 00016. Le paiement d'échéance
+-- se fait désormais par record_cash_payment (contrôlé plus haut, b12/b24).
 
 -- L'économe encaisse, le surveillant non.
 select pg_temp.temp_statu('faa11111-0000-0000-0000-0000000000a7'); -- econome

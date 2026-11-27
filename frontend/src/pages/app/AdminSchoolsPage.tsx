@@ -165,7 +165,7 @@ function NetworkOverview({ stats, unavailable }: { stats: AdminOverviewStats | n
   const active = schools?.active;
   const suspended = schools?.suspended;
   const activePct = total && active !== undefined ? Math.round((active / total) * 100) : null;
-  const suspendedPct = activePct === null ? null : 100 - activePct;
+  const suspendedPct = total && suspended !== undefined ? Math.round((suspended / total) * 100) : null;
 
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">

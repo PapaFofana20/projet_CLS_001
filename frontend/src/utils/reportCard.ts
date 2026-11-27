@@ -30,8 +30,25 @@ export interface ReportInput {
 export function buildClassReportCards(input: ReportInput): ReportCardData[] {
   const { classRoom, students, grades, classSubjects, subjects, assignments, teachers, metas, period } = input;
   const cs = classSubjects.filter((x) => x.classId === classRoom.id);
-  const gradeOf = (studentId: string, subjectId: string) =>
-    grades.find((g) => g.studentId === studentId && g.subjectId === subjectId && g.classId === classRoom.id && g.period === period.id);
+  // Indexation unique en amont : évite un find() linéaire par couple
+  // élève × matière (O(n²) sur les bulletins des grandes classes).
+  const gradeMap = new Map<string, Grade>();
+  grades.forEach((g) => {
+    if (g.classId === classRoom.id && g.period === period.id) {
+      gradeMap.set(`${g.studentId}|${g.subjectId}`, g);
+    }
+  });
+  const gradeOf = (studentId: string, subjectId: string) => gradeMap.get(`${studentId}|${subjectId}`);
+  const subjectById = new Map(subjects.map((x) => [x.id, x]));
+  const teacherById = new Map(teachers.map((x) => [x.id, x]));
+  const assignmentBySubject = new Map<string, TeachingAssignment>();
+  assignments.forEach((a) => {
+    if (a.classId === classRoom.id && !assignmentBySubject.has(a.subjectId)) assignmentBySubject.set(a.subjectId, a);
+  });
+  const metaByStudent = new Map<string, ReportMeta>();
+  metas.forEach((m) => {
+    if (m.period === period.id && !metaByStudent.has(m.studentId)) metaByStudent.set(m.studentId, m);
+  });
 
   const subjectRanks = new Map<string, Map<string, number>>();
   cs.forEach((c) => {
@@ -42,11 +59,11 @@ export function buildClassReportCards(input: ReportInput): ReportCardData[] {
   });
 
   const teacherName = (subjectId: string): string => {
-    const a = assignments.find((x) => x.classId === classRoom.id && x.subjectId === subjectId);
-    const t = a ? teachers.find((x) => x.id === a.teacherId) : undefined;
+    const a = assignmentBySubject.get(subjectId);
+    const t = a ? teacherById.get(a.teacherId) : undefined;
     return t ? `${t.firstName} ${t.lastName}` : "—";
   };
-  const head = teachers.find((t) => t.id === classRoom.headTeacherId);
+  const head = classRoom.headTeacherId ? teacherById.get(classRoom.headTeacherId) : undefined;
   const headTeacherName = head ? `${head.firstName} ${head.lastName}` : "—";
 
   const partial = students.map((s) => {
@@ -55,7 +72,7 @@ export function buildClassReportCards(input: ReportInput): ReportCardData[] {
       const average = subjectAverage(g, classRoom.cycle);
       return {
         subjectId: c.subjectId,
-        subjectName: subjects.find((x) => x.id === c.subjectId)?.name ?? c.subjectId,
+        subjectName: subjectById.get(c.subjectId)?.name ?? c.subjectId,
         coefficient: c.coefficient,
         devoir1: g?.devoir1 ?? null,
         devoir2: g?.devoir2 ?? null,
@@ -84,7 +101,7 @@ export function buildClassReportCards(input: ReportInput): ReportCardData[] {
     classSize: students.length,
     classAverage,
     // Aucune valeur inventée : sans saisie réelle, la fiche affiche « Non renseigné ».
-    meta: metas.find((m) => m.studentId === p.student.id && m.period === period.id) ?? null,
+    meta: metaByStudent.get(p.student.id) ?? null,
     headTeacherName,
   }));
 }

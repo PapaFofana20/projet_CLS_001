@@ -6,14 +6,19 @@ const ACTIVITY_EVENTS = ["pointerdown", "pointermove", "keydown", "wheel", "touc
 /**
  * Déconnexion automatique après une période d'inactivité.
  * Le délai est configuré dans /admin/parametres (session_timeout_minutes).
+ * ATTENTION : ce garde-fou est une protection UX (éviter une session ouverte
+ * indéfiniment sur un poste partagé). Il ne remplace PAS la révocation du JWT
+ * côté serveur ni les RLS, et il ne doit JAMAIS désactiver la déconnexion.
  */
 export function useIdleLogout(timeoutMinutes: number, onTimeout: () => void) {
   const callback = useRef(onTimeout);
   callback.current = onTimeout;
 
   useEffect(() => {
-    const minutes = Number(timeoutMinutes);
-    if (!Number.isFinite(minutes) || minutes <= 0) return;
+    const requested = Number(timeoutMinutes);
+    // Valeur invalide ou nulle : on borne à 1 minute au lieu de désactiver
+    // silencieusement le timeout (un réglage 0 laissait la session ouverte).
+    const minutes = Number.isFinite(requested) && requested > 0 ? Math.max(1, requested) : 1;
 
     let timer: number | undefined;
     const schedule = () => {

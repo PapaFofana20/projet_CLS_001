@@ -6,15 +6,21 @@
 -- ----------------------------------------------------------------------------
 -- school_is_writable : seule une école AVEC abonnement actif (ends_at >= today)
 -- peut écrire. Sans abonnement = lecture seule.
+-- SCOLIA (audit M14) : refus d'une école autre que celle du profil connecté.
 -- ----------------------------------------------------------------------------
 create or replace function public.school_is_writable(p_school_id uuid)
 returns boolean
-language sql stable security definer set search_path = public as $$
-  select exists(
-    select 1 from public.subscriptions s
-    where s.school_id = p_school_id and s.ends_at >= current_date
-    limit 1
-  )
+language sql stable security definer set search_path = '' as $$
+  -- service_role / postgres (Edge Functions, webhooks) sont inter-écoles ;
+  -- seul un client authentifié est borné à la sienne (audit M14).
+  select (auth.role() = 'service_role'
+          or session_user in ('postgres', 'supabase_admin')
+          or coalesce(p_school_id = public.current_school_id(), false))
+     and exists(
+       select 1 from public.subscriptions s
+       where s.school_id = p_school_id and s.ends_at >= current_date
+       limit 1
+     )
 $$;
 
 -- ----------------------------------------------------------------------------
@@ -23,12 +29,17 @@ $$;
 -- ----------------------------------------------------------------------------
 create or replace function public.school_is_readable(p_school_id uuid)
 returns boolean
-language sql stable security definer set search_path = public as $$
-  select exists(
-    select 1 from public.subscriptions s
-    where s.school_id = p_school_id and s.ends_at >= current_date - 7
-    limit 1
-  )
+language sql stable security definer set search_path = '' as $$
+  -- service_role / postgres (Edge Functions, webhooks) sont inter-écoles ;
+  -- seul un client authentifié est borné à la sienne (audit M14).
+  select (auth.role() = 'service_role'
+          or session_user in ('postgres', 'supabase_admin')
+          or coalesce(p_school_id = public.current_school_id(), false))
+     and exists(
+       select 1 from public.subscriptions s
+       where s.school_id = p_school_id and s.ends_at >= current_date - 7
+       limit 1
+     )
 $$;
 
 -- ----------------------------------------------------------------------------
@@ -37,7 +48,7 @@ $$;
 -- ----------------------------------------------------------------------------
 create or replace function public.subscription_info(p_school_id uuid)
 returns public.subscription_info_result
-language sql stable security definer set search_path = public as $$
+language sql stable security definer set search_path = '' as $$
   select
     coalesce(public.subscription_status_of(s.school_id, s.ends_at), 'AUCUN'),
     coalesce(s.ends_at - current_date, 0),

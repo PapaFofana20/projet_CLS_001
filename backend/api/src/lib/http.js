@@ -13,9 +13,11 @@ const ALLOWED_HEADERS = "authorization, apikey, content-type, x-client-info";
 
 /**
  * Origines admises : FRONTEND_ORIGIN (déploiement, liste séparée par des
- * virgules). Sans cette variable, le CORS est FERMÉ par défaut — sauf pour
- * les origines locales habituelles du développement (Vite 5173/4173), et
- * UNIQUEMENT hors production : en production, ces origines ne passent jamais.
+ * virgules) et, UNIQUEMENT hors production et uniquement si elles sont
+ * explicitement listées, les origines locales de développement ci-dessous.
+ * Il n'existe AUCUN joker « development » : toute origine non listée est
+ * refusée (403), y compris en développement. En production, l'absence de
+ * FRONTEND_ORIGIN fait Refuser le démarrage dans index.js (fail-closed).
  */
 const DEV_ORIGINS = new Set([
   "http://localhost:5173", "http://127.0.0.1:5173",
@@ -26,13 +28,13 @@ const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
 function allowedOrigin(origin) {
   if (!origin) return false;
-  if (FRONTEND_ORIGIN) {
-    return FRONTEND_ORIGIN.split(",").map((o) => o.trim().replace(/\/$/, "")).includes(origin.replace(/\/$/, ""));
-  }
-  // Fail-closed : en production, seule FRONTEND_ORIGIN passe ; les origines
-  // de développement ne sont acceptées que hors production.
+  const normalized = origin.replace(/\/$/, "");
+  const configured = FRONTEND_ORIGIN.split(",").map((o) => o.trim().replace(/\/$/, "")).filter(Boolean);
+  if (configured.includes(normalized)) return true;
+  // Fail-closed : aucun wildcard. Les origines locales ne sont admises que
+  // hors production ET si elles figurent explicitement dans DEV_ORIGINS.
   if (IS_PRODUCTION) return false;
-  return process.env.NODE_ENV === "development" || DEV_ORIGINS.has(origin.replace(/\/$/, ""));
+  return DEV_ORIGINS.has(normalized);
 }
 
 /** Middleware CORS : autorise l'origine du front, répond au préflight OPTIONS. */
@@ -99,7 +101,7 @@ export function route(handler) {
       .then(() => handler(req, res))
       .catch((e) => {
         if (e?.name === "ValidationError") return badRequest(res, e.message);
-        logError("api", new Error(`Non géré sur ${req.method} ${req.originalUrl}: ${e?.message ?? String(e)}`));
+        logError("api", new Error(`Non géré sur ${req.method} ${req.path}: ${e?.message ?? String(e)}`));
         return serverError(res);
       });
   };
@@ -115,8 +117,7 @@ export function withTimeout(promise, ms, context = "appel Supabase") {
       reject(new Error(`Timeout : ${context} (${ms} ms)`));
     }, ms);
   });
-  return Promise.race([promise, timeoutPromise]).then((result) => {
-    clearTimeout(timeoutId);
-    return result;
-  });
+  // finally() couvre AUSSI le rejet (timeout ou erreur amont) : sans cela,
+  // le timer restait actif et rejetaient une promesse déjà réglée.
+  return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(timeoutId));
 }

@@ -48,7 +48,7 @@ create trigger trg_set_payment_status
 -- ----------------------------------------------------------------------------
 create or replace function public.record_cash_payment_unchecked(p_payment_id uuid, p_amount int)
 returns jsonb
-language plpgsql volatile security definer set search_path = public as $$
+language plpgsql volatile security definer set search_path = '' as $$
 declare
   v_school uuid := public.current_school_id();
   v_role text := public.current_role();
@@ -101,9 +101,13 @@ revoke execute on function public.record_cash_payment_unchecked(uuid, int)
 -- ----------------------------------------------------------------------------
 -- Choix manuel du statut d'une échéance (directeur / économe).
 -- ----------------------------------------------------------------------------
-create or replace function public.set_payment_manual_status_unchecked(p_payment_id uuid, p_manual_status text)
+create or replace function public.set_payment_manual_status_unchecked(
+  p_payment_id uuid,
+  p_manual_status text,
+  p_reference text default null
+)
 returns jsonb
-language plpgsql volatile security definer set search_path = public as $$
+language plpgsql volatile security definer set search_path = '' as $$
 declare
   v_school uuid := public.current_school_id();
   v_role text := public.current_role();
@@ -116,7 +120,8 @@ begin
   if not public.school_is_writable(v_school) then
     raise exception 'Mode lecture seule : l''abonnement de votre école est expiré. Les modifications sont désactivées.';
   end if;
-  if p_manual_status not in ('a_venir', 'paye', 'impaye') then
+  -- (M10) NULL passait le IN et effaçait l'encaissement existant.
+  if p_manual_status is null or p_manual_status not in ('a_venir', 'paye', 'impaye') then
     raise exception 'Statut invalide.';
   end if;
   select * into v_p from public.payments
@@ -126,7 +131,20 @@ begin
   end if;
 
   if p_manual_status = 'paye' then
-    v_ref := coalesce(v_p.reference, 'EC-' || (100000 + floor(random() * 900000))::int::text);
+    -- (M11) Un encaissement « payé » doit porter une référence non vide et
+    -- unique dans l'école. Une référence déjà présente est conservée.
+    v_ref := nullif(trim(coalesce(v_p.reference, '')), '');
+    if v_ref is null then
+      v_ref := nullif(trim(coalesce(p_reference, '')), '');
+    end if;
+    if v_ref is null then
+      raise exception 'Une référence de paiement est requise pour marquer une échéance comme payée.';
+    end if;
+    if exists (select 1 from public.payments pr
+               where pr.school_id = v_school and pr.id <> p_payment_id
+                 and upper(trim(pr.reference)) = upper(v_ref)) then
+      raise exception 'Cette référence de paiement est déjà utilisée dans votre école.';
+    end if;
     update public.payments
     set manual_status = 'paye',
         paid_amount = amount,
@@ -158,17 +176,23 @@ begin
 end;
 $$;
 
-revoke execute on function public.set_payment_manual_status_unchecked(uuid, text)
+revoke execute on function public.set_payment_manual_status_unchecked(uuid, text, text)
   from public, anon, authenticated;
 
-create or replace function public.set_payment_manual_status(p_payment_id uuid, p_manual_status text)
+-- Paramètre optionnel en fin de signature : les appels historiques à deux
+-- arguments restent valides (PostgREST et SQL).
+create or replace function public.set_payment_manual_status(
+  p_payment_id uuid,
+  p_manual_status text,
+  p_reference text default null
+)
 returns jsonb
-language plpgsql volatile security definer set search_path = public as $$
+language plpgsql volatile security definer set search_path = '' as $$
 begin
   perform public.assert_active_account();
-  return public.set_payment_manual_status_unchecked(p_payment_id, p_manual_status);
+  return public.set_payment_manual_status_unchecked(p_payment_id, p_manual_status, p_reference);
 end;
 $$;
 
-revoke execute on function public.set_payment_manual_status(uuid, text) from anon, public;
-grant execute on function public.set_payment_manual_status(uuid, text) to authenticated;
+revoke execute on function public.set_payment_manual_status(uuid, text, text) from anon, public;
+grant execute on function public.set_payment_manual_status(uuid, text, text) to authenticated;

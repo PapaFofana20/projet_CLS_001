@@ -110,12 +110,14 @@ select is(public.payment_status_of(20000, 0, current_date + 1, current_date), 'a
 -- ===========================================================================
 select is(public.subscription_status_of('99999999-0000-0000-0000-0000000000ff', current_date + 30, current_date), 'ACTIF'::text,
   'J+30 : ACTIF') as e26;
-select is(public.subscription_status_of('99999999-0000-0000-0000-0000000000ff', current_date + 7, current_date), 'EXPIRE_BIENTOT'::text,
-  'J+7 : EXPIRE_BIENTOT') as e27;
+-- Depuis 00021 : toute échéance dépassée est EXPIRE ; la fenêtre de
+-- lecture seule de 7 jours est portée par school_is_readable / subscription_info.
+select is(public.subscription_status_of('99999999-0000-0000-0000-0000000000ff', current_date + 7, current_date), 'EXPIRE'::text,
+  'J+7 : EXPIRE (lecture seule gérée par subscription_info)') as e27;
 select is(public.subscription_status_of('99999999-0000-0000-0000-0000000000ff', current_date + 8, current_date), 'ACTIF'::text,
   'J+8 : ACTIF') as e28;
-select is(public.subscription_status_of('99999999-0000-0000-0000-0000000000ff', current_date, current_date), 'EXPIRE_BIENTOT'::text,
-  'J0 : EXPIRE_BIENTOT (échéance du jour)') as e29;
+select is(public.subscription_status_of('99999999-0000-0000-0000-0000000000ff', current_date, current_date), 'ACTIF'::text,
+  'J0 : ACTIF (échéance aujourd''hui incluse)') as e29;
 select is(public.subscription_status_of('99999999-0000-0000-0000-0000000000ff', current_date - 1, current_date), 'EXPIRE'::text,
   'J+1 : EXPIRE') as e30;
 select is(public.subscription_status_of('99999999-0000-0000-0000-0000000000ff', null, current_date), 'AUCUN'::text,

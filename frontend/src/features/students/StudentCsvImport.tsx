@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/Card";
 import { Icon } from "@/components/ui/Icon";
 import { useCurrentUser } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
+import { hydrateAll } from "@/services/db";
 import { enrollStudent } from "@/services/studentService";
 import type { SchoolOverview } from "@/services/schoolService";
 import { downloadCsvTemplate, parseStudentsCsv, type CsvStudentRow } from "@/utils/csvImport";
@@ -16,6 +17,11 @@ interface Props {
   onImported: (count: number) => void;
 }
 
+/** Garde-fou avant lecture : un CSV scolaire tient largement sous 2 Mo. */
+const MAX_FILE_BYTES = 2 * 1024 * 1024;
+/** Taille des lots parallèles : évite de saturer le serveur avec 500 RPC simultanées. */
+const BATCH_SIZE = 10;
+
 interface PreviewRow extends CsvStudentRow {
   classId: string | null;
   classError: string | null;
@@ -23,8 +29,9 @@ interface PreviewRow extends CsvStudentRow {
 
 /**
  * Import CSV des élèves (directeur) : aperçu validé ligne par ligne, puis
- * inscription séquentielle via enrollStudent (RPC serveur existant).
- * Les lignes en erreur sont listées et ne bloquent pas les autres.
+ * inscriptions Via enrollStudent (RPC serveur) par lots parallèles de 10, avec
+ * une synchronisation finale unique. Les lignes en erreur sont listées et ne
+ * bloquent pas les autres.
  */
 export function StudentCsvImport({ overview, onImported }: Props) {
   const user = useCurrentUser();
@@ -51,6 +58,13 @@ export function StudentCsvImport({ overview, onImported }: Props) {
     if (!file) return;
     setFileName(file.name);
     setResult(null);
+    if (file.size > MAX_FILE_BYTES) {
+      setText("");
+      setRows([]);
+      setErrors([`Fichier trop volumineux (${(file.size / 1024 / 1024).toFixed(1)} Mo) : la limite est de 2 Mo (500 lignes max).`]);
+      if (fileRef.current) fileRef.current.value = "";
+      return;
+    }
     try {
       const raw = await file.text();
       setText(raw);
@@ -75,26 +89,44 @@ export function StudentCsvImport({ overview, onImported }: Props) {
     if (validRows.length === 0 || busy) return;
     setBusy(true);
     setProgress({ done: 0, total: validRows.length });
-    let ok = 0;
-    const failedLines: string[] = [];
-    for (let i = 0; i < validRows.length; i++) {
-      const r = validRows[i]!;
-      try {
-        await enrollStudent(user, {
-          firstName: r.firstName,
-          lastName: r.lastName,
-          gender: r.gender,
-          birthDate: r.birthDateIso,
-          classId: r.classId!,
-          options: { cantine: false, transport: false, tenue: true },
-          parent: { mode: "new", firstName: r.parentFirst, lastName: r.parentLast, phone: r.parentPhone, email: r.parentEmail, address: "" },
-        });
-        ok++;
-      } catch (e) {
-        failedLines.push(`Ligne ${r.line} (${r.firstName} ${r.lastName}) : ${e instanceof Error ? e.message : "échec"}`);
+    // Les inscriptions sont regroupées par lots de 10 ; chaque ligne garde son
+    // propre résultat pour ne pas transformer un échec isolé en échec du lot.
+    const results: { row: PreviewRow; ok: boolean; message?: string }[] = [];
+    try {
+      for (let i = 0; i < validRows.length; i += BATCH_SIZE) {
+        const batch = validRows.slice(i, i + BATCH_SIZE);
+        const settled = await Promise.all(
+          batch.map(async (r) => {
+            try {
+              await enrollStudent(user, {
+                firstName: r.firstName,
+                lastName: r.lastName,
+                gender: r.gender,
+                birthDate: r.birthDateIso,
+                classId: r.classId!,
+                options: { cantine: false, transport: false, tenue: true },
+                parent: { mode: "new", firstName: r.parentFirst, lastName: r.parentLast, phone: r.parentPhone, email: r.parentEmail, address: "" },
+              }, { skipHydrate: true });
+              return { row: r, ok: true };
+            } catch (e) {
+              return { row: r, ok: false, message: e instanceof Error ? e.message : "échec" };
+            }
+          }),
+        );
+        results.push(...settled);
+        setProgress({ done: Math.min(i + BATCH_SIZE, validRows.length), total: validRows.length });
       }
-      setProgress({ done: i + 1, total: validRows.length });
+      // Chaque ligne a été inscrite avec `skipHydrate` : une seule
+      // synchronisation globale est faite ici, après tous les lots.
+      await hydrateAll();
+    } catch (e) {
+      // La synchronisation finale ne doit pas masquer les inscriptions réussies.
+      toast(e instanceof Error ? e.message : "Synchronisation impossible.", "error");
     }
+    const ok = results.filter((r) => r.ok).length;
+    const failedLines = results
+      .filter((r) => !r.ok)
+      .map((r) => `Ligne ${r.row.line} (${r.row.firstName} ${r.row.lastName}) : ${r.message ?? "échec"}`);
     setResult({ ok, failed: failedLines.length, failedLines });
     setBusy(false);
     if (ok > 0) {

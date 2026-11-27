@@ -55,6 +55,13 @@ function Detail({ d, onPaymentsChanged }: { d: StudentDetail; onPaymentsChanged:
   const [acompteAmount, setAcompteAmount] = useState("");
   const canEditPayments = user.role === "directeur" || user.role === "econome";
 
+  // `getStudentDetail` regroupe tous les élèves sans parent (parentId === "").
+  // On n'affiche une fratrie que si un parent est réellement rattaché.
+  const siblings = d.row.parentId
+    ? d.siblings.filter((s) => s.parentId === d.row.parentId && s.id !== d.row.id)
+    : [];
+  const birthLabel = d.row.birthDate ? `${formatDate(d.row.birthDate)} (${ageFrom(d.row.birthDate, todayIso())} ans)` : "Non renseigné";
+
   const changePaymentStatus = async (p: Payment, next: ManualPaymentStatus) => {
     if (next === manualChoiceOf(p)) return;
     
@@ -178,7 +185,7 @@ function Detail({ d, onPaymentsChanged }: { d: StudentDetail; onPaymentsChanged:
             <div className="flex flex-wrap gap-2">
               <Badge tone="lime">{d.classRoom.name}</Badge>
               {d.payments.length > 0 && <Badge tone={STATUS_TONE[r.payStatus]}>{STUDENT_STATUS_LABELS[r.payStatus]}</Badge>}
-              {d.siblings.length > 0 && <Badge tone="info">Fratrie</Badge>}
+              {siblings.length > 0 && <Badge tone="info">Fratrie</Badge>}
             </div>
           }
         >
@@ -196,14 +203,14 @@ function Detail({ d, onPaymentsChanged }: { d: StudentDetail; onPaymentsChanged:
             trailing={
               <>
                 <Icon name="family_restroom" className="text-[14px]" />
-                {d.siblings.length} frère(s)/sœur(s)
+                {siblings.length} frère(s)/sœur(s)
               </>
             }
           />
         </HeroCard>
 
         <div className="grid gap-3 sm:grid-cols-2">
-          <KpiTile tone="sky" icon="person" label="Âge" value={`${ageFrom(r.birthDate, todayIso())} ans`} note={formatDate(r.birthDate)} />
+          <KpiTile tone="sky" icon="person" label="Âge" value={d.row.birthDate ? `${ageFrom(r.birthDate, todayIso())} ans` : "—"} note={formatDate(r.birthDate)} />
           <KpiTile tone="lime" icon="meeting_room" label="Classe" value={d.classRoom.name} note={CYCLE_LABELS[r.cycle]} valueClassName="text-lg" />
           {d.report ? (
             <KpiTile tone="violet" icon="trending_up" label="Moyenne générale" value={d.report.generalAverage === null ? "—" : formatNumber(d.report.generalAverage)} note={`Rang ${d.report.rank ?? "—"} sur ${d.report.classSize}`} />
@@ -229,7 +236,7 @@ function Detail({ d, onPaymentsChanged }: { d: StudentDetail; onPaymentsChanged:
         <Card>
           <PanelHeading icon="person" title="Informations de l'élève" subtitle="État civil et options souscrites" />
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            <Info label="Date de naissance" value={`${formatDate(r.birthDate)} (${ageFrom(r.birthDate, todayIso())} ans)`} />
+            <Info label="Date de naissance" value={birthLabel} />
             <Info label="Genre" value={r.gender === "F" ? "Fille" : "Garçon"} />
             <Info label="Inscrit le" value={formatDate(r.enrolledAt)} />
             <Info label="Cantine" value={r.options.cantine ? "Oui" : "Non"} />
@@ -292,13 +299,13 @@ function Detail({ d, onPaymentsChanged }: { d: StudentDetail; onPaymentsChanged:
             </div>
           </Card>
           <Card>
-            <PanelHeading icon="family_restroom" title="Frères et sœurs" subtitle={`${d.siblings.length} élève(s) de la même famille`} />
+            <PanelHeading icon="family_restroom" title="Frères et sœurs" subtitle={`${siblings.length} élève(s) de la même famille`} />
             <div className="mt-4">
-            {d.siblings.length === 0 ? (
+            {siblings.length === 0 ? (
               <p className="text-sm text-neutral-500">Aucun frère ou sœur dans l'école.</p>
             ) : (
               <ul className="space-y-2">
-                {d.siblings.map((s) => (
+                {siblings.map((s) => (
                   <li key={s.id}>
                     <Link to={`/app/eleves/${s.id}`} className="flex min-h-12 items-center gap-3 rounded-xl bg-mist px-3">
                       <Avatar name={`${s.firstName} ${s.lastName}`} size={34} />

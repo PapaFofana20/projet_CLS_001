@@ -100,7 +100,7 @@ create or replace function public.set_attendance_unchecked(
   p_records jsonb
 )
 returns jsonb
-language plpgsql volatile security definer set search_path = public as $$
+language plpgsql volatile security definer set search_path = '' as $$
 declare
   v_school uuid := public.current_school_id();
   v_role text := public.current_role();
@@ -179,7 +179,7 @@ begin
     v_sid := nullif(v_rec->>'student_id', '')::uuid;
     v_type := v_rec->>'type';
     insert into public.absences (school_id, student_id, absence_date, absence_type, motif, justified, subject_id, recorded_by)
-    values (v_school, v_sid, p_date, v_type::app_absence_type, '', false, p_subject_id, auth.uid());
+    values (v_school, v_sid, p_date, v_type::public.app_absence_type, '', false, p_subject_id, auth.uid());
     if v_type = 'absence' then v_absent := v_absent + 1; else v_retard := v_retard + 1; end if;
   end loop;
 
@@ -206,7 +206,7 @@ revoke execute on function public.set_attendance_unchecked(uuid, uuid, date, jso
 
 create or replace function public.set_attendance(p_class_id uuid, p_subject_id uuid, p_date date, p_records jsonb)
 returns jsonb
-language plpgsql volatile security definer set search_path = public as $$
+language plpgsql volatile security definer set search_path = '' as $$
 begin
   perform public.assert_active_account();
   return public.set_attendance_unchecked(p_class_id, p_subject_id, p_date, p_records);

@@ -123,7 +123,9 @@ export default route(async (req, res) => {
       action: "staff_updated",
       entity: "profiles",
       entityId: userId,
-      payload: { fields: Object.keys({ ...patch, specialties }) },
+      // Uniquement les champs réellement transmis : `specialties` absent ne
+      // doit pas apparaître comme modifié dans le journal d'audit.
+      payload: { fields: [...Object.keys(patch), ...(specialties !== undefined ? ["specialties"] : [])] },
     });
 
     return ok(res, { updated: true });

@@ -26,6 +26,8 @@ export function ContactForm() {
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
+    // Garde anti-double-clic : un second submit pendant l'envoi est ignoré.
+    if (sending) return;
     form.touchAll();
     if (!form.isValid) return;
     setSending(true);
@@ -61,7 +63,7 @@ export function ContactForm() {
       <Select className="sm:col-span-2" label="Sujet" options={subjectsContact.map((s) => ({ value: s, label: s }))} {...form.field("subject")} />
       <Textarea className="sm:col-span-2" label="Message" required placeholder="Décrivez votre besoin…" {...form.field("message")} />
       <div className="sm:col-span-2">
-        <Button type="submit" size="lg" variant="dark" loading={sending} icon="send">
+        <Button type="submit" size="lg" variant="dark" loading={sending} disabled={sending} icon="send">
           {sending ? "Envoi en cours…" : "Envoyer le message"}
         </Button>
       </div>

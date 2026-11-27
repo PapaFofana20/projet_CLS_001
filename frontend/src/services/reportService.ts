@@ -36,7 +36,14 @@ export function cardsForClass(classId: string, periodId: string): ReportCardData
 
 function classAllowed(actor: SessionUser, classRoom: ClassRoom): boolean {
   if (classRoom.schoolId !== actor.schoolId) return false;
-  if (actor.role === "directeur" || actor.role === "econome" || actor.role === "eleve") return true;
+  if (actor.role === "directeur" || actor.role === "econome") return true;
+  // Un élève ne peut consulter QUE la classe de son propre dossier : l'ancien
+  // `return true` le laissait choisir n'importe quelle classe de l'école et
+  // aboutissait à un bulletin vide (les cartes sont filtrées sur studentId).
+  if (actor.role === "eleve") {
+    const own = studentsOf(actor.schoolId).find((s) => s.id === actor.studentId);
+    return !!own && own.classId === classRoom.id;
+  }
   if (actor.role === "instituteur" || actor.role === "professeur") return isHeadTeacher(teacherOf(actor), classRoom);
   if (actor.role === "parent") return studentsOf(actor.schoolId).some((s) => s.classId === classRoom.id && s.parentId === actor.parentId);
   return false;
@@ -73,19 +80,26 @@ export function updateReportMeta(actor: SessionUser, studentId: string, periodId
       p_comment: patch.comment ?? null,
     });
     if (error) throw new Error(/Modification non/.test(error.message) ? "Modification non autorisée." : error.message);
+    // Relecture explicite de la ligne RPC : on ne reconstruit JAMAIS le résultat
+    // depuis le patch (qui pourrait afficher une valeur non enregistrée).
+    const { data: saved, error: readError } = await supabase
+      .from("report_metas")
+      .select("school_id, student_id, period, conduct, absences, comment")
+      .eq("school_id", actor.schoolId)
+      .eq("student_id", studentId)
+      .eq("period", periodId)
+      .maybeSingle();
+    if (readError) throw new Error(readError.message);
+    if (!saved) throw new Error("Enregistrement non confirmé : la mention n'a pas été retrouvée. Réessayez.");
     await hydrate("reportMetas");
-    const meta = reportMetasOf(actor.schoolId).find((m) => m.studentId === studentId && m.period === periodId);
-    // Repli sur les valeurs réellement enregistrées (jamais des valeurs inventées).
-    return (
-      meta ?? {
-        schoolId: actor.schoolId,
-        studentId,
-        period: periodId,
-        conduct: patch.conduct ?? "",
-        absences: patch.absences ?? 0,
-        comment: patch.comment ?? "",
-      }
-    );
+    return {
+      schoolId: actor.schoolId,
+      studentId,
+      period: periodId,
+      conduct: saved.conduct ?? "",
+      absences: Number(saved.absences ?? 0),
+      comment: saved.comment ?? "",
+    };
   })();
 }
 

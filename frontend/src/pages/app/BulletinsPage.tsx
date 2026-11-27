@@ -22,6 +22,7 @@ import { useAsync } from "@/hooks/useAsync";
 import { usePeriods } from "@/hooks/usePeriods";
 import { bulletinClasses, getClassReportCards, updateReportMeta } from "@/services/reportService";
 import { getSchoolOverview } from "@/services/schoolService";
+import { listStudentRows, type StudentRow } from "@/services/studentService";
 import type { ReportCardData } from "@/types";
 import { formatNumber } from "@/utils/format";
 import { averageTone } from "@/utils/grades";
@@ -37,7 +38,7 @@ function MetaEditor({ card, onSaved }: { card: ReportCardData; onSaved: () => vo
     setConduct(card.meta?.conduct ?? "");
     setAbsences(card.meta ? String(card.meta.absences) : "");
     setComment(card.meta?.comment ?? "");
-  }, [card.student.id, card.meta?.conduct, card.meta?.absences, card.meta?.comment]);
+  }, [card.student.id, card.meta, card.meta?.conduct, card.meta?.absences, card.meta?.comment]);
   const abs = Number(absences);
   const absErr = !Number.isInteger(abs) || abs < 0 || abs > 200 ? "Nombre entier entre 0 et 200." : null;
   const elem = card.classRoom.cycle === "elementaire";
@@ -83,9 +84,17 @@ export default function BulletinsPage() {
   // Sources indépendantes : requêtes en parallèle (et non en séquence).
   // On charge les classes autorisées pour les bulletins, en parallèle.
   const classes = useAsync(async () => {
-    const [list, overview] = await Promise.all([bulletinClasses(user), getSchoolOverview(user.schoolId)]);
-    return { list, overview };
-  }, [user.id]);
+    const [list, overview, own] = await Promise.all([
+      bulletinClasses(user),
+      getSchoolOverview(user.schoolId),
+      isStudent ? listStudentRows(user) : Promise.resolve([] as StudentRow[]),
+    ]);
+    // `bulletinClasses` autorise toutes les classes de l'école à un élève :
+    // on le restreint à sa propre classe (via son dossier), sinon il ne
+    // verrait aucun bulletin (la liste commencerait par une autre classe).
+    const restricted = isStudent && own[0]?.classId ? list.filter((c) => c.id === own[0].classId) : list;
+    return { list: restricted, overview };
+  }, [user.id, isStudent]);
   const [classId, setClassId] = useState("");
   const [idx, setIdx] = useState(0);
 

@@ -28,7 +28,10 @@ import {
   PanelHeading,
 } from "@/features/admin/adminUi";
 import { cn } from "@/utils/cn";
-import type { Payment } from "@/types";
+import type { Cycle, Payment } from "@/types";
+
+// Barème des notes : sur 10 en élémentaire, sur 20 ensuite.
+const getScale = (cycle?: Cycle | null) => (cycle === "elementaire" ? 10 : 20);
 
 function ContentCard({
   children,
@@ -89,9 +92,9 @@ export function StudentHome() {
                 </div>
               </Card>
               {/* Bandeau de synthèse : moyenne générale. */}
-              <HeroCardForStudent d={d} periodLabel={periodLabel} />
+              <HeroCardForStudent d={d} periodLabel={periodLabel} cycle={d.classRoom.cycle} />
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                <KpiTile tone="sky" icon="emoji_events" label="Rang" value={d.report?.rank ? `${d.report.rank}e / ${d.report.classSize}` : "—"} note={d.classRoom.name} />
+                <KpiTile tone="sky" icon="emoji_events" label="Rang" value={d.report?.rank ? `${d.report.rank}${d.report.rank === 1 ? "er" : "e"} / ${d.report.classSize}` : "—"} note={d.classRoom.name} />
                 <KpiTile tone="amber" icon="event_busy" label="Absences" value={d.report?.meta ? `${d.report.meta.absences} h` : "—"} note={d.report?.meta?.conduct ? `Conduite : ${d.report.meta.conduct}` : "Non renseigné"} />
                 <KpiTile tone="red" icon="payments" label="Reste dû (échu)" value={formatCurrency(d.row.balance)} note={d.row.balance > 0 ? "À régler" : "À jour"} />
               </div>
@@ -110,7 +113,7 @@ export function StudentHome() {
                     <li key={l.subjectId} className="flex items-center gap-3">
                       <span className="w-44 truncate text-sm font-medium">{l.subjectName}</span>
                       <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-neutral-100">
-                        <div className="h-full rounded-full bg-leaf" style={{ width: `${((l.average ?? 0) / 20) * 100}%` }} />
+                        <div className="h-full rounded-full bg-leaf" style={{ width: `${Math.min(100, ((l.average ?? 0) / getScale(d.classRoom.cycle)) * 100)}%` }} />
                       </div>
                       <Badge tone={averageTone(l.average)} className="w-16 justify-center">
                         {l.average === null ? "—" : formatNumber(l.average)}
@@ -159,17 +162,18 @@ export function StudentHome() {
 }
 
 // Bandeau forêt résumant la moyenne générale de l'élève.
-function HeroCardForStudent({ d, periodLabel }: { d: any; periodLabel: string | null | undefined }) {
+function HeroCardForStudent({ d, periodLabel, cycle }: { d: any; periodLabel: string | null | undefined; cycle: Cycle }) {
   const avg = d.report?.generalAverage;
+  const scale = getScale(cycle);
   return (
     <HeroCard
       eyebrow="Moyenne générale"
       icon="grade"
-      value={avg == null ? "—" : `${formatNumber(avg)} / 20`}
+      value={avg == null ? "—" : `${formatNumber(avg)} / ${scale}`}
       label={periodLabel ?? "Toutes périodes confondues"}
       footnote={d.row.balance > 0 ? `Reste dû : ${formatCurrency(d.row.balance)}` : "Paiements à jour"}
       badge={
-        avg == null ? null : <Badge tone={averageTone(avg)} className="px-2 py-0.5 text-[10px]">{formatNumber(avg)} / 20</Badge>
+        avg == null ? null : <Badge tone={averageTone(avg)} className="px-2 py-0.5 text-[10px]">{formatNumber(avg)} / {scale}</Badge>
       }
     />
   );

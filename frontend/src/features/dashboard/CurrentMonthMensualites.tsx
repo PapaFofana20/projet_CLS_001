@@ -23,25 +23,40 @@ import { formatCurrency } from "@/utils/format";
 import { toIntlPhone } from "@/utils/reminders";
 import { levels, todayIso } from "@/data/school";
 
-const MANUAL_STATUS_LABELS: Record<"a_venir" | "paye" | "impaye" | "acompte", string> = {
+type ManualChoice = "a_venir" | "paye" | "impaye" | "acompte" | "partiel";
+
+// Équivalent local de `manualChoiceOf` : le statut manuel prime, sinon on
+// traduit le statut automatique (partiel conservé pour ne rien perdre).
+function manualChoiceOfRow(p: PaymentRow): ManualChoice {
+  if (p.manualStatus) return p.manualStatus;
+  if (p.status === "paye") return "paye";
+  if (p.status === "en_retard") return "impaye";
+  if (p.status === "partiel") return "partiel";
+  return "a_venir";
+}
+
+const MANUAL_STATUS_LABELS: Record<ManualChoice, string> = {
   a_venir: "Non payé",
   paye: "Payé",
   impaye: "En retard",
   acompte: "Acompte",
+  partiel: "Partiel",
 };
 
-const MANUAL_STATUS_TONES: Record<"a_venir" | "paye" | "impaye" | "acompte", "success" | "neutral" | "danger" | "warning"> = {
+const MANUAL_STATUS_TONES: Record<ManualChoice, "success" | "neutral" | "danger" | "warning"> = {
   a_venir: "neutral",
   paye: "success",
   impaye: "danger",
   acompte: "warning",
+  partiel: "warning",
 };
 
-const MANUAL_STATUS_ICONS: Record<"a_venir" | "paye" | "impaye" | "acompte", string> = {
+const MANUAL_STATUS_ICONS: Record<ManualChoice, string> = {
   a_venir: "radio_button_unchecked",
   paye: "check_circle",
   impaye: "schedule",
   acompte: "payments",
+  partiel: "payments",
 };
 
 // Recherche sans accents ni casse : « aissatou » retrouve « Aïssatou ».
@@ -155,7 +170,7 @@ export function CurrentMonthMensualites() {
       key: "st",
       header: "Statut",
       render: (r) => {
-        const ms = r.manualStatus ?? "a_venir";
+        const ms = manualChoiceOfRow(r);
         return (
           <Badge tone={MANUAL_STATUS_TONES[ms]} className="flex items-center gap-1.5">
             <Icon name={MANUAL_STATUS_ICONS[ms]} className="text-[14px]" />
@@ -170,7 +185,7 @@ export function CurrentMonthMensualites() {
       align: "right",
       render: (r) => {
         if (!canAct) return null;
-        const ms = r.manualStatus ?? "a_venir";
+        const ms = manualChoiceOfRow(r);
         const isBusy = busyIds.has(r.id);
         return (
           <div className="flex justify-end gap-1.5">

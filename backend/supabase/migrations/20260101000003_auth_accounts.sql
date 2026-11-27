@@ -16,7 +16,7 @@ create table public.rate_limits (
 alter table public.rate_limits enable row level security;
 
 create or replace function public.user_can_query_data() returns boolean
-language sql stable security definer set search_path = public as $$
+language sql stable security definer set search_path = '' as $$
   -- Compte ACTIF (approuvé, pas désactivé) ET mot de passe temporaire déjà
   -- changé (équivalent serveur du MustChangePasswordGuard).
   select public.is_active_user() and public.password_changed()
@@ -137,22 +137,25 @@ create policy "subscription_events_select_proprie_ecole" on public.subscription_
   using (is_active_user() and school_id = current_school_id());
 
 -- ----------------------------------------------------------------------------
--- Changement de mot de passe obligatoire (compte créé par la direction).
+-- Confirmation de changement de mot de passe (compte créé par la direction).
 -- Le client fait updateUser({ password }) via l'API Auth, puis appelle ce RPC
--- pour lever le drapeau côté serveur.
+-- QUI NE FAIT QUE JOURNALISER : le drapeau must_change_password est levé par
+-- le trigger sur auth.users (voir 00049), jamais par cette RPC (audit C3).
 -- ----------------------------------------------------------------------------
 create or replace function public.complete_password_change()
 returns void
-language plpgsql volatile security definer set search_path = public as $$
+language plpgsql volatile security definer set search_path = '' as $$
 declare
   v_uid uuid := auth.uid();
 begin
   if v_uid is null then
     raise exception 'Vous devez être connecté.';
   end if;
-  update public.profiles set must_change_password = false where id = v_uid;
+  if not public.is_active_user() then
+    raise exception 'Votre compte n''est pas actif.';
+  end if;
   insert into public.audit_log (school_id, actor_id, actor_role, action, entity, entity_id)
-  values (current_school_id(), v_uid, public.current_role(), 'password_change', 'profiles', v_uid);
+  values (public.current_school_id(), v_uid, public.current_role(), 'password_change', 'profiles', v_uid);
 end;
 $$;
 

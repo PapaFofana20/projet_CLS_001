@@ -49,7 +49,11 @@ export function computeSubscriptionInfo(
     const trialEndsAt = created ? addDaysIso(created, TRIAL_DAYS) : null;
     const trialDaysLeft = trialEndsAt ? Math.max(0, daysUntil(trialEndsAt, todayIso)) : 0;
     const inTrial = trialEndsAt ? daysUntil(trialEndsAt, todayIso) >= 0 : false;
-    return { status: "AUCUN", subscription: null, plan: null, daysLeft: 0, readOnly: false, blocked: false, studentLimit: null, activeStudents, limitReached: false, inTrial, trialDaysLeft, trialEndsAt };
+    // Sans abonnement, l'école ne peut RIEN écrire et l'accès est fermé hors
+    // écrans autorisés (abonnement / profil). Aligné avec school_is_writable
+    // côté serveur, qui reste la source de vérité : ce calcul n'est qu'un
+    // garde-fou UI, il ne doit jamais être considéré comme une autorisation.
+    return { status: "AUCUN", subscription: null, plan: null, daysLeft: 0, readOnly: true, blocked: true, studentLimit: null, activeStudents, limitReached: false, inTrial, trialDaysLeft, trialEndsAt };
   }
   const plan = planById(subscription.plan);
   const studentLimit = subscription.studentLimit ?? plan.studentLimit;

@@ -56,11 +56,14 @@ export function remaining(p: Payment): number {
   return Math.max(0, p.amount - p.paidAmount);
 }
 
-// Statut global d'un élève à partir de ses échéances échues.
+// Statut global d'un élève à partir de ses échéances, en tenant compte des
+// saisies manuelles (un « Impayé » déclaré doit être visible même sur une
+// échéance pas encore échue ; un « Acompte » est un partiel).
 export function studentPayStatus(payments: Payment[]): StudentPayStatus {
+  if (payments.some((p) => p.manualStatus === "impaye")) return "impaye";
   const due = payments.filter((p) => p.dueDate <= todayIso());
   if (due.some((p) => p.status === "en_retard")) return "impaye";
-  if (due.some((p) => p.status === "partiel")) return "partiel";
+  if (due.some((p) => p.status === "partiel" || p.manualStatus === "acompte")) return "partiel";
   return "a_jour";
 }
 

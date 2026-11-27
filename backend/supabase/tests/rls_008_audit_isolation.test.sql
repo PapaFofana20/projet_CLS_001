@@ -12,7 +12,10 @@
 begin;
 set local search_path = pgtap, public, extensions;
 grant usage on schema pgtap to public;
-select plan(54);
+-- 54 assertions d'origine - 3 tests sur des objets supprimés
+-- (payment_transactions en 00016, apply_paid_* en 00016) + 2 assertions
+-- pour complete_password_change (audit C3).
+select plan(53);
 
 -- ----------------------------------------------------------------------------
 -- Jeu d'essai : deux écoles A et B, jeux de données complets.
@@ -30,10 +33,10 @@ begin
   insert into public.level_fees (school_id, level_id, inscription, mensualite)
     values (a, 'cm1', 30000, 20000), (b, 'cm1', 30000, 20000);
   insert into public.subscriptions (school_id, plan_id, starts_at, ends_at, student_limit)
-    values (a, 'pro', current_date, current_date + 30, 300),
-           (b, 'pro', current_date, current_date + 30, 300);
+    values (a, 'essentiel', current_date, current_date + 30, 300),
+           (b, 'essentiel', current_date, current_date + 30, 300);
   insert into public.subscription_events (school_id, event_type, plan_id, amount_paid)
-    values (a, 'purchase', 'pro', 30000), (b, 'purchase', 'pro', 30000);
+    values (a, 'purchase', 'essentiel', 30000), (b, 'purchase', 'essentiel', 30000);
   insert into public.counters (school_id, counter, year, value) values (a, 'x', '2026-2027', 3);
 
   insert into public.class_rooms (id, school_id, name, level_id, cycle, capacity) values
@@ -86,10 +89,7 @@ begin
   insert into public.payments (school_id, student_id, kind, label, due_date, amount, paid_amount) values
     (a, 'eeeeee55-0000-0000-0000-0000000000a1', 'mensualite', 'Octobre', current_date, 20000, 0),
     (b, 'eeeeee55-0000-0000-0000-0000000000b1', 'mensualite', 'Octobre', current_date, 20000, 0);
-  insert into public.payment_transactions
-    (tx_kind, school_id, payment_id, provider, provider_ref, amount, method, phone, status) values
-    ('installment', a, null, 'wave', 'WV-1111-1111', 20000, 'wave', '771234567', 'pending'),
-    ('installment', b, null, 'wave', 'WV-2222-2222', 20000, 'wave', '771234567', 'pending');
+  -- payment_transactions supprimé en 00016 : fixture retirée.
   insert into public.absences (school_id, student_id, absence_date, absence_type, motif) values
     (a, 'eeeeee55-0000-0000-0000-0000000000a1', current_date, 'absence', 'Maladie'),
     (b, 'eeeeee55-0000-0000-0000-0000000000b1', current_date, 'absence', 'Maladie');
@@ -195,7 +195,7 @@ select is(pg_temp.temp_visible_b('teaching_assignments') <= 0, true, 'A ne voit 
 select is(pg_temp.temp_visible_b('grades') <= 0, true, 'A ne voit aucune note de B (grades)') as a09;
 select is(pg_temp.temp_visible_b('report_metas') <= 0, true, 'A ne voit aucune meta de bulletin de B (report_metas)') as a10;
 select is(pg_temp.temp_visible_b('payments') <= 0, true, 'A ne voit aucune échéance de B (payments)') as a11;
-select is(pg_temp.temp_visible_b('payment_transactions') <= 0, true, 'A ne voit aucune transaction de B (payment_transactions)') as a12;
+-- payment_transactions supprimé en 00016 : test retiré (plus de registre).
 select is(pg_temp.temp_visible_b('absences') <= 0, true, 'A ne voit aucune absence de B (absences)') as a16;
 select is(pg_temp.temp_visible_b('registration_requests') <= 0, true, 'A ne voit aucune demande de B (registration_requests)') as a17;
 select is(pg_temp.temp_visible_b('profiles') <= 0, true, 'A ne voit aucun profil de B (profiles)') as a18;
@@ -280,8 +280,8 @@ select is(
 
 select is(
   (select pg_temp.temp_try($$insert into public.contact_messages (name, email, subject, message)
-     values ('Anonyme', 'a@a.sn', 'Sujet', 'Message')$$)),
-  'refusé'::text, 'anon ne peut pas déposer de message de contact sans politique dédiée'
+     values ('Anonyme', 'unique-a38@a.sn', 'Sujet', 'Message')$$)),
+  'ok'::text, 'anon PEUT déposer un message (politique contact_messages_insert_anon)'
 ) as a38;
 
 -- Les seules surfaces publiques autorisées : niveaux, formules, matricule.
@@ -309,15 +309,8 @@ select is(
   'refusé'::text, 'anon ne peut pas consommer un matricule dans l''école B'
 ) as a43;
 
-select is(
-  (select pg_temp.temp_try($$select public.apply_paid_subscription('wave', 'WV-2222-2222', 'succeeded', '{}'::jsonb)$$)),
-  'refusé'::text, 'anon ne peut pas confirmer un paiement d''abonnement'
-) as a44;
-
-select is(
-  (select pg_temp.temp_try($$select public.apply_paid_installment('wave', 'WV-2222-2222', 'succeeded', '{}'::jsonb)$$)),
-  'refusé'::text, 'anon ne peut pas confirmer un paiement d''échéance'
-) as a45;
+-- apply_paid_subscription / apply_paid_installment supprimés en 00016 :
+-- les tests a44 / a45 sont retirés (les RPC n'existent plus).
 
 select is(
   (select pg_temp.temp_try($$select public.enroll_student('aaaaaa11-0000-0000-0000-0000000000ca', 'X', 'Y', 'M', '2015-01-01',
@@ -372,7 +365,7 @@ select pg_temp.temp_statu('faa11111-0000-0000-0000-0000000000a4'); -- parent de 
 
 select pg_temp.temp_try($$update public.profiles set role = 'directeur', school_id = 'bbbbbb22-0000-0000-0000-0000000000b1'
      where id = 'faa11111-0000-0000-0000-0000000000a4'$$);
-select pg_temp.temp_try($$update public.profiles set status = 'ACTIF' where id = 'faa11111-0000-0000-0000-0000000000a4'$$);
+select pg_temp.temp_try($$update public.profiles set status = 'DESACTIVE' where id = 'faa11111-0000-0000-0000-0000000000a4'$$);
 select pg_temp.temp_try($$update public.profiles set email = 'pirate@evil.sn' where id = 'faa11111-0000-0000-0000-0000000000a4'$$);
 select pg_temp.temp_role('postgres');
 
@@ -418,6 +411,24 @@ select is(
              'parent', 'ACTIF', 'X', 'Y', 'par.a@a.sn')$$)),
   'refusé'::text, 'l''e-mail de profil est unique GLOBALEMENT'
 ) as a57;
+
+-- ===========================================================================
+-- 9. (C3) complete_password_change ne lève jamais le drapeau toute seule.
+-- ===========================================================================
+select pg_temp.temp_role('postgres');
+update public.profiles set must_change_password = true
+ where id = 'faa11111-0000-0000-0000-0000000000a4';
+select pg_temp.temp_statu('faa11111-0000-0000-0000-0000000000a4');
+select is(
+  (select pg_temp.temp_try($$select public.complete_password_change()$$)),
+  'ok'::text, 'la RPC de confirmation est autorisée pour un compte actif'
+) as a58;
+select pg_temp.temp_role('postgres');
+select is(
+  (select must_change_password from public.profiles
+    where id = 'faa11111-0000-0000-0000-0000000000a4'),
+  true, 'complete_password_change ne lève PAS must_change_password sans changement réel'
+) as a59;
 
 select * from finish();
 rollback;

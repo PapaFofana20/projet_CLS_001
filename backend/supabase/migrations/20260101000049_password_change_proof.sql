@@ -11,9 +11,10 @@
 --      le drapeau dès que le mot de passe change réellement côté Supabase
 --      Auth. Aucune RPC ne peut le lever sans changement effectif.
 --   2. complete_password_change() exige en plus is_active_user() (garde
---      restaurée, perdue entre 00017 et 00038) et ne sert plus qu'à journaliser
---      la confirmation côté client (le drapeau est déjà levé par le trigger ;
---      le UPDATE est un no-op de sécurité).
+--      restaurée, perdue entre 00017 et 00038) et ne fait QUE journaliser la
+--      confirmation côté client : elle ne touche AUCUN drapeau. Toute RPC
+--      qui lèverait must_change_password sans preuve de changement effectif
+--      contournerait la politique de mot de passe temporaire (audit C3).
 --   3. createStaffAccount insère le profil (must_change_password=true) APRÈS
 --      la création de l'utilisateur Auth (INSERT, pas UPDATE) : le trigger
 --      ne se déclenche pas à la création, le drapeau reste positionné.
@@ -44,23 +45,21 @@ create trigger clear_must_change_password_trg
 
 create or replace function public.complete_password_change()
 returns void
-language plpgsql volatile security definer set search_path = public as $$
+language plpgsql volatile security definer set search_path = '' as $$
 declare
   v_uid uuid := auth.uid();
 begin
   if v_uid is null then
     raise exception 'Vous devez être connecté.';
   end if;
-  -- Garde restaurée (00017) : un compte DESACTIVE / en attente ne peut pas
-  -- lever le drapeau. Le drapeau lui-même est levé par le trigger
-  -- clear_must_change_password_trg lors du changement réel du mot de passe ;
-  -- ce UPDATE est un no-op défensif (si le trigger a déjà agi).
+  -- Seule la preuve mécanique (trigger AFTER UPDATE OF encrypted_password)
+  -- peut lever must_change_password. Cette RPC ne journalise que la
+  -- confirmation : aucun UPDATE de profiles ici, même défensif.
   if not public.is_active_user() then
     raise exception 'Votre compte n''est pas actif.';
   end if;
-  update public.profiles set must_change_password = false where id = v_uid;
   insert into public.audit_log (school_id, actor_id, actor_role, action, entity, entity_id)
-  values (current_school_id(), v_uid, public.current_role(), 'password_change', 'profiles', v_uid);
+  values (public.current_school_id(), v_uid, public.current_role(), 'password_change', 'profiles', v_uid);
 end;
 $$;
 

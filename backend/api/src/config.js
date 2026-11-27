@@ -15,6 +15,21 @@ export const SUPABASE_URL = process.env.SUPABASE_URL ?? "";
 export const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
 
 /**
+ * Clé dédiée au chiffrement AES-256-GCM des secrets TOTP au repos.
+ * Fallback sur SERVICE_KEY (dérivé en SHA-256) pour compatibilité avec les
+ * déploiements existants. Rotation : changer cette valeur rend les secrets
+ * déjà chiffrés illisibles — prévoir une migration (déchiffrement avec
+ * l'ancienne clé puis ré-chiffrement) avant toute rotation en production.
+ */
+export const TOTP_ENCRYPTION_KEY = process.env.TOTP_ENCRYPTION_KEY ?? "";
+
+/**
+ * Secret HMAC signant les jetons de pré-authentification MFA (après mot de
+ * passe, avant code TOTP). Fallback : SERVICE_KEY dérivé en SHA-256.
+ */
+export const MFA_PREAUTH_SECRET = process.env.MFA_PREAUTH_SECRET ?? "";
+
+/**
  *_origine du front autorisée en CORS, ex. https://classora.onrender.com.
  * Plusieurs origines : séparées par des virgules.
  */

@@ -138,7 +138,10 @@ export default route(async (req, res) => {
         // Nettoyage : supprime le compte Auth si le profil échoue.
         await svc.auth.admin.deleteUser(created.user.id);
         const message = sqlError instanceof Error ? sqlError.message : undefined;
-        if (message && /un compte existe déjà|unique|duplicate/i.test(message)) return badRequest(res, message);
+        if (message && /un compte existe déjà|unique|duplicate/i.test(message)) {
+          logError("admin-agents:insert", sqlError);
+          return badRequest(res, "Cet e-mail est déjà utilisé par un autre agent.");
+        }
         logError("admin-agents", sqlError);
         return serverError(res);
       }

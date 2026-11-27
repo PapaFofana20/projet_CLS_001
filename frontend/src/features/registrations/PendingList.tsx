@@ -1,6 +1,6 @@
 // Demandes d'inscription a valider, en lot ou une par une.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -32,12 +32,28 @@ export function PendingList({ pending, history, onApprove, onReject, busy, limit
   const { toast } = useToast();
   const [tab, setTab] = useState("pending");
   const [picked, setPicked] = useState<string[]>([]);
+  /** Liste non virtualisée : 200 lignes puis « Afficher plus ». */
+  const [visibleCount, setVisibleCount] = useState(200);
+
+  useEffect(() => setVisibleCount(200), [tab]);
 
   const rows = tab === "pending" ? pending : history;
-  const allPicked = pending.length > 0 && picked.length === pending.length;
+  const shownRows = rows.slice(0, visibleCount);
+  const allPicked = pending.length > 0 && pending.every((r) => picked.includes(r.id));
+  const selectedIds = picked.length ? picked : pending.map((r) => r.id);
+  // La limite d'effectif ne bloque que les élèves : on peut encore approuver
+  // les demandes de parents d'une même sélection.
+  const approvableIds = limitReached
+    ? selectedIds.filter((id) => pending.some((r) => r.id === id && r.role !== "eleve"))
+    : selectedIds;
 
-  const run = async (kind: "approve" | "reject") => {
-    const ids = picked.length ? picked : pending.map((r) => r.id);
+  // Évite toute unhandled rejection : les erreurs sont déjà notifiées par la page.
+  const safe = (promise: Promise<void>) => {
+    void promise.catch(() => {});
+  };
+
+  const run = async (kind: "approve" | "reject", idsOverride?: string[]) => {
+    const ids = idsOverride ?? (picked.length ? picked : pending.map((r) => r.id));
     if (ids.length === 0) {
       toast("Sélectionnez au moins une demande.", "error");
       return;
@@ -95,10 +111,10 @@ export function PendingList({ pending, history, onApprove, onReject, busy, limit
             header: <span className="sr-only">Actions</span>,
             render: (r) => (
               <div className="flex justify-end gap-2">
-                <Button size="sm" variant="dark" onClick={() => void onApprove([r.id])} disabled={busy || (r.role === "eleve" && limitReached)}>
+                <Button size="sm" variant="dark" onClick={() => safe(onApprove([r.id]))} disabled={busy || (r.role === "eleve" && limitReached)}>
                   Approuver
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => void onReject([r.id])} disabled={busy}>
+                <Button size="sm" variant="outline" onClick={() => safe(onReject([r.id]))} disabled={busy}>
                   Refuser
                 </Button>
               </div>
@@ -182,10 +198,10 @@ export function PendingList({ pending, history, onApprove, onReject, busy, limit
             <Button variant="outline" onClick={() => setPicked(allPicked ? [] : pending.map((r) => r.id))}>
               {allPicked ? "Tout désélectionner" : "Tout sélectionner"}
             </Button>
-            <Button variant="dark" icon="task_alt" loading={busy} onClick={() => void run("approve")} disabled={limitReached}>
-              Approuver la sélection ({picked.length || pending.length})
+            <Button variant="dark" icon="task_alt" loading={busy} onClick={() => safe(run("approve", approvableIds))} disabled={busy || approvableIds.length === 0}>
+              Approuver la sélection ({approvableIds.length})
             </Button>
-            <Button variant="ghost" icon="close" disabled={busy} onClick={() => void run("reject")}>
+            <Button variant="ghost" icon="close" disabled={busy} onClick={() => safe(run("reject"))}>
               Refuser la sélection
             </Button>
           </div>
@@ -200,7 +216,12 @@ export function PendingList({ pending, history, onApprove, onReject, busy, limit
           />
         </div>
         <div className="mt-3">
-          <Table caption="Demandes d'inscription" columns={columns} rows={rows} rowKey={(r) => r.id} />
+          <Table caption="Demandes d'inscription" columns={columns} rows={shownRows} rowKey={(r) => r.id} />
+          {rows.length > shownRows.length && (
+            <div className="px-4 pb-4 text-center">
+              <Button variant="outline" onClick={() => setVisibleCount((n) => n + 200)}>Afficher plus ({rows.length - shownRows.length} restants)</Button>
+            </div>
+          )}
         </div>
       </Card>
     </div>

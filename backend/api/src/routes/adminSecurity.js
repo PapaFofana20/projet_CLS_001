@@ -3,6 +3,7 @@
  * refusées, actions sensibles et limites de débit réellement atteintes.
  * Uniquement des faits observés dans audit_log / rate_limits / admin_agents.
  */
+import { createHash } from "node:crypto";
 import { requireAdminRole, serviceClient } from "../lib/authAdmin.js";
 import { ok, route, serverError, RATE_LIMIT_RE, logError } from "../lib/http.js";
 import { enforceRateLimit } from "../lib/rateLimit.js";
@@ -32,6 +33,16 @@ const SENSITIVE_ACTIONS = [
 /** Clé jour (AAAA-MM-JJ) d'une date ISO, pour regrouper les événements par jour. */
 function dayKey(iso) {
   return String(iso).slice(0, 10);
+}
+
+/** Masque une clé rate_limits : elle peut contenir une adresse IP ou un
+ * e-mail (ex. admin-login:id:email@domaine). On ne expose que le préfixe
+ * d'usage (avant le premier ':') et une empreinte courte non réversible. */
+function maskRateLimitKey(key) {
+  const raw = String(key ?? "");
+  const prefix = raw.split(":")[0] || "cle";
+  const hash = createHash("sha256").update(raw).digest("hex").slice(0, 12);
+  return `${prefix}:${hash}`;
 }
 
 // Handler principal : GET /admin/security — supervision de l'activité de connexion des agents.
@@ -174,7 +185,7 @@ export default route(async (req, res) => {
         payload: caller.role === "superadmin" ? (r.payload ?? {}) : {},
       })),
       rateLimits: (rateRows ?? []).map((r) => ({
-        key: r.key,
+        key: maskRateLimitKey(r.key),
         count: Number(r.count ?? 0),
         windowStart: r.window_start,
       })),

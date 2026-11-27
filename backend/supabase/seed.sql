@@ -1,7 +1,7 @@
 -- ============================================================================
 -- SCOLIA — Seed local (développement uniquement)
 -- ⚠ NE JAMAIS APPLIQUER EN PRODUCTION : crée une école de démo et des comptes
--- test dont le mot de passe est public (demo1234!). db-push.mjs exclut
+-- test dont le mot de passe est public et documenté plus bas. db-push.mjs exclut
 -- volontairement ce fichier (--include-seed supprimé).
 -- Les référentiels globaux (levels, plans) sont dans la migration
 -- 20260101000013_referentiels_globaux.sql — plus besoin ici.
@@ -9,8 +9,10 @@
 
 -- ============================================================================
 -- École de DÉMONSTRATION (développement local).
--- Tous les comptes de test partagent le mot de passe « demo1234! » (bcrypt
--- généré par pgcrypto au chargement du seed).
+-- INTERDICTION FORMELLE : ne JAMAIS charger ce seed sur un environnement
+-- accessible en production. Le mot de passe des comptes de test est défini
+-- en clair dans ce fichier (haché à la volée par pgcrypto) et est donc
+-- publiquement connu : il ne doit servir qu'à un `supabase db reset` local.
 -- Préfixes d'uuid : aa=école, bb=enseignants, cc=parent, dd=élèves,
 -- ee=classes, ff=matières, 00x=utilisateurs auth.
 -- ============================================================================
@@ -35,6 +37,7 @@ declare
   v_user_parent  uuid := '00000000-0000-0000-0000-0000000000cc';
   v_user_econ    uuid := '00000000-0000-0000-0000-0000000000ee';
   v_user_student uuid := '00000000-0000-0000-0000-0000000000dd';
+  -- Mot de passe de DÉMO uniquement (jamais en production — voir en-tête).
   v_password     text := crypt('demo1234!', gen_salt('bf', 10));
 begin
   -- École active : abonnement payé (matricule attribué).

@@ -71,7 +71,12 @@ export default route(async (req, res) => {
       .select("*", { count: "exact", head: true })
       .eq("school_id", resolvedSchool)
       .eq("status", "EN_ATTENTE");
-    if (countError) logError("register-student", countError);
+    // Fail-closed : une panne sur ce comptage ne doit pas laisser créer un
+    // compte au-delà du plafond de demandes en attente.
+    if (countError) {
+      logError("register-student:count", countError);
+      return serverError(res);
+    }
     if (count && count >= 100) return badRequest(res, "Trop de demandes en attente pour cette école (limite 100).");
 
     const pwError = passwordError(password);
@@ -152,7 +157,10 @@ export default route(async (req, res) => {
       await svc.auth.admin.deleteUser(created.user.id);
       const message = sqlError instanceof Error ? sqlError.message : undefined;
       if (message && /un compte existe déjà|classe|école|inscriptions/i.test(message)) {
-        return badRequest(res, message);
+        // Message SQL journalisé côté serveur uniquement : on ne renvoie jamais
+        // au client un fragment de requête ou de schéma.
+        logError("register-student:rpc", sqlError);
+        return badRequest(res, "Impossible de finaliser l'inscription. Vérifiez les informations saisies et réessayez.");
       }
       logError("register-student", sqlError);
       return serverError(res);

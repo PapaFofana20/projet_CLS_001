@@ -36,21 +36,21 @@ const EMPTY: StaffFormValue = { role: "professeur", firstName: "", lastName: "",
 
 /** Formulaire de création / modification d'un accès du personnel (directeur uniquement). */
 export function StaffForm({ subjects, initial, onSubmit, submitLabel, busy, onCancel, allowedRoles = STAFF_ROLES }: Props) {
-  const [form, setForm] = useState<StaffFormValue>({ ...EMPTY, ...initial });
+  // En édition le mot de passe n'est jamais envoyé (updateStaff ignore ce champ) :
+  // il est donc optionnel et laissé vide conserve l'accès actuel.
+  const isEdit = !!initial;
+  const initialRole = initial?.role && allowedRoles.includes(initial.role) ? initial.role : allowedRoles[0] ?? EMPTY.role;
+  const [form, setForm] = useState<StaffFormValue>({ ...EMPTY, ...initial, role: initialRole });
   const [touched, setTouched] = useState<Record<string, boolean>>({});
 
-  // Si le rôle initial n'est pas dans allowedRoles, on prend le premier autorisé
-  if (!allowedRoles.includes(form.role) && allowedRoles.length > 0) {
-    setForm((f) => ({ ...f, role: allowedRoles[0] }));
-  }
-
+  const passwordOptional = isEdit && !form.password && !form.confirm;
   const errors = {
     firstName: form.firstName.trim().length < 2 ? "Le prénom est obligatoire." : null,
     lastName: form.lastName.trim().length < 2 ? "Le nom est obligatoire." : null,
     email: !isValidEmail(form.email) ? "Saisissez une adresse e-mail valide." : null,
     phone: !isValidSnPhone(form.phone) ? "Format attendu : 77 123 45 67." : null,
-    password: passwordError(form.password, form.confirm),
-    confirm: form.confirm !== form.password ? "Les mots de passe ne correspondent pas." : null,
+    password: passwordOptional ? null : passwordError(form.password, form.confirm),
+    confirm: passwordOptional || form.confirm === form.password ? null : "Les mots de passe ne correspondent pas.",
     specialties: form.role === "professeur" && form.specialties.length === 0 ? "Choisissez au moins une matière." : null,
   };
   const valid = Object.values(errors).every((e) => e === null);
@@ -76,9 +76,10 @@ export function StaffForm({ subjects, initial, onSubmit, submitLabel, busy, onCa
         <Input label="Téléphone" type="tel" required placeholder="77 123 45 67" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} onBlur={() => touch("phone")} error={show("phone")} />
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Input label="Mot de passe" type="password" required placeholder="••••••••" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} onBlur={() => touch("password")} error={show("password")} />
-        <Input label="Confirmer le mot de passe" type="password" required placeholder="••••••••" value={form.confirm} onChange={(e) => setForm({ ...form, confirm: e.target.value })} onBlur={() => touch("confirm")} error={show("confirm")} />
+        <Input label={isEdit ? "Nouveau mot de passe (facultatif)" : "Mot de passe"} type="password" required={!isEdit} placeholder="••••••••" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} onBlur={() => touch("password")} error={show("password")} />
+        <Input label={isEdit ? "Confirmer le nouveau mot de passe" : "Confirmer le mot de passe"} type="password" required={!isEdit} placeholder="••••••••" value={form.confirm} onChange={(e) => setForm({ ...form, confirm: e.target.value })} onBlur={() => touch("confirm")} error={show("confirm")} />
       </div>
+      {isEdit && <p className="text-xs text-neutral-500">Laissez vide pour conserver le mot de passe actuel. Pour le changer, utilisez plutôt « Réinitialiser le mot de passe ».</p>}
       {form.role === "professeur" && (
         <fieldset>
           <legend className="mb-2 text-sm font-semibold">Matières enseignées</legend>

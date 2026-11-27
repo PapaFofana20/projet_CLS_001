@@ -74,6 +74,7 @@ export function StaffCredentialsModal({ open, credentials, school, kind = "creat
       onClose={onClose}
       title={kind === "creation" ? "Accès créé" : "Mot de passe réinitialisé"}
       size="md"
+      printable
       footer={
         <>
           <Button variant="outline" icon="print" onClick={() => window.print()}>
@@ -88,7 +89,7 @@ export function StaffCredentialsModal({ open, credentials, school, kind = "creat
         </>
       }
     >
-      <div className="space-y-4">
+      <div className="print-area space-y-4">
         <p className="rounded-2xl bg-lime-soft p-4 text-sm font-medium text-forest">
           Remettez ces identifiants en mains propres. Ce mot de passe ne sera plus jamais affiché après la fermeture.
           Le message WhatsApp ne contient <strong>aucun mot de passe</strong> : la personne définit le sien via « Mot de passe oublié ».

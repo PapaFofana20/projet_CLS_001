@@ -61,7 +61,11 @@ export function getStudentDetail(actor: SessionUser, id: string): Promise<Studen
       row: toRow(s),
       classRoom,
       parent,
-      siblings: studentsOf(s.schoolId).filter((x) => x.parentId === s.parentId && x.id !== s.id).map(toRow),
+      // Un parent_id NULL est mappé en "" côté cache : sans ce garde-fou,
+      // TOUS les élèves sans parent seraient considérés comme frères/sœurs.
+      siblings: s.parentId
+        ? studentsOf(s.schoolId).filter((x) => x.parentId === s.parentId && x.id !== s.id).map(toRow)
+        : [],
       payments: showMoney ? paymentsOf(s.schoolId).filter((p) => p.studentId === id) : [],
       report: actor.role === "surveillant" ? null : card,
     };
@@ -82,12 +86,15 @@ export interface EnrollInput {
   parent: ParentInput;
 }
 
-/** Inscription faite par la direction depuis /app/inscription-eleve (RPC serveur). */
-export function enrollStudent(actor: SessionUser, input: EnrollInput): Promise<StudentRow> {
+/** Inscription faite par la direction depuis /app/inscription-eleve (RPC serveur).
+ *  `skipHydrate` est utilisé par l'import CSV : les tables sont rechargées une
+ *  seule fois par l'appelant après le traitement de tous les lots, au lieu
+ *  d'un rechargement complet par ligne (N+1 réseau). */
+export function enrollStudent(actor: SessionUser, input: EnrollInput, options: { skipHydrate?: boolean } = {}): Promise<StudentRow> {
   return (async () => {
     const cls = classesOf(actor.schoolId).find((c) => c.id === input.classId);
     if (!cls) throw new Error("Classe introuvable.");
-    const { error } = await supabase.rpc("enroll_student", {
+    const { data, error } = await supabase.rpc("enroll_student", {
       p_class_id: input.classId,
       p_first_name: input.firstName.trim(),
       p_last_name: input.lastName.trim(),
@@ -105,6 +112,28 @@ export function enrollStudent(actor: SessionUser, input: EnrollInput): Promise<S
       if (/complète/.test(error.message)) throw new Error(error.message);
       if (/limite/.test(error.message)) throw new Error(error.message);
       throw new Error(error.message);
+    }
+    if (options.skipHydrate) {
+      // La RPC renvoie l'identité créée (student_id, matricule, child_code) :
+      // on construit la ligne à partir de celle-ci et de l'entrée, sans
+      // recharger les tables. L'appelant hydrate une seule fois à la fin.
+      const r = data as { student_id?: string; parent_id?: string | null; matricule?: string; child_code?: string | null } | null;
+      if (!r?.student_id) throw new Error("Inscription impossible. Vérifiez la classe et réessayez.");
+      const created: Student = {
+        schoolId: actor.schoolId,
+        id: r.student_id,
+        matricule: r.matricule ?? "",
+        childCode: r.child_code ?? "",
+        firstName: input.firstName.trim(),
+        lastName: input.lastName.trim(),
+        gender: input.gender,
+        birthDate: input.birthDate,
+        classId: input.classId,
+        parentId: r.parent_id ?? (input.parent.mode === "existing" ? input.parent.parentId : ""),
+        options: input.options,
+        enrolledAt: new Date().toISOString(),
+      };
+      return toRow(created);
     }
     await Promise.all([hydrate("students"), hydrate("parents"), hydrate("payments")]);
     const created = studentsOf(actor.schoolId)

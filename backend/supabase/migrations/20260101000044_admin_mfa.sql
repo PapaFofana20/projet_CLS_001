@@ -1,5 +1,9 @@
--- 0045_admin_mfa.sql
+-- 20260101000044_admin_mfa.sql
 -- Ajout du MFA/TOTP sur la console d'administration Classora.
+-- Renommé depuis l'ancien préfixe « 0045 » : ce préfixe était trié avant
+-- 20260101000001 par la CLI, donc ALTER TABLE public.admin_agents échouait
+-- (table créée en 20260101000024). Le nouveau préfixe place cette migration
+-- après 0043 et avant 0054 qui référence admin_mfa_sessions.
 --
 -- Colonnes sur admin_agents :
 --   totp_secret      : secret base32 généré côté serveur, stocké haché ? non,

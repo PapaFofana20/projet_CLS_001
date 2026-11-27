@@ -49,11 +49,20 @@ export default route(async (req, res) => {
     const { settings, migrationApplied } = await readPlatformSettings(svc);
     return respond({ ...publicPlatformStatus(settings), migrationApplied });
   } catch (e) {
-    // Fail-closed SANS cache : on ne met JAMAIS en cache les valeurs par
-    // défaut (elles prétendraient « inscriptions ouvertes » pendant une
-    // vraie maintenance) — la prochaine requête réessaie la lecture réelle.
-    console.warn("[platform-status] repli sur les valeurs par défaut :", e?.message ?? e);
+    // Fail-closed SANS cache : en cas d'erreur SQL on ne renvoie PAS les
+    // valeurs par défaut (registrationOpen: true) — ce serait annoncer
+    // « inscriptions ouvertes » alors que l'état réel est inconnu. On
+    // publie un état explicite « indisponible », non mis en cache afin que
+    // la prochaine requête retente la lecture réelle.
+    console.warn("[platform-status] état indisponible (lecture SQL en échec) :", e?.message ?? e);
     res.setHeader("Cache-Control", "no-store");
-    return ok(res, { ...publicPlatformStatus(DEFAULT_PLATFORM_SETTINGS), migrationApplied: false });
+    return ok(res, {
+      ...publicPlatformStatus(DEFAULT_PLATFORM_SETTINGS),
+      registrationOpen: false,
+      maintenanceMode: true,
+      maintenanceMessage: "État de la plateforme indisponible. Réessayez dans un instant.",
+      status: "indisponible",
+      migrationApplied: false,
+    });
   }
 });

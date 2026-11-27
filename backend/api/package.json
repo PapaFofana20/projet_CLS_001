@@ -5,7 +5,7 @@
   "type": "module",
   "description": "API SCOLIA pour Render : remplace les Edge Functions Deno. Supabase reste l'Auth et la base de données (Postgres + RLS).",
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "scripts": {
     "start": "node src/index.js",

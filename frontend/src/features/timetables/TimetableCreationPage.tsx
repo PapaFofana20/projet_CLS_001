@@ -84,11 +84,11 @@ export default function TimetableCreationPage() {
   if (!hasScheduling) {
     return (
       <>
-        <PageHeader title="Nouvel emploi du temps" subtitle="Fonctionnalité disponible à partir du plan Pro." />
+        <PageHeader title="Nouvel emploi du temps" subtitle="Fonctionnalité disponible à partir du plan Découverte." />
         <Card className="max-w-3xl">
           <div className="flex flex-col items-center gap-3 py-6 text-center">
             <Icon name="workspace_premium" className="text-4xl text-neutral-300" />
-            <p className="font-semibold text-ink">Création d'emplois du temps réservée aux plans Pro et supérieurs.</p>
+            <p className="font-semibold text-ink">Création d'emplois du temps réservée aux plans Découverte et supérieurs.</p>
             <p className="max-w-sm text-sm text-neutral-500">Passez à un plan supérieur depuis l'onglet Abonnement pour débloquer cette fonctionnalité.</p>
           </div>
         </Card>

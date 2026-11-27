@@ -339,6 +339,26 @@ export function clearHydrationFailures(): void {
   }
 }
 
+/** Enregistre un échec PUIS notifie le bandeau (ordre important : l'événement
+ *  doit toujours être émis après la mise à jour de la map). */
+function recordHydrationFailure(entity: keyof Database, message: string): void {
+  console.error(`[db] hydratation ${entity} échouée :`, message);
+  hydrationFailures.set(entity, message);
+  window.dispatchEvent(new Event("ec:hydration"));
+}
+
+/** Lève l'échec d'une table UNIQUEMENT après un chargement réellement réussi. */
+function resolveHydrationFailure(entity: keyof Database): void {
+  if (hydrationFailures.delete(entity)) {
+    window.dispatchEvent(new Event("ec:hydration"));
+  }
+}
+
+/** Vrai si les réglages de l'école n'ont pas pu être chargés (défauts affichés). */
+export function settingsHydrationFailed(): boolean {
+  return hydrationFailures.has("settings");
+}
+
 async function fetchAllRows(table: string): Promise<any[]> {
   const rows: any[] = [];
   for (let from = 0; ; from += HYDRATION_PAGE_SIZE) {
@@ -361,18 +381,17 @@ async function fetchAllRows(table: string): Promise<any[]> {
 async function assign(tableName: keyof Database): Promise<void> {
   const table = TABLES[tableName];
   if (!table) return;
-  // L'échec est TRACÉ (hydrateAll affiche un bandeau avec bouton Réessayer)
-  // puis RELANCÉ : avaler l'erreur faisait croire à un directeur qu'il n'a
-  // « aucun élève / aucune note » alors que la table n'avait pas pu être
-  // chargée (réseau, RLS, 500). L'appelant décide de la politique.
+  // L'échec est TRACÉ (bandeau avec bouton Réessayer) PUIS RELANCÉ vers
+  // l'appelant direct : avaler l'erreur faisait croire à un directeur qu'il
+  // n'a « aucun élève / aucune note » alors que la table n'avait pas pu être
+  // chargée (réseau, RLS, 500). hydrateAll() utilise allSettled et décide de
+  // continuer avec le bandeau ; hydrate(entity), lui, propage l'erreur.
   try {
     const data = await fetchAllRows(table);
     replace(tableName, data.map(MAPPERS[tableName]));
-    hydrationFailures.delete(tableName);
+    resolveHydrationFailure(tableName);
   } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    console.error(`[db] hydratation ${tableName} échouée :`, msg);
-    hydrationFailures.set(tableName, msg);
+    recordHydrationFailure(tableName, e instanceof Error ? e.message : String(e));
     throw e;
   }
 }
@@ -415,52 +434,59 @@ const TABLES: Partial<Record<keyof Database, string>> = {
   settings: "school_settings",
 };
 
-/** Recharge les paramètres d'école (réunion school_settings + école + frais). */
+/** Recharge les paramètres d'école (réunion school_settings + école + frais).
+ *  Toute erreur (RLS, réseau, 500) sur l'UNE des trois requêtes est enregistrée
+ *  puis relancée : on ne doit jamais faire croire que les réglages sont vides
+ *  alors qu'ils n'ont pas pu être chargés. */
 async function hydrateSettings(): Promise<void> {
-  const [settingsRes, feesRes, schoolsRes] = await Promise.all([
-    supabase.from("school_settings").select("*"),
-    supabase.from("level_fees").select("*"),
-    supabase.from("schools").select("*"),
-  ]);
-  if (settingsRes.error) {
-    console.error("[db] hydratation settings refusée :", settingsRes.error.message);
-    hydrationFailures.set("settings", settingsRes.error.message);
-    window.dispatchEvent(new Event("ec:hydration"));
-    return;
+  try {
+    const [settingsRes, feesRes, schoolsRes] = await Promise.all([
+      supabase.from("school_settings").select("*"),
+      supabase.from("level_fees").select("*"),
+      supabase.from("schools").select("*"),
+    ]);
+    if (settingsRes.error) throw new Error(`school_settings : ${settingsRes.error.message}`);
+    if (feesRes.error) throw new Error(`level_fees : ${feesRes.error.message}`);
+    if (schoolsRes.error) throw new Error(`schools : ${schoolsRes.error.message}`);
+    const schools = (schoolsRes.data ?? []) as any[];
+    const fees = (feesRes.data ?? []) as any[];
+    replace(
+      "settings",
+      ((settingsRes.data ?? []) as any[]).map((r) => {
+        const sc = schools.find((x) => x.id === r.school_id) ?? {};
+        const levelFees: Record<string, { inscription: number; mensualite: number }> = {};
+        fees.filter((f) => f.school_id === r.school_id).forEach((f) => {
+          levelFees[f.level_id] = { inscription: f.inscription, mensualite: f.mensualite };
+        });
+        return mapSettings({
+          ...r,
+          name: sc.name ?? "École",
+          address: sc.address ?? "",
+          phone: sc.phone ?? "",
+          email: sc.email ?? "",
+          cycles: sc.cycles ?? [],
+          fees: levelFees,
+        });
+      }),
+    );
+    // Succès réel seulement : la map n'est libérée qu'après le replace().
+    resolveHydrationFailure("settings");
+  } catch (e) {
+    recordHydrationFailure("settings", e instanceof Error ? e.message : String(e));
+    throw e;
   }
-  const schools = (schoolsRes.data ?? []) as any[];
-  const fees = (feesRes.data ?? []) as any[];
-  replace(
-    "settings",
-    ((settingsRes.data ?? []) as any[]).map((r) => {
-      const sc = schools.find((x) => x.id === r.school_id) ?? {};
-      const levelFees: Record<string, { inscription: number; mensualite: number }> = {};
-      fees.filter((f) => f.school_id === r.school_id).forEach((f) => {
-        levelFees[f.level_id] = { inscription: f.inscription, mensualite: f.mensualite };
-      });
-      return mapSettings({
-        ...r,
-        name: sc.name ?? "École",
-        address: sc.address ?? "",
-        phone: sc.phone ?? "",
-        email: sc.email ?? "",
-        cycles: sc.cycles ?? [],
-        fees: levelFees,
-      });
-    }),
-  );
 }
 
 // Recharge UNE table (ou une entité spéciale) depuis Supabase vers le cache.
 // En cas d'échec : tracé (bandeau) PUIS relancé — l'appelant décide de la
 // politique d'affichage, il ne voit plus jamais un échec transformé en liste vide.
+// Le succès ne libère la failure que dans hydrateSettings/assign, jamais ici.
 export async function hydrate(entity: keyof Database): Promise<void> {
   if (entity === "settings") {
     await hydrateSettings();
-    hydrationFailures.delete(entity);
     return;
   }
-  return assign(entity);
+  await assign(entity);
 }
 
 /** Hydrate tout le cache avec ce que le rôle courant peut lire.
@@ -488,17 +514,29 @@ export async function hydrateAll(): Promise<void> {
   ];
   const results = await Promise.allSettled(entities.map((e) => hydrate(e)));
   results.forEach((r, i) => {
-    if (r.status === "fulfilled") hydrationFailures.delete(entities[i]);
+    // allSettled : on ne libère une failure que pour une hydratation RÉUSSIE.
+    if (r.status === "fulfilled") resolveHydrationFailure(entities[i]);
   });
-  // Le bandeau s'abonne à cet événement pour (re)vérifier les échecs.
+  // Le bandeau s'abonne à cet événement pour (re)vérifier les échecs :
+  // émis APRÈS la mise à jour de la map, jamais avant.
   window.dispatchEvent(new Event("ec:hydration"));
 }
 
 // Vide entièrement le cache local (déconnexion, changement d'école).
+// Emporte aussi les sélections contextuelles stockées en session par les
+// providers (ChildContext / TeachingContext) : les relire après une autre
+// connexion afficherait l'enfant ou la classe du compte précédent.
+// `classora_sidebar_pinned` est une préférence UI : on la CONSERVE.
 export async function clearCache(): Promise<void> {
   (Object.keys(db) as (keyof Database)[]).forEach((k) => {
     (db[k] as unknown[]).splice(0, (db[k] as unknown[]).length);
   });
+  try {
+    window.sessionStorage.removeItem("classora_active_child");
+    window.sessionStorage.removeItem("classora_active_context");
+  } catch {
+    /* stockage indisponible : rien à nettoyer */
+  }
 }
 
 /** Conservé pour la compatibilité des services : l'écriture est côté serveur. */
@@ -585,6 +623,14 @@ export const usersOf = (schoolId: string, limit?: number): User[] => {
   return limit ? filtered.slice(0, limit) : filtered;
 };
 export const schoolOf = (schoolId: string): School | undefined => db.schools.find((s) => s.id === schoolId);
+/**
+ * Réglages de l'école depuis le cache. ATTENTION : les valeurs ci-dessous ne
+ * sont que des DÉFAULTS (frais vides, cycles vides) lorsque la table n'est pas
+ * encore hydratée ou que son chargement a échoué. `settingsHydrationFailed()`
+ * (ou getHydrationFailures().has("settings")) permet de distinguer ce cas d'un
+ * réglage réellement vide : hydrate() relance désormais l'erreur au lieu de
+ * masquer l'échec, mais les helpers de lecture restent synchrones.
+ */
 export const settingsOf = (schoolId: string): SchoolSettings =>
   db.settings.find((s) => s.schoolId === schoolId) ?? {
     schoolId,

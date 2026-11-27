@@ -133,7 +133,7 @@ create or replace function public.request_subscription_activation(
   p_student_count int
 )
 returns jsonb
-language plpgsql volatile security definer set search_path = public as $$
+language plpgsql volatile security definer set search_path = '' as $$
 declare
   v_profile    record;
   v_plan       record;
@@ -141,6 +141,7 @@ declare
   v_request    record;
   v_amount     int;
   v_months     int;
+  v_students   int;
 begin
   perform public.assert_active_account();
 
@@ -166,7 +167,15 @@ begin
   if coalesce(v_plan.on_quote, false) then
     raise exception 'Cette formule est etablie sur devis : contactez le support.';
   end if;
-  if v_plan.student_limit is not null and p_student_count > v_plan.student_limit then
+  -- (M9) L'effectif fourni par le client ne peut pas fixer le montant :
+  -- il ne sert qu'à la validation. Le décompte réel vient de la table.
+  select count(*) into v_students
+  from public.students
+  where school_id = v_profile.school_id;
+  if v_students < 1 then
+    raise exception 'Aucun eleve n''est enregistre dans votre ecole.';
+  end if;
+  if v_plan.student_limit is not null and v_students > v_plan.student_limit then
     raise exception 'La formule % est limitee a % eleves.', v_plan.name, v_plan.student_limit;
   end if;
 
@@ -183,7 +192,7 @@ begin
 
   -- Formule facturée par élève (Premium) ou forfait mensuel.
   if coalesce(v_plan.price_per_student, 0) > 0 then
-    v_amount := v_plan.price_per_student * p_student_count * v_months;
+    v_amount := v_plan.price_per_student * v_students * v_months;
   else
     v_amount := case when p_cycle = 'yearly' then v_plan.yearly_price else v_plan.monthly_price end;
   end if;
@@ -191,7 +200,7 @@ begin
   insert into public.subscription_requests
     (school_id, requested_by, plan_id, cycle, student_count, amount)
   values
-    (v_profile.school_id, auth.uid(), v_plan.id, p_cycle, p_student_count, v_amount)
+    (v_profile.school_id, auth.uid(), v_plan.id, p_cycle, v_students, v_amount)
   on conflict (school_id) where status = 'EN_ATTENTE'
   do update set
     requested_by  = excluded.requested_by,
@@ -210,7 +219,8 @@ begin
     (v_profile.school_id, auth.uid(), v_profile.role, 'subscription_requested',
      'subscription_requests', v_request_id,
      jsonb_build_object('plan', v_plan.id, 'cycle', p_cycle,
-                        'student_count', p_student_count, 'amount', v_amount));
+                        'student_count', v_students, 'client_student_count', p_student_count,
+                         'amount', v_amount));
 
   return jsonb_build_object(
     'id', v_request.id,
@@ -235,7 +245,8 @@ comment on function public.request_subscription_activation(text, text, int)
   is 'Cree ou remplace la demande d''activation en attente de l''ecole du directeur connecte (montant recalcule : par eleve ou forfait).';
 
 -- ----------------------------------------------------------------------------
--- 5. Activation manuelle par le support : montant par élève, refus du devis
+-- 5. Activation manuelle par le support : montant par élève, devis accepté
+--    uniquement si le support a saisi un montant > 0 (audit M8).
 -- ----------------------------------------------------------------------------
 create or replace function public.activate_school_subscription(
   p_school_id  uuid,
@@ -246,12 +257,12 @@ create or replace function public.activate_school_subscription(
   p_method     text default 'especes'
 )
 returns jsonb
-language plpgsql volatile security definer set search_path = public as $$
+language plpgsql volatile security definer set search_path = '' as $$
 declare
   v_school    record;
   v_plan      record;
   v_sub       record;
-  v_method    app_pay_method;
+  v_method    public.app_pay_method;
   v_days      int;
   v_amount    int;
   v_students  int := 0;
@@ -279,7 +290,10 @@ begin
   if not found then
     raise exception 'Formule introuvable.';
   end if;
-  if coalesce(v_plan.on_quote, false) then
+  -- (M8) Une formule sur devis est activable dès que le support a négocié et
+  -- saisi le montant : on refuse seulement un montant NULL ou nul.
+  if coalesce(v_plan.on_quote, false)
+     and (p_amount_paid is null or p_amount_paid <= 0) then
     raise exception 'Formule sur devis : le montant doit être saisi par le support après négociation.';
   end if;
 
@@ -289,7 +303,7 @@ begin
   if coalesce(p_method, 'especes') not in ('wave', 'orange_money', 'free_money', 'especes') then
     raise exception 'Moyen de paiement invalide.';
   end if;
-  v_method := coalesce(p_method, 'especes')::app_pay_method;
+  v_method := coalesce(p_method, 'especes')::public.app_pay_method;
 
   -- Effectif de l'école : base de la facturation par élève.
   select count(*) into v_students from public.students where school_id = p_school_id;
@@ -440,7 +454,7 @@ create or replace function public.finish_director_registration(
   p_plan_id text default 'essentiel'
 )
 returns uuid
-language plpgsql volatile security definer set search_path = public as $$
+language plpgsql volatile security definer set search_path = '' as $$
 declare
   v_school_id uuid;
   v_cycles_text text[];
@@ -455,7 +469,7 @@ begin
     raise exception 'Compte introuvable.';
   end if;
   if p_cycles is null or array_length(p_cycles, 1) = 0
-     or not app_valid_cycles(p_cycles) then
+     or not public.app_valid_cycles(p_cycles) then
     raise exception 'Sélectionnez au moins un cycle.';
   end if;
   if exists (select 1 from public.profiles where id = p_user_id) then
@@ -493,7 +507,7 @@ begin
      auto_approve_students, matricule, requested_plan)
   values
     (trim(p_school_name), trim(p_city), trim(p_address), trim(p_phone), trim(p_email),
-     v_cycles_text::app_cycle[], true, false, v_matricule, v_plan.id)
+     v_cycles_text::public.app_cycle[], true, false, v_matricule, v_plan.id)
   returning id into v_school_id;
 
   insert into public.school_settings (school_id, school_year, period_type, current_period, annex_fees, sibling_discount)
@@ -521,7 +535,7 @@ begin
   -- Matières du curriculum sénégalais, filtrées selon les cycles choisis par l'école.
   insert into public.subjects (school_id, name, cycles)
   select v_school_id, s.name,
-    (select array_agg(x)::app_cycle[] from (select unnest(s.cycles::text[]) intersect select unnest(v_cycles_text)) as t(x))
+    (select array_agg(x)::public.app_cycle[] from (select unnest(s.cycles::text[]) intersect select unnest(v_cycles_text)) as t(x))
   from (values
     ('Français',                    array['elementaire','moyen','secondaire']),
     ('Mathématiques',               array['elementaire','moyen','secondaire']),

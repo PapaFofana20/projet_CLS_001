@@ -14,7 +14,7 @@ begin
   insert into public.school_settings (school_id) values ('aaaaaa11-0000-0000-0000-000000000001');
 
   insert into public.subscriptions (school_id, plan_id, starts_at, ends_at, student_limit)
-  values ('aaaaaa11-0000-0000-0000-000000000001', 'pro', current_date, current_date + 30, 300);
+  values ('aaaaaa11-0000-0000-0000-000000000001', 'essentiel', current_date, current_date + 30, 300);
 
   insert into public.teachers (id, school_id, kind, first_name, last_name, email)
   values ('dddddd44-0000-0000-0000-000000001111', 'aaaaaa11-0000-0000-0000-000000000001', 'instituteur', 'Moussa', 'Ta', 'moussa.ta@schoola.sn'),

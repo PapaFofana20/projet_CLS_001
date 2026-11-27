@@ -40,6 +40,9 @@ export function useAsync<T>(fn: () => Promise<T>, deps: DependencyList): AsyncSt
       cancelled = true;
     };
 
+    // La propagation explicite des dépendances fournies par l'appelant est
+    // intentionnelle : useAsync ne connaît pas leur nombre à la compilation.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [...deps, tick]);
 
   const reload = useCallback(() => setTick((t) => t + 1), []);

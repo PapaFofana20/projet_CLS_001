@@ -104,7 +104,9 @@ async function main() {
 
   if (existing) {
     console.log(`✔ Profil administrateur déjà présent : ${existing.matricule} (${existing.role}, ${existing.status}).`);
-    console.log(`  Connexion : /admin/connexion avec ${email}`);
+    // L'e-mail n'est pas journalisé : matricule + identifiant suffisent à
+    // identifier le compte sans exposer d'adresse dans les logs du terminal.
+    console.log(`  Connexion : /admin/connexion (compte ${user.id})`);
     return;
   }
 
@@ -117,7 +119,7 @@ async function main() {
   if (emailError) throw new Error(`Lecture de admin_agents impossible : ${emailError.message}`);
   if (emailOwner) {
     fail(
-      `Un profil admin_agents existe déjà pour ${email} avec un autre compte Auth (${emailOwner.auth_user_id}).\n` +
+      `Un profil admin_agents (${emailOwner.matricule}) existe déjà avec un autre compte Auth (${emailOwner.auth_user_id}).\n` +
         "  Supprimez ou corrigez cette ligne dans Supabase (SQL Editor) puis relancez le script.",
     );
   }
@@ -159,7 +161,7 @@ async function main() {
   if (metaError) console.warn(`• Métadonnées Auth non mises à jour : ${metaError.message}`);
 
   console.log(`✔ Superadministrateur créé : ${inserted.matricule} (${inserted.role}, ${inserted.status}).`);
-  console.log(`  Connexion : /admin/connexion avec ${email}`);
+  console.log(`  Connexion : /admin/connexion (compte ${user.id})`);
 }
 
 main().catch((e) => {

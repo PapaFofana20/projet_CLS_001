@@ -1,5 +1,5 @@
 // Gestion du personnel de l'école : comptes d'accès et enseignants.
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AsyncView } from "@/components/ui/AsyncView";
 import { Avatar } from "@/components/ui/Brand";
 import { Badge } from "@/components/ui/Badge";
@@ -48,6 +48,8 @@ export default function StaffPage() {
   const [credentials, setCredentials] = useState<StaffCredentials | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<{ kind: "staff"; row: StaffRow } | { kind: "teacher"; row: TeacherRow } | null>(null);
   const [deleting, setDeleting] = useState(false);
+  /** Listes non virtualisées : on affiche 200 lignes puis un bouton « Afficher plus ». */
+  const [visibleCount, setVisibleCount] = useState(200);
 
   // Trois sources indépendantes : chargées en parallèle (et non en
   // séquence ×3) pour afficher la page beaucoup plus vite.
@@ -68,6 +70,11 @@ export default function StaffPage() {
 
   const filteredStaff = staff.filter((s) => (!role || s.role === role) && `${s.firstName} ${s.lastName} ${s.email}`.toLowerCase().includes(dq.trim().toLowerCase()));
   const filteredTeachers = teachers.filter((t) => `${t.firstName} ${t.lastName} ${t.email}`.toLowerCase().includes(dq.trim().toLowerCase()));
+
+  useEffect(() => setVisibleCount(200), [dq, role, tab]);
+
+  const shownStaff = filteredStaff.slice(0, visibleCount);
+  const shownTeachers = filteredTeachers.slice(0, visibleCount);
 
   // Répartition des comptes par rôle pour le bandeau de synthèse.
   const countByRole = (r: string) => staff.filter((s) => s.role === r).length;
@@ -320,7 +327,12 @@ export default function StaffPage() {
                   <PanelHeading icon="key" title="Comptes d'accès" subtitle={`${filteredStaff.length} ${pluralize(filteredStaff.length, "compte", "comptes")} · ${activeCount} actif${activeCount > 1 ? "s" : ""}`} />
                 </div>
                 <div className="mt-3">
-                  <Table caption="Comptes d'accès du personnel" columns={staffCols} rows={filteredStaff} rowKey={(s) => s.userId} stagger />
+                  <Table caption="Comptes d'accès du personnel" columns={staffCols} rows={shownStaff} rowKey={(s) => s.userId} stagger />
+                  {filteredStaff.length > shownStaff.length && (
+                    <div className="px-4 pb-4 text-center">
+                      <Button variant="outline" onClick={() => setVisibleCount((n) => n + 200)}>Afficher plus ({filteredStaff.length - shownStaff.length} restants)</Button>
+                    </div>
+                  )}
                 </div>
               </Card>
             )
@@ -332,7 +344,12 @@ export default function StaffPage() {
                 <PanelHeading icon="school" title="Enseignants" subtitle={`${filteredTeachers.length} enseignant${filteredTeachers.length > 1 ? "s" : ""} · ${withoutAccount} sans accès`} />
               </div>
               <div className="mt-3">
-                <Table caption="Liste des enseignants" columns={teacherCols} rows={filteredTeachers} rowKey={(t) => t.id} stagger />
+                <Table caption="Liste des enseignants" columns={teacherCols} rows={shownTeachers} rowKey={(t) => t.id} stagger />
+                {filteredTeachers.length > shownTeachers.length && (
+                  <div className="px-4 pb-4 text-center">
+                    <Button variant="outline" onClick={() => setVisibleCount((n) => n + 200)}>Afficher plus ({filteredTeachers.length - shownTeachers.length} restants)</Button>
+                  </div>
+                )}
               </div>
             </Card>
           )

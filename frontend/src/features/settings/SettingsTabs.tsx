@@ -190,7 +190,7 @@ export function SubjectsTab({ overview, onSaved }: TabProps) {
   const { schoolId } = useAuth();
   const school = useSchool();
   const [name, setName] = useState("");
-  const [cycles, setCycles] = useState<Cycle[]>(school.school?.cycles.length ?? 0 > 0 ? [school.school?.cycles[0] as Cycle] : ["moyen", "secondaire"]);
+  const [cycles, setCycles] = useState<Cycle[]>((school.school?.cycles.length ?? 0) > 0 ? [school.school!.cycles[0] as Cycle] : ["moyen", "secondaire"]);
   const { busy, run } = useSave(onSaved);
   const isFreePlan = school.plan?.id === "essentiel";
   /** Sur le plan gratuit, seul le cycle de l'école peut être sélectionné. */
@@ -250,7 +250,7 @@ export function SubjectsTab({ overview, onSaved }: TabProps) {
 // Rappel des informations du compte connecte, en lecture seule.
 export function ProfileTab() {
   const user = useCurrentUser();
-  const { schoolName } = useSchool();
+  const { schoolName, settings } = useSchool();
   return (
     <Card>
       <PanelHeading icon="account_circle" title="Mon profil" subtitle="Vos informations de compte" />
@@ -260,7 +260,7 @@ export function ProfileTab() {
           ["E-mail", user.email],
           ["Rôle", ROLE_LABELS[user.role]],
           ["École", schoolName],
-          ["Année scolaire", "2026-2027"],
+          ["Année scolaire", settings?.schoolYear ?? "—"],
         ].map(([k, v]) => (
           <div key={k} className="rounded-xl bg-mist p-4">
             <dt className="text-xs font-semibold uppercase text-neutral-500">{k}</dt>

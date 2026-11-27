@@ -11,9 +11,12 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { PanelHeading } from "@/features/admin/adminUi";
 import { SkeletonCards, SkeletonTable } from "@/components/ui/Skeleton";
 import { useCurrentUser } from "@/context/AuthContext";
+import { useChild } from "@/context/ChildContext";
 import { useFeature } from "@/utils/features";
 import { useToast } from "@/context/ToastContext";
 import { TimetableGrid } from "@/features/timetables/TimetableGrid";
+import { getTeacherAssignments } from "@/services/assignmentService";
+import { getStudentDetail } from "@/services/studentService";
 import {
   createCourse,
   deleteCourse,
@@ -58,8 +61,11 @@ export default function TimetableViewPage() {
   const hasScheduling = useFeature("scheduling");
   const { id } = useParams<{ id: string }>();
   const { toast } = useToast();
+  const { activeChild } = useChild();
 
   const [timetables, setTimetables] = useState<Timetable[]>([]);
+  /** Classes que l'utilisateur peut consulter (la sienne, celle de l'enfant ou ses affectations). */
+  const [allowedClassIds, setAllowedClassIds] = useState<string[]>([]);
   const [timetable, setTimetable] = useState<Timetable | null>(null);
   const [courses, setCourses] = useState<TimetableCourse[]>([]);
   const [subjects, setSubjects] = useState<TimetableSubjectOption[]>([]);
@@ -82,6 +88,19 @@ export default function TimetableViewPage() {
       setCourses([]);
 
       try {
+        if (!isDirector) {
+          let ids: string[] = [];
+          if (user.role === "eleve" && user.studentId) {
+            const detail = await getStudentDetail(user, user.studentId);
+            ids = [detail.classRoom.id];
+          } else if (user.role === "parent" && activeChild?.classId) {
+            ids = [activeChild.classId];
+          } else if (user.teacherId) {
+            const assignments = await getTeacherAssignments(user.schoolId, user.teacherId);
+            ids = assignments.map((a) => a.classId);
+          }
+          if (!cancelled) setAllowedClassIds(ids);
+        }
         if (id) {
           const data = await getTimetable(id);
           if (cancelled) return;
@@ -102,7 +121,7 @@ export default function TimetableViewPage() {
     return () => {
       cancelled = true;
     };
-  }, [id, user.schoolId]);
+  }, [id, user, isDirector, activeChild?.classId]);
 
   useEffect(() => {
     if (!isDirector) return;
@@ -222,7 +241,9 @@ export default function TimetableViewPage() {
     );
   }
   if (!id) {
-    const visibleTimetables = isDirector ? timetables : timetables.filter((row) => row.status === "published");
+    const visibleTimetables = isDirector
+      ? timetables
+      : timetables.filter((row) => row.status === "published" && allowedClassIds.includes(row.class_id));
 
     return (
       <>
@@ -320,7 +341,7 @@ export default function TimetableViewPage() {
 
   /* ---------------------------- Détail ----------------------------- */
   const status = timetable ? STATUS[timetable.status] ?? STATUS.draft : STATUS.draft;
-  const hiddenFromViewer = timetable && !isDirector && timetable.status !== "published";
+  const hiddenFromViewer = timetable && !isDirector && (timetable.status !== "published" || !allowedClassIds.includes(timetable.class_id));
 
   return (
     <>

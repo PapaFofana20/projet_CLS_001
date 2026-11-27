@@ -216,7 +216,7 @@ export default function SubscriptionPage() {
           </div>
         )}
 
-        {active && overview.data?.school && <MatriculeCard school={overview.data.school} canManage={false} onChanged={school.reload} />}
+        {active && overview.data?.school && <MatriculeCard school={overview.data.school} />}
         {!active && overview.data?.school && (
           <div className="rounded-3xl border-2 border-dashed border-forest/30 bg-white p-6 text-center">
             <h2 className="text-xl font-extrabold text-forest">Votre matricule d'école</h2>

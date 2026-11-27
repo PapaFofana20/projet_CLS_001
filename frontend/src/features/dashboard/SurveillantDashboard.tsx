@@ -37,7 +37,7 @@ export function SurveillantDashboard() {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ studentId: "", type: "absence" as AbsenceRecord["type"], date: todayIso(), motif: "", sanction: "" });
 
-  const rows = state.data ?? [];
+  const rows = useMemo(() => state.data ?? [], [state.data]);
   const filtered = useMemo(() => (tab === "all" ? rows : rows.filter((r) => r.type === tab)), [rows, tab]);
   const count = (t: AbsenceRecord["type"]) => rows.filter((r) => r.type === t).length;
 

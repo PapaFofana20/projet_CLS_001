@@ -108,7 +108,7 @@ function Summary({ cards, title }: { cards: ReportCardData[]; title: string }) {
               </tr>
             </thead>
             <tbody>
-              {[...cards].sort((a, b) => (a.rank ?? 99) - (b.rank ?? 99)).map((c) => (
+              {[...cards].sort((a, b) => (a.rank ?? Number.MAX_SAFE_INTEGER) - (b.rank ?? Number.MAX_SAFE_INTEGER)).map((c) => (
                 <tr key={c.student.id} className="border-t border-neutral-100">
                   <th scope="row" className="sticky left-0 whitespace-nowrap bg-white px-4 py-2 text-left font-semibold">{c.student.firstName} {c.student.lastName}</th>
                   {c.lines.map((l) => (<td key={l.subjectId} className={cn("px-2 py-2 text-center font-medium", l.average !== null && l.average < 10 && "text-danger")}>{l.average === null ? "—" : formatNumber(l.average)}</td>))}

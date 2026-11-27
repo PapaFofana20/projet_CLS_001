@@ -35,8 +35,8 @@ export default function PendingStudentsPage() {
       }
       state.reload();
     } catch (e) {
+      // L'erreur est déjà notifiée : on ne la relance pas (sinon unhandled rejection).
       toast(e instanceof Error ? e.message : "Action impossible.", "error");
-      throw e;
     } finally {
       setBusy(false);
     }

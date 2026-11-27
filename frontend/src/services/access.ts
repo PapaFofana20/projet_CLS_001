@@ -54,13 +54,16 @@ export function ensure(condition: boolean, message = "Accès refusé."): void {
 }
 
 /**
- * Bloque l'écriture quand l'abonnement de l'école est expiré (mode lecture
- * seule pendant 7 jours, puis accès fermé).
- * Ce contrôle est simulé côté client : dans la version réelle il sera refait
- * côté serveur (Supabase RLS + Edge Functions), jamais uniquement ici.
+ * Bloque l'écriture quand l'école n'a pas d'abonnement actif : AUCUN (jamais
+ * activé) ou EXPIRE en lecture seule. `school_is_writable` côté serveur reste
+ * la source de vérité (RLS + Edge Functions) : ce contrôle n'est qu'un
+ * garde-fou UX pour afficher un message clair avant la tentative d'écriture.
  */
 export function ensureWritable(actor: SessionUser): void {
   const info = subscriptionInfoOf(actor.schoolId);
+  if (info.status === "AUCUN") {
+    throw new Error("Aucun abonnement actif : les modifications sont désactivées. Choisissez une formule dans la page Abonnement.");
+  }
   if (info.status === "EXPIRE") {
     ensure(!info.readOnly, "Mode lecture seule : l'abonnement de votre école est expiré. Les modifications sont désactivées.");
   }

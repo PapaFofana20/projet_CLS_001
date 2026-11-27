@@ -26,7 +26,7 @@ export default route(async (req, res) => {
   if (req.method !== "GET") return ok(res, { error: "Méthode non autorisée." }, 405);
   const svc = serviceClient();
   try {
-    const admin = await requireAdminRole(svc, req, res);
+    const admin = await requireAdminRole(svc, req, res, ["admin", "superadmin"]);
     if (!admin) return;
     const { caller } = admin;
 

@@ -160,7 +160,9 @@ export function AdminSidebar({ agent, drawerOpen, onClose }: Props) {
   const expanded = sidebar.expanded || drawerOpen;
   const drawerRef = useRef<HTMLElement>(null);
 
-  useEffect(onClose, [pathname]);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+  useEffect(() => { onCloseRef.current(); }, [pathname]);
 
   return (
     <>

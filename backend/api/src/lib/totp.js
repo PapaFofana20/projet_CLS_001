@@ -13,10 +13,12 @@
  * décalage d'horloge client/serveur.
  */
 
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { randomBytes } from "node:crypto";
 
-const BASE32_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ23456789";
+// RFC 4648 : 8 et 9 ne font PAS partie de l'alphabet base32 (les accepter
+// rendrait la validation de secret ambiguë et les codes non interopérables).
+const BASE32_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
 const TOTP_STEP_SECONDS = 30;
 const TOTP_CODE_DIGITS = 6;
 const TOTP_WINDOW = 1; // +/- 1 step accepté
@@ -48,7 +50,11 @@ export function base32Encode(bytes) {
 
 /** Décode une chaîne base32 en tableau d'octets. */
 export function base32Decode(input) {
+  if (typeof input !== "string") throw new Error("Secret base32 invalide.");
   const cleaned = input.replace(/=+$/, "").toUpperCase();
+  // Rejet explicite de tout caractère hors alphabet (8, 9, 0, 1, ponctuation…)
+  // avant la boucle : un secret invalide ne doit jamais produire un code.
+  if (!/^[A-Z2-7]+$/.test(cleaned)) throw new Error("Caractère base32 invalide.");
   let bits = 0;
   let value = 0;
   const out = [];
@@ -88,7 +94,7 @@ export function buildOTPAuthURI(secret, emailOrLogin, issuer = "Classora") {
 /** Calcule le code TOTP à l'instant donné (défaut : maintenant). */
 export function generateTOTPCode(secret, now = Date.now()) {
   const key = base32Decode(secret);
-  const counter = BigInt(Math.floor(now / 1000 / TOTP_STEP_SECONDS));
+  let counter = BigInt(Math.floor(now / 1000 / TOTP_STEP_SECONDS));
   const counterBuffer = new ArrayBuffer(8);
   const view = new DataView(counterBuffer);
   for (let i = 7; i >= 0; i--) {
@@ -108,33 +114,39 @@ export function generateTOTPCode(secret, now = Date.now()) {
   return code;
 }
 
-/** Vérifie un code TOTP avec une fenêtre de tolérance (fenêtre ±1 step).
- * Anti-replay : chaque pas de temps accepté est mémorisé ; un même code ne
- * peut pas être réutilisé dans sa fenêtre de validité (90 s).
- *
- * Le nettoyage de USED_STEPS est déclenché à chaque vérification réussie
- * (et non seulement au-delà de 10 000 entrées), évitant qu'une attaque par
- * nombreux codes différents ne fasse croître la map sans borne efficace.
+/** Renvoie le pas de temps TOTP correspondant au code, ou null.
+ *  Tolérance d'un step en RETARD seulement (jamais vers le futur : avancer
+ *  lastUsed au-delà de l'horloge verrouillerait la fenêtre de l'utilisateur).
+ *  Fonction pure : l'anti-replay (mémoire ou base) est appliqué par l'appelant.
  */
-const USED_STEPS = new Map(); // clé `${secret}` -> dernier step consommé
-export function verifyTOTPCode(secret, token, now = Date.now()) {
-  if (typeof token !== "string" || !/^\d{6}$/.test(token)) return false;
+export function findTotpStep(secret, token, now = Date.now()) {
+  if (typeof token !== "string" || !/^\d{6}$/.test(token)) return null;
   const currentStep = Math.floor(now / 1000 / TOTP_STEP_SECONDS);
   for (let offset = -TOTP_WINDOW; offset <= TOTP_WINDOW; offset += 1) {
+    if (offset > 0) continue;
     const step = currentStep + offset;
     const expected = generateTOTPCode(secret, step * TOTP_STEP_SECONDS * 1000);
-    if (timingSafeEqual(Buffer.from(token), Buffer.from(expected))) {
-      const lastUsed = USED_STEPS.get(secret) ?? -Infinity;
-      if (step <= lastUsed) return false; // déjà consommé : replay
-      USED_STEPS.set(secret, step);
-      // Nettoyage incrémental : supprime les entrées trop anciennes pour
-      // éviter la croissance illimitée de la map en cas d'attaque.
-      const cutoff = currentStep - TOTP_WINDOW - 1;
-      for (const [k, v] of USED_STEPS.entries()) {
-        if (v < cutoff) USED_STEPS.delete(k);
-      }
-      return true;
-    }
+    if (timingSafeEqual(Buffer.from(token), Buffer.from(expected))) return step;
   }
-  return false;
+  return null;
+}
+
+/** Vérifie un code TOTP avec anti-replay LOCAL (tests / usage sans base).
+ *  Les routes admin utilisent verifyTotpForAgent() (lib/totpStore.js), qui
+ *  persiste le step consommé en base et fonctionne donc sur plusieurs instances.
+ */
+const USED_STEPS = new Map(); // clé sha256(secret) -> dernier step consommé
+export function verifyTOTPCode(secret, token, now = Date.now()) {
+  const step = findTotpStep(secret, token, now);
+  if (step === null) return false;
+  const secretHash = createHash("sha256").update(String(secret)).digest("hex");
+  const currentStep = Math.floor(now / 1000 / TOTP_STEP_SECONDS);
+  const lastUsed = USED_STEPS.get(secretHash) ?? -Infinity;
+  if (step <= lastUsed) return false; // déjà consommé : replay
+  USED_STEPS.set(secretHash, Math.min(step, currentStep));
+  const cutoff = currentStep - TOTP_WINDOW - 1;
+  for (const [k, v] of USED_STEPS.entries()) {
+    if (v < cutoff) USED_STEPS.delete(k);
+  }
+  return true;
 }

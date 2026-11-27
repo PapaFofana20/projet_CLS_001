@@ -70,7 +70,7 @@ create or replace function public.finish_parent_registration(
   p_birth_date date
 )
 returns jsonb
-language plpgsql volatile security definer set search_path = public as $$
+language plpgsql volatile security definer set search_path = '' as $$
 declare
   v_child record;
   v_request_id uuid;
@@ -181,7 +181,7 @@ drop function if exists public.link_child(text, date);
 
 create or replace function public.link_child(p_student_matricule text, p_birth_date date)
 returns uuid
-language plpgsql volatile security definer set search_path = public as $$
+language plpgsql volatile security definer set search_path = '' as $$
 declare
   v_uid uuid := auth.uid();
   v_profil record;
@@ -307,7 +307,7 @@ create or replace function public.finish_student_registration(
   p_class_id uuid
 )
 returns jsonb
-language plpgsql volatile security definer set search_path = public as $$
+language plpgsql volatile security definer set search_path = '' as $$
 declare
   v_profile_exists boolean;
   v_request_id uuid;
@@ -377,7 +377,7 @@ begin
     public.next_student_matricule(p_school_id, (select school_year from public.school_settings where school_id = p_school_id)),
     v_child_code,
     trim(p_first_name), trim(p_last_name),
-    coalesce(p_gender::app_gender, 'F'::app_gender),
+    coalesce(p_gender::public.app_gender, 'F'::public.app_gender),
     coalesce(p_birth_date, date '2015-01-01'),
     p_class_id, null, current_date
   ) returning id into v_student_id;
@@ -391,7 +391,7 @@ begin
     (school_id, user_id, role, first_name, last_name, email, phone, gender, birth_date, class_id)
   values
     (p_school_id, p_user_id, 'eleve', trim(p_first_name), trim(p_last_name), trim(p_email), trim(p_phone),
-     p_gender::app_gender, p_birth_date, p_class_id)
+     p_gender::public.app_gender, p_birth_date, p_class_id)
   returning id into v_request_id;
 
   -- Approbation automatique si activée (la capacité est déjà validée)
@@ -446,14 +446,13 @@ create or replace function public.decide_registration_requests_impl(
   p_reason text default null
 )
 returns int
-language plpgsql volatile security definer set search_path = public as $$
+language plpgsql volatile security definer set search_path = '' as $$
 declare
-  v_school uuid := current_school_id();
+  v_school uuid := public.current_school_id();
   v_role text := public.current_role();
   v_requests int;
   v_req record;
   v_students int;
-  v_to_create int;
   v_limit int;
   v_plan text;
   v_parent_id uuid;
@@ -485,10 +484,18 @@ begin
     if exists (select 1 from tmp_requests where role = 'eleve') then
       select si.plan_name into v_plan from public.subscription_info(v_school) si;
       select si.student_limit into v_limit from public.subscription_info(v_school) si;
-      select count(*) into v_students from public.students where school_id = v_school;
-      select count(*) into v_to_create from tmp_requests
-      where role = 'eleve' and class_id is not null;
-      if v_limit is not null and v_students + v_to_create > v_limit then
+      -- (M7) Les demandes en attente ne doivent pas être comptées deux fois :
+      -- on compte les élèves déjà ACTIFS (ou sans profil) et on n'ajoute pas
+      -- v_to_create (les élèves créés par cette approbation sont comptés une
+      -- seule fois, lors de leur passage à ACTIF).
+      select count(*) into v_students
+      from public.students s
+      where s.school_id = v_school
+        and not exists (
+          select 1 from public.profiles p
+          where p.student_id = s.id and p.status <> 'ACTIF'
+        );
+      if v_limit is not null and v_students > v_limit then
         raise exception 'Votre formule % est limitée à % élèves. Changez de formule pour approuver une nouvelle inscription.', v_plan, v_limit;
       end if;
     end if;
@@ -498,8 +505,14 @@ begin
     if p_approve then
       if v_req.role = 'eleve' and v_req.class_id is not null then
         select * into v_class from public.class_rooms where id = v_req.class_id;
-        v_child_count := (select count(*) from public.students
-                          where school_id = v_school and class_id = v_req.class_id);
+        -- Même règle pour la capacité de la classe : seuls les élèves ACTIFS
+        -- (ou sans profil) occupent une place.
+        v_child_count := (select count(*) from public.students s
+                          where s.school_id = v_school and s.class_id = v_req.class_id
+                            and not exists (
+                              select 1 from public.profiles p
+                              where p.student_id = s.id and p.status <> 'ACTIF'
+                            ));
         if v_child_count >= v_class.capacity then
           raise exception 'La classe % est complète (% places).', v_class.name, v_class.capacity;
         end if;

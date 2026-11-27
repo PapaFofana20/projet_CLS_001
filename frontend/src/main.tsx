@@ -22,9 +22,16 @@ class ErrorBoundary extends React.Component<
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    // La stack reste en console (diagnostic) ; on ne persiste qu'une référence
+    // et un horodatage, pour ne pas exposer de détails applicatifs dans le
+    // stockage de session ni saturer ce dernier.
     console.error("[ErrorBoundary] Erreur React capturée :", error, errorInfo);
     try {
-      sessionStorage.setItem("__lastReactError", `${error?.message}\n${error?.stack ?? ""}`);
+      const id =
+        typeof crypto !== "undefined" && "randomUUID" in crypto
+          ? crypto.randomUUID()
+          : `${Date.now().toString(36)}-${Math.floor(Math.random() * 1e6).toString(36)}`;
+      sessionStorage.setItem("__lastReactError", JSON.stringify({ id, at: new Date().toISOString() }));
     } catch {
       /* ignore */
     }
@@ -94,10 +101,12 @@ function prefetchPublicPages() {
   if (connection?.effectiveType && /(^|-)2g$/.test(connection.effectiveType)) return;
 
   const run = () => {
-    void import("@/pages/auth/LoginPage");
-    void import("@/pages/auth/RegisterPage");
-    void import("@/pages/auth/PremiumRegisterPage");
-    void import("@/pages/public/PricingPage");
+    // Un chunk indisponible (réseau coupé, déploiement en cours) ne doit pas
+    // produire d'erreur non gérée : la navigation affichera l'erreur normalement.
+    void import("@/pages/auth/LoginPage").catch(() => {});
+    void import("@/pages/auth/RegisterPage").catch(() => {});
+    void import("@/pages/auth/PremiumRegisterPage").catch(() => {});
+    void import("@/pages/public/PricingPage").catch(() => {});
   };
 
   if (typeof window.requestIdleCallback === "function") {

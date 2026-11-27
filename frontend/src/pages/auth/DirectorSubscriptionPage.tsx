@@ -256,7 +256,7 @@ export default function DirectorSubscriptionPage() {
             </Card>
 
             {school.school?.matricule ? (
-              <MatriculeCard school={school.school} canManage={false} onChanged={reload} />
+              <MatriculeCard school={school.school} />
             ) : (
               <Card className="text-center">
                 <Icon name="key" className="text-[32px] text-forest" />

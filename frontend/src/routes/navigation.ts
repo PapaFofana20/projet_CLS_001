@@ -20,8 +20,25 @@ const dashboard = (label: string, icon = "dashboard"): NavItem => ({ to: "/app",
 const profile: NavItem = { to: "/app/parametres", label: "Mon profil", icon: "account_circle", section: "Outils" };
 const subscription: NavItem = { to: "/app/abonnement", label: "Abonnement", icon: "workspace_premium", section: "École", directorOnly: true };
 
+/** Routes accessibles même sans abonnement actif (director sans abonnement, école expirée). */
+export const ALWAYS_ALLOWED = ["/app/abonnement", "/app/parametres", "/app/mot-de-passe-temporaire"];
+
+/**
+ * Marque comme conditionnés à l'abonnement TOUS les éléments de gestion
+ * scolaire (tout sauf Abonnement et Profil/Paramètres). Sans ce drapeau, le
+ * filtre `locked` de navFor() était inopérant et l'école verrouillée affichait
+ * encore tous ses menus.
+ */
+function schoolItems(items: NavItem[]): NavItem[] {
+  return items.map((item) =>
+    ALWAYS_ALLOWED.some((p) => item.to === p || item.to.startsWith(`${p}/`))
+      ? item
+      : { ...item, requiresSubscription: true },
+  );
+}
+
 export const NAV_BY_ROLE: Record<Role, NavItem[]> = {
-  directeur: [
+  directeur: schoolItems([
     dashboard("Tableau de bord"),
     { to: "/app/eleves", label: "Élèves", icon: "groups", section: "Menu" },
     { to: "/app/eleves/demandes", label: "Demandes d'inscription", icon: "how_to_reg", section: "Menu" },
@@ -36,25 +53,25 @@ export const NAV_BY_ROLE: Record<Role, NavItem[]> = {
     { to: "/app/bulletins", label: "Bulletins", icon: "description", section: "Scolarité" },
     { to: "/app/paiements", label: "Paiements", icon: "payments", section: "Finances" },
     { to: "/app/parametres", label: "Paramètres", icon: "settings", section: "Outils" },
-  ],
-  econome: [
+  ]),
+  econome: schoolItems([
     dashboard("Tableau de bord"),
     { to: "/app/eleves", label: "Élèves", icon: "groups", section: "Menu" },
     { to: "/app/paiements", label: "Paiements", icon: "payments", section: "Finances" },
     profile,
-  ],
-  secretaire: [
+  ]),
+  secretaire: schoolItems([
     dashboard("Secrétariat", "support_agent"),
     { to: "/app/eleves", label: "Élèves", icon: "groups", section: "Menu" },
     profile,
-  ],
-  surveillant: [
+  ]),
+  surveillant: schoolItems([
     dashboard("Vie scolaire", "shield_person"),
     { to: "/app/presences", label: "Présences", icon: "event_available", section: "Menu" },
     { to: "/app/eleves", label: "Élèves", icon: "groups", section: "Menu" },
     profile,
-  ],
-  instituteur: [
+  ]),
+  instituteur: schoolItems([
     dashboard("Ma classe", "child_care"),
     { to: "/app/eleves", label: "Mes élèves", icon: "groups", section: "Menu" },
     { to: "/app/presences", label: "Présences", icon: "event_available", section: "Scolarité" },
@@ -62,8 +79,8 @@ export const NAV_BY_ROLE: Record<Role, NavItem[]> = {
     { to: "/app/bulletins", label: "Bulletins", icon: "description", section: "Scolarité" },
     { to: "/app/timetables", label: "Emploi du temps", icon: "calendar_month", section: "Scolarité" },
     profile,
-  ],
-  professeur: [
+  ]),
+  professeur: schoolItems([
     dashboard("Mes classes", "co_present"),
     { to: "/app/presences", label: "Présences", icon: "event_available", section: "Scolarité" },
     { to: "/app/notes", label: "Notes", icon: "edit_note", section: "Scolarité" },
@@ -71,23 +88,23 @@ export const NAV_BY_ROLE: Record<Role, NavItem[]> = {
     { to: "/app/bulletins", label: "Bulletins", icon: "description", section: "Scolarité", requiresHead: true },
     { to: "/app/timetables", label: "Emploi du temps", icon: "calendar_month", section: "Scolarité" },
     profile,
-  ],
-  eleve: [
+  ]),
+  eleve: schoolItems([
     dashboard("Ma scolarité", "backpack"),
     { to: "/app/notes", label: "Mes notes", icon: "edit_note", section: "Scolarité" },
     { to: "/app/bulletins", label: "Bulletins", icon: "description", section: "Scolarité" },
     { to: "/app/timetables", label: "Emploi du temps", icon: "calendar_month", section: "Scolarité" },
     { to: "/app/paiements", label: "Mes paiements", icon: "payments", section: "Finances" },
     profile,
-  ],
-  parent: [
+  ]),
+  parent: schoolItems([
     dashboard("Suivi de mes élèves", "family_restroom"),
     { to: "/app/notes", label: "Notes", icon: "edit_note", section: "Scolarité" },
     { to: "/app/bulletins", label: "Bulletins", icon: "description", section: "Scolarité" },
     { to: "/app/timetables", label: "Emploi du temps", icon: "calendar_month", section: "Scolarité" },
     { to: "/app/paiements", label: "Paiements", icon: "payments", section: "Finances" },
     profile,
-  ],
+  ]),
 };
 
 const ALL: Role[] = ["directeur", "econome", "secretaire", "surveillant", "instituteur", "professeur", "eleve", "parent"];
@@ -119,15 +136,14 @@ export interface NavOptions {
   badges?: Record<string, number>;
 }
 
-/** Routes accessibles même sans abonnement actif (director sans abonnement, école expirée). */
-export const ALWAYS_ALLOWED = ["/app/abonnement", "/app/parametres", "/app/mot-de-passe-temporaire"];
-
 // Renvoie les liens de menu du rôle, filtrés selon ses responsabilités et ses badges.
 export function navFor(role: Role, options: NavOptions = {}): NavItem[] {
   const { isHead = false, locked = false, badges = {} } = options;
   return NAV_BY_ROLE[role]
     .filter((i) => !i.requiresHead || isHead)
-    .filter((i) => (locked && i.requiresSubscription ? false : true))
+    // `locked` (école sans abonnement) ne masque plus que les éléments marqués
+    // requiresSubscription par schoolItems() : abonnement et profil restent.
+    .filter((i) => !(locked && i.requiresSubscription))
     .map((i) => {
       const badge = badges[i.to];
       return badge ? { ...i, badge } : i;

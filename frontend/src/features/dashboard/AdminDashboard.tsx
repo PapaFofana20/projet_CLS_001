@@ -145,7 +145,7 @@ function Content({ s, finance }: { s: AdminStats; finance: boolean }) {
       {!finance && (
         <>
           <OnboardingChecklist user={currentUser} />
-          {school && <MatriculeCard school={school} canManage onChanged={() => window.location.reload()} />}
+          {school && <MatriculeCard school={school} />}
           <ContentCard
             heading={
               <PanelHeading

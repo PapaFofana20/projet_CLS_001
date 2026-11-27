@@ -190,10 +190,19 @@ app.use((err, _req, res, _next) => {
   // Log sanitisé : on ne consigne que le message, jamais l'objet d'erreur
   // complet (évite de fuiter des fragments de requête ou du schéma dans les logs).
   console.error("[api] erreur non gérée :", err?.message ?? String(err));
-  if (res.headersSent) return; // réponse déjà partielle : ne pas relancer ERR_HTTP_HEADERS_SENT
-  res.status(500).json({ error: "Une erreur inattendue est survenue. Réessayez dans un instant." });
+  // Réponse déjà partielle : on la termine proprement plutôt que de renvoyer
+  // un simple return (erreur silencieuse) ou un nouveau json (ERR_HTTP_HEADERS_SENT).
+  if (res.headersSent) return res.end();
+  return res.status(500).json({ error: "Une erreur inattendue est survenue. Réessayez dans un instant." });
 });
 
-app.listen(PORT, () => {
-  console.log(`[scolia-api] en écoute sur :${PORT}`);
-});
+// L'application est exportée pour les tests d'intégration : ils démarrent un
+// serveur Express réel sur un port éphémère avec fetch, sans module.mock.
+export { app };
+
+// En test, c'est le test qui possède le serveur (et peut le fermer).
+if (process.env.NODE_ENV !== "test") {
+  app.listen(PORT, () => {
+    console.log(`[scolia-api] en écoute sur :${PORT}`);
+  });
+}

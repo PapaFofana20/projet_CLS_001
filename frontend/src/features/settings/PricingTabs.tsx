@@ -179,6 +179,11 @@ export function FeesTab({ overview, onSaved }: TabProps) {
   }) || Object.values(annex).some(bad) || bad(discount) || Number(discount) > 50;
 
   const save = async () => {
+    // Un champ vide donnerait 0 avec Number("") : on refuse la sauvegarde.
+    if (invalid) {
+      toast("Corrigez les champs invalides avant d'enregistrer.", "error");
+      return;
+    }
     setBusy(true);
     try {
       const nextFees: Record<string, LevelFees> = Object.fromEntries(Object.entries(fees).map(([k, v]) => [k, { inscription: Number(v.inscription), mensualite: Number(v.mensualite) }]));

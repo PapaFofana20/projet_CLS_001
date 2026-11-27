@@ -12,7 +12,7 @@
     "check": "node -e \"const fs=require('fs');const glob=require('glob');const files=glob.sync('api/src/**/*.js').sort();let bad=0;for(const f of files){try{require('child_process').execSync('node --check '+f,{stdio:'pipe'});console.log('OK '+f);}catch(e){bad++;console.log('FAIL '+f);}}if(bad>0){process.exit(1);}\""
   },
   "devDependencies": {
-    "glob": "^10.5.0",
+    "glob": "^14.0.6",
     "pg": "^8.23.1",
     "supabase": "^2.121.0"
   }

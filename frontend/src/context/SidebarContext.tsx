@@ -94,9 +94,10 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
 
   // Si la fenêtre rétrécit pendant une ouverture au survol, le repli ne peut
   // plus être déclenché par onPointerLeave (handlers retirés) : on le force.
+  const { collapse: collapseHover } = hover;
   useEffect(() => {
-    if (!hoverEnabled) hover.collapse();
-  }, [hoverEnabled, hover.collapse]);
+    if (!hoverEnabled) collapseHover();
+  }, [hoverEnabled, collapseHover]);
 
   // Raccourci clavier « [ » : épingle / replie la sidebar (ignoré dans les champs de saisie).
   useEffect(() => {

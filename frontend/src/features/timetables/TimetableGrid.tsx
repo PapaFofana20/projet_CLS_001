@@ -59,10 +59,10 @@ const TIME_OPTIONS = Array.from({ length: (END_MINUTES - START_MINUTES) / SLOT_M
   return { value, label: value };
 });
 
-type PlacedCourse = { course: TimetableCourse; span: number };
-type GridCell = PlacedCourse | "occupied" | null;
+type PlacedCourse = { course: TimetableCourse; span: number; continuation: boolean };
+type GridCell = PlacedCourse | null;
 
-/** Place chaque cours sur la grille : un cours occupe toujours une seule case prédéfinie. */
+/** Place chaque cours sur la grille : un cours occupe toutes ses tranches de 30 min. */
 function buildGrid(courses: TimetableCourse[]): GridCell[][] {
   return TIMETABLE_DAYS.map((day) => {
     const cells: GridCell[] = Array.from({ length: SLOT_COUNT }, () => null);
@@ -74,10 +74,14 @@ function buildGrid(courses: TimetableCourse[]): GridCell[][] {
       if (end <= start) continue;
 
       const startRow = Math.max(0, Math.min(SLOT_COUNT - 1, Math.floor((start - START_MINUTES) / SLOT_MINUTES)));
-      if (cells[startRow] !== null) continue;
+      const span = Math.max(1, Math.min(SLOT_COUNT - startRow, Math.ceil((end - start) / SLOT_MINUTES)));
+      // Refuse un cours si l'une de ses tranches est déjà prise.
+      if (cells.slice(startRow, startRow + span).some((c) => c !== null)) continue;
 
-      // Un cours = une seule case, quelle que soit sa durée (début–fin indiqués à l'intérieur).
-      cells[startRow] = { course, span: 1 };
+      cells[startRow] = { course, span, continuation: false };
+      for (let row = startRow + 1; row < startRow + span; row += 1) {
+        cells[row] = { course, span, continuation: true };
+      }
     }
 
     return cells;
@@ -170,16 +174,20 @@ export function TimetableGrid({ courses, editable, subjects, teachers, onCreate,
       return;
     }
 
-    // Un cours occupe une seule case : seul un autre cours commençant dans la même case est un conflit.
+    // Conflit = intersection d'intervalles [start, end[ sur le même jour :
+    // un cours de 9 h à 10 h bloque aussi une insertion à 9 h 30.
+    const start = toMinutes(form.startTime);
+    const end = toMinutes(form.endTime);
     const overlap = courses.find(
       (course) =>
         course.id !== editingId &&
         course.day === form.day &&
-        formatTime(course.start_time) === form.startTime,
+        start < toMinutes(course.end_time) &&
+        end > toMinutes(course.start_time),
     );
     if (overlap) {
       setFormError(
-        `Cette case est déjà occupée par « ${courseSubject(overlap)} » (${formatTime(overlap.start_time)} – ${formatTime(overlap.end_time)}).`,
+        `Cet horaire chevauche « ${courseSubject(overlap)} » (${formatTime(overlap.start_time)} – ${formatTime(overlap.end_time)}).`,
       );
       return;
     }
@@ -261,7 +269,9 @@ export function TimetableGrid({ courses, editable, subjects, teachers, onCreate,
                 <tr key={slotStart} className="h-14">
                   {TIMETABLE_DAYS.map((day, dayIndex) => {
                     const cell = grid[dayIndex][row];
-                    if (cell === "occupied") return null;
+                    // Les tranches couvertes par un cours plus long ne
+                    // produisent pas de <td> : le rowSpan occupe la colonne.
+                    if (cell?.continuation) return null;
 
                     if (cell) {
                       const { course, span } = cell;

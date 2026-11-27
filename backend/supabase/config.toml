@@ -20,7 +20,9 @@ max_rows = 1000
 # `postgres` are reachable through the Data API roles (`anon`, `authenticated`, `service_role`)
 # without explicit GRANTs, matching the cloud default. Set to `false` to require explicit GRANTs
 # instead. Left unset, a fresh project falls back to `true`.
-# auto_expose_new_tables = true
+# SCOLIA : durcissement — chaque table/colonne/fonction doit être exposée
+# explicitement via un GRANT, jamais automatiquement.
+auto_expose_new_tables = false
 
 [api.tls]
 # Enable HTTPS endpoints locally using a self-signed certificate.
@@ -65,13 +67,17 @@ enabled = true
 schema_paths = []
 
 [db.seed]
-# If enabled, seeds the database after migrations during a db reset.
-enabled = true
+# SCOLIA : le seed contient des comptes de démonstration à mot de passe connu.
+# Désactivé par défaut (db reset = schéma seul) ; n'activer que sur une machine
+# de développement local, JAMAIS en production.
+enabled = false
 # Specifies an ordered list of seed files to load during db reset.
 # Supports glob patterns relative to supabase directory: "./seeds/*.sql"
 sql_paths = ["./seed.sql"]
 
 [db.network_restrictions]
+# SCOLIA : EN PRODUCTION, activer et remplacer 0.0.0.0/0 par les seules plages
+# d'IP autorisées (bastion / Render / admin). Laisser false en local uniquement.
 # Enable management of network restrictions.
 enabled = false
 # List of IPv4 CIDR blocks allowed to connect to the database.
@@ -216,10 +222,13 @@ token_verifications = 30
 web3 = 30
 
 # Configure one of the supported captcha providers: `hcaptcha`, `turnstile`.
-# [auth.captcha]
-# enabled = true
-# provider = "hcaptcha"
-# secret = ""
+# SCOLIA : captcha activé — le secret doit être fourni par l'environnement
+# (HCAPTCHA_SECRET) en production. Le formulaire de contact passe par le
+# même fournisseur côté client.
+[auth.captcha]
+enabled = true
+provider = "hcaptcha"
+secret = "env(HCAPTCHA_SECRET)"
 
 [auth.email]
 # Allow/disallow new user signups via email to your project.
@@ -274,11 +283,13 @@ max_frequency = "5s"
 # 4152127777 = "123456"
 
 # Configure logged in session timeouts.
-# [auth.sessions]
-# Force log out after the specified duration.
-# timebox = "24h"
-# Force log out if the user has been inactive longer than the specified duration.
-# inactivity_timeout = "8h"
+# SCOLIA : sessions limitées à 1440 minutes (24 h) avec 30 minutes
+# d'inactivité maximale — indispensable sur des postes partagés d'école.
+[auth.sessions]
+# Force log out after the specified duration (1440 min = 24 h).
+timebox = "1440m"
+# Force log out if the user has been inactive longer than the specified duration (30 min).
+inactivity_timeout = "30m"
 
 # This hook runs before a new user is created and allows developers to reject the request based on the incoming user object.
 # [auth.hook.before_user_created]

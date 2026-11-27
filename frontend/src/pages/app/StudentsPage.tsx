@@ -16,6 +16,7 @@ import { Select } from "@/components/ui/Select";
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import { Table, type Column } from "@/components/ui/Table";
 import { useCurrentUser } from "@/context/AuthContext";
+import { useSchool } from "@/context/SchoolContext";
 import { CYCLES, CYCLE_LABELS } from "@/data/school";
 import { useAsync } from "@/hooks/useAsync";
 import { useDebounce } from "@/hooks/useDebounce";
@@ -30,6 +31,7 @@ const STATUS_TONE = { a_jour: "success", partiel: "warning", impaye: "danger" } 
 // Composant principal de la page.
 export default function StudentsPage() {
   const user = useCurrentUser();
+  const { settings } = useSchool();
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   // On charge la liste des élèves visibles selon le rôle de l'utilisateur.
@@ -62,6 +64,10 @@ export default function StudentsPage() {
   }, [rows, dq, cycle, classId, pay]);
 
   useEffect(() => setPage(1), [dq, cycle, classId, pay]);
+  // Borner la page quand la source change ( après reload / import CSV ).
+  useEffect(() => {
+    setPage((p) => Math.min(p, Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))));
+  }, [filtered.length]);
   const pageRows = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   const isTeacher = user.role === "instituteur" || user.role === "professeur";
 
@@ -114,7 +120,7 @@ export default function StudentsPage() {
     <>
       <PageHeader
         title={isTeacher ? "Mes élèves" : "Élèves"}
-        subtitle={`${rows.length} ${pluralize(rows.length, "élève", "élèves")} · année scolaire 2026-2027`}
+        subtitle={`${rows.length} ${pluralize(rows.length, "élève", "élèves")}${settings?.schoolYear ? ` · année scolaire ${settings.schoolYear}` : ""}`}
         actions={user.role === "directeur" ? (
           <div className="flex flex-wrap gap-2">
             <LinkButton to="/app/inscription-eleve" variant="outline" icon="upload_file">Importer</LinkButton>
@@ -129,7 +135,7 @@ export default function StudentsPage() {
           icon="groups"
           value={rows.length}
           label={`élève${rows.length > 1 ? "s" : ""} inscrit${rows.length > 1 ? "s" : ""} · ${classCount} ${pluralize(classCount, "classe", "classes")}`}
-          footnote={`Année scolaire 2026-2027 · ${pluralize(rows.length, "dossier", "dossiers")} consultable${rows.length > 1 ? "s" : ""}`}
+          footnote={`${settings?.schoolYear ? `Année scolaire ${settings.schoolYear} · ` : ""}${pluralize(rows.length, "dossier", "dossiers")} consultable${rows.length > 1 ? "s" : ""}`}
         >
           <HeroBar
             segments={byCycle.map((c) => ({

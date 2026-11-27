@@ -65,10 +65,23 @@ function detectSeparator(text: string): string {
   return (firstLine.match(/;/g) ?? []).length > (firstLine.match(/,/g) ?? []).length ? ";" : ",";
 }
 
+/** Vérifie qu'une triplet année/mois/jour forme une date calendaire réelle. */
+function isRealCalendarDate(year: number, month: number, day: number): boolean {
+  if (year < 1900 || year > new Date().getUTCFullYear()) return false;
+  if (month < 1 || month > 12 || day < 1 || day > 31) return false;
+  // Date.UTC interprète les années 0-99 comme 1900-1999 : on corrige explicitement.
+  const date = new Date(Date.UTC(year, month - 1, day));
+  date.setUTCFullYear(year);
+  return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
+}
+
 function parseBirthDate(raw: string): string | null {
   const v = raw.trim();
   const iso = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v);
-  if (iso) return v; // déjà ISO
+  if (iso) {
+    const [, y, mo, d] = iso;
+    return isRealCalendarDate(Number(y), Number(mo), Number(d)) ? v : null;
+  }
   return parseFrDate(v);
 }
 
@@ -132,9 +145,12 @@ export function parseStudentsCsv(text: string): CsvParseResult {
     if (!isValidSnPhone(parentPhone)) lineErrors.push(`téléphone parent invalide ("${parentPhone}")`);
     if (parentEmail && !isValidEmail(parentEmail)) lineErrors.push(`e-mail parent invalide ("${parentEmail}")`);
 
-    const dedupKey = `${firstName}|${lastName}|${birthRaw}|${className}`.toLowerCase();
+    // La clé utilise la date ISO normalisée (JJ/MM/AAAA et AAAA-MM-JJ équivalents).
+    const dedupKey = `${firstName}|${lastName}|${birthIso ?? ""}|${className}`.toLowerCase();
     if (lineErrors.length === 0 && seen.has(dedupKey)) lineErrors.push("doublon dans le fichier");
-    seen.add(dedupKey);
+    // Une ligne invalide ne doit pas « réserver » sa clé et faire déclarer
+    // doublon une ligne valide identique importée plus tard.
+    if (lineErrors.length === 0) seen.add(dedupKey);
 
     if (lineErrors.length > 0) {
       errors.push(`Ligne ${lineNo} : ${lineErrors.join(", ")}.`);

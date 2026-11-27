@@ -1,21 +1,31 @@
 /**
  * Chiffrement au repos des secrets TOTP admin (AES-256-GCM).
  *
- * La clé est dérivée (SHA-256) de SUPABASE_SERVICE_ROLE_KEY : aucune nouvelle
- * variable d'environnement requise, et le secret ne repose jamais en clair en
- * base. Format : "enc:v1:<iv_b64>:<tag_b64>:<cipher_b64>".
+ * La clé est dérivée (SHA-256) de TOTP_ENCRYPTION_KEY si elle est définie,
+ * sinon de SUPABASE_SERVICE_ROLE_KEY pour compatibilité avec les secrets déjà
+ * stockés. Le secret ne repose jamais en clair en base.
+ * Format : "enc:v1:<iv_b64>:<tag_b64>:<cipher_b64>".
+ *
+ * Rotation : changer TOTP_ENCRYPTION_KEY rend les secrets existants
+ * illisibles (déchiffrement en échec) — migrer les valeurs avec l'ancienne
+ * clé avant de la remplacer en production.
  *
  * Compatibilité : une valeur sans le préfixe "enc:v1:" est traitée comme un
  * secret historique en clair (migration progressive) et renvoyée telle quelle.
  */
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
-import { SERVICE_KEY } from "../config.js";
+import { SERVICE_KEY, TOTP_ENCRYPTION_KEY } from "../config.js";
 
 const PREFIX = "enc:v1:";
 
 function deriveKey() {
-  if (!SERVICE_KEY) throw new Error("Configuration serveur incomplète (SUPABASE_SERVICE_ROLE_KEY).");
-  return createHash("sha256").update(SERVICE_KEY).digest();
+  // La variable dédiée prend le pas sur la clé de service : on peut ainsi
+  // isoler (et remplacer) la clé de chiffrement sans toucher à service_role.
+  const source = TOTP_ENCRYPTION_KEY || SERVICE_KEY;
+  if (!source) {
+    throw new Error("Configuration serveur incomplète (TOTP_ENCRYPTION_KEY ou SUPABASE_SERVICE_ROLE_KEY).");
+  }
+  return createHash("sha256").update(source).digest();
 }
 
 /** Chiffre un secret TOTP. Retourne la valeur à stocker en base. */

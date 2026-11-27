@@ -16,7 +16,7 @@ create or replace function public.admin_update_agent(
   p_patch jsonb,
   p_downgrades boolean
 ) returns boolean
-language plpgsql security definer set search_path = public as $$
+language plpgsql security definer set search_path = '' as $$
 declare
   v_is_active_superadmin boolean;
   v_active_superadmins int;

@@ -85,12 +85,20 @@ export async function currentSession(): Promise<SessionUser | null> {
   return toSession(profile);
 }
 
-// Déconnecte la session Supabase Auth (les données restent en cache jusqu'au prochain clear).
-// scope "local" : on retire la session du stockage local sans attendre un aller-retour
-// réseau (qui peut prendre plusieurs secondes et bloquer le client Auth) — la
-// déconnexion doit être instantanée côté utilisateur.
-export function logout(): void {
-  void supabase.auth.signOut({ scope: "local" });
+/**
+ * Déconnecte la session Supabase Auth avec le scope GLOBAL : les jetons sont
+ * aussi révoqués côté serveur, pas seulement retirés du stockage de l'onglet.
+ * On attend la fin de l'appel pour que AuthContext puisse enchaîner avec
+ * clearCache() sans risque de race, mais une erreur réseau est seulement
+ * journalisée : l'utilisateur doit toujours pouvoir sortir de son compte.
+ */
+export async function logout(): Promise<void> {
+  try {
+    const { error } = await supabase.auth.signOut();
+    if (error) console.error("[auth] signOut :", error.message);
+  } catch (e) {
+    console.error("[auth] signOut indisponible :", e instanceof Error ? e.message : String(e));
+  }
 }
 
 /* ------------------------------------------------------------------ */
@@ -148,6 +156,9 @@ export async function login(email: string, password: string, matricule?: string)
     const profile = db.users.find((u) => u.id === id);
     const school = profile ? db.schools.find((s) => s.id === profile.schoolId) : undefined;
     const expected = (school?.matricule ?? "").trim().toUpperCase();
+    // Contrôle UX uniquement : il aide l'utilisateur à saisir le bon code.
+    // Ce n'est PAS une barrière de sécurité — la RLS borne de toute façon les
+    // données au school_id du profil (aucune vérification backend ici).
     // Une école pas encore activée n'a pas de matricule : la vérification ne
     // s'applique qu'aux écoles déjà équipées d'un code.
     if (expected && matricule.trim().toUpperCase() !== expected) {
@@ -187,16 +198,22 @@ export interface StudentSignupInput {
   password: string;
 }
 
-/** Inscription d'un élève : compte créé en attente, la direction valide ensuite. */
+/** Inscription d'un élève : compte créé en attente, la direction valide ensuite.
+ *  Tant que le profil n'est pas ACTIF on ne fabrique PAS de SessionUser : le
+ *  contexte reste sur l'écran d'attente et aucune session applicative n'est
+ *  ouverte (seule la demande d'inscription est renvoyée). */
 export async function registerStudent(
   input: StudentSignupInput,
-): Promise<{ user: SessionUser; requestId: string; childCode?: string }> {
+): Promise<{ user: SessionUser | null; requestId: string; childCode?: string }> {
   const result = await callFunction<{
     user: { id: string; email: string; firstName: string; lastName: string; role: string; status: string };
     requestId: string;
     approved: boolean;
     child_code?: string;
   }>("register-student", input);
+  if (result.user.status !== "ACTIF") {
+    return { user: null, requestId: result.requestId, childCode: result.child_code };
+  }
   const user: User = {
     id: result.user.id,
     schoolId: input.schoolId,
@@ -226,7 +243,9 @@ export interface EnrolledStudentSignupInput {
 
 /** Création du compte d'un élève déjà inscrit, via son matricule : le compte
  *  est rattaché à sa fiche (ACTIF immédiatement). Le matricule ne sert qu'à
- *  cette création ; la connexion reste matricule d'école + e-mail + mot de passe. */
+ *  cette création ; la connexion reste matricule d'école + e-mail + mot de passe.
+ *  Si le serveur renvoie malgré tout un statut non actif, on refuse de
+ *  fabriquer une session et on lève une erreur explicite. */
 export async function registerEnrolledStudent(
   input: EnrolledStudentSignupInput,
 ): Promise<{ user: SessionUser; studentId: string; studentMatricule: string }> {
@@ -235,6 +254,9 @@ export async function registerEnrolledStudent(
     studentId: string;
     studentMatricule: string;
   }>("register-enrolled-student", input);
+  if (result.user.status !== "ACTIF") {
+    throw new Error("Compte en attente de validation par l'école. Connectez-vous une fois votre compte activé.");
+  }
   const user: User = {
     id: result.user.id,
     schoolId: input.schoolId,
@@ -263,16 +285,21 @@ export interface ParentSignupInput {
   password: string;
 }
 
-/** Inscription d'un parent : le matricule de l'élève rattache le compte à un élève de CETTE école. */
+/** Inscription d'un parent : le matricule de l'élève rattache le compte à un élève de CETTE école.
+ *  En attente d'approbation : `user` est null (aucune session fabriquée), le
+ *  formulaire affiche l'écran d'attente avec la demande et le nom de l'élève. */
 export async function registerParent(
   input: ParentSignupInput,
-): Promise<{ user: SessionUser; requestId: string; childName: string }> {
+): Promise<{ user: SessionUser | null; requestId: string; childName: string }> {
   const result = await callFunction<{
     user: { id: string; email: string; firstName: string; lastName: string; role: string; status: string };
     requestId: string;
     approved: boolean;
     childName: string;
   }>("register-parent", input);
+  if (result.user.status !== "ACTIF") {
+    return { user: null, requestId: result.requestId, childName: result.childName };
+  }
   const user: User = {
     id: result.user.id,
     schoolId: input.schoolId,
@@ -436,12 +463,18 @@ export async function deleteStaffAccount(actor: SessionUser, userId: string): Pr
   await hydrate("users");
 }
 
-/** Changement de mot de passe (première connexion d'un accès créé par la direction). */
+/** Changement de mot de passe (première connexion d'un accès créé par la direction).
+ *  L'ancien mot de passe est VÉRIFIÉ par une vraie réauthentification Supabase :
+ *  sans cela, n'importe quel script disposant d'un jeton valide pourrait changer
+ *  le mot de passe sans connaître l'ancien. */
 export async function changePassword(actor: SessionUser, currentPassword: string, nextPassword: string): Promise<void> {
-  void actor;
   if (currentPassword === nextPassword) {
     throw new Error("Choisissez un mot de passe différent de l'ancien.");
   }
+  const email = actor.email || (await supabase.auth.getUser()).data.user?.email;
+  if (!email) throw new Error("Adresse e-mail de session indisponible. Reconnectez-vous.");
+  const { error: reauthError } = await supabase.auth.signInWithPassword({ email, password: currentPassword });
+  if (reauthError) throw new Error("L'ancien mot de passe est incorrect.");
   const { error } = await supabase.auth.updateUser({ password: nextPassword });
   if (error) throw new Error("Impossible de changer le mot de passe. Réessayez.");
   const { error: flagError } = await supabase.rpc("complete_password_change");
@@ -449,6 +482,9 @@ export async function changePassword(actor: SessionUser, currentPassword: string
 }
 
 // Met à jour le profil de l'utilisateur connecté (table profiles).
+// L'e-mail vit dans Auth ET dans profiles : on met d'abord Auth à jour pour
+// ne pas laisser les deux sources diverger (un changement d'e-mail Supabase
+// peut déclencher une confirmation, mais la demande est bien enregistrée).
 export function updateProfile(
   actor: SessionUser,
   patch: { firstName?: string; lastName?: string; email?: string; phone?: string },
@@ -457,8 +493,19 @@ export function updateProfile(
     const payload: Record<string, unknown> = {};
     if (patch.firstName !== undefined) payload.first_name = patch.firstName.trim();
     if (patch.lastName !== undefined) payload.last_name = patch.lastName.trim();
-    if (patch.email !== undefined) payload.email = patch.email.trim();
     if (patch.phone !== undefined) payload.phone = patch.phone.trim();
+    if (patch.email !== undefined) {
+      const email = patch.email.trim();
+      const { error: authError } = await supabase.auth.updateUser({ email });
+      if (authError) {
+        throw new Error(
+          /duplicate|already/i.test(authError.message)
+            ? "Un compte existe déjà avec cet e-mail."
+            : "Impossible de modifier l'adresse e-mail. Réessayez.",
+        );
+      }
+      payload.email = email;
+    }
     if (Object.keys(payload).length) {
       const { error } = await supabase.from("profiles").update(payload).eq("id", actor.id);
       if (error) throw new Error(/duplicate/i.test(error.message) ? "Un compte existe déjà avec cet e-mail." : error.message);

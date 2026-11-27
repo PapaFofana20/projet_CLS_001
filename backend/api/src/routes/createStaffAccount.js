@@ -91,7 +91,10 @@ export default route(async (req, res) => {
     } catch (sqlError) {
       await svc.auth.admin.deleteUser(created.user.id);
       const message = sqlError instanceof Error ? sqlError.message : undefined;
-      if (message && /un compte existe déjà|rôle invalide/i.test(message)) return badRequest(res, message);
+      if (message && /un compte existe déjà|rôle invalide/i.test(message)) {
+        logError("create-staff-account:rpc", sqlError);
+        return badRequest(res, "Impossible de créer l'accès. Vérifiez les informations saisies et réessayez.");
+      }
       logError("create-staff-account", sqlError);
       return serverError(res);
     }
