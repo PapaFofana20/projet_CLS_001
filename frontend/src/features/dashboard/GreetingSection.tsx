@@ -51,10 +51,19 @@ export function GreetingSection() {
       aria-label="Bienvenue"
       className="relative mb-6 overflow-hidden rounded-3xl bg-forest text-white shadow-card"
     >
+      {/* Décor repris des panneaux publics : trame de points, halos et filet lime. */}
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 opacity-30 [background-image:radial-gradient(#c6f068_1.5px,transparent_1.5px)] [background-size:20px_20px]" />
+      <div aria-hidden="true" className="pointer-events-none absolute -right-20 -top-24 size-72 rounded-full bg-lime/20 blur-3xl" />
+      <div aria-hidden="true" className="pointer-events-none absolute bottom-0 left-1/3 size-64 rounded-full bg-forest-500/40 blur-3xl" />
+      <div aria-hidden="true" className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-lime via-lime/50 to-transparent" />
+
       <div className="relative flex flex-wrap items-start gap-5 p-5 sm:p-6">
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-bold uppercase tracking-widest text-lime">{ROLE_LABELS[user.role] ?? ""}</p>
-          <h2 className="mt-1 text-2xl font-extrabold tracking-tight sm:text-3xl">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-lime px-3 py-1 text-[11px] font-extrabold uppercase tracking-wider text-forest">
+            <span className="size-1.5 rounded-full bg-forest" />
+            {ROLE_LABELS[user.role] ?? ""}
+          </span>
+          <h2 className="mt-2 text-2xl font-extrabold tracking-tight sm:text-3xl">
             {greetingOf(now.getHours())}, <span className="text-lime">{fullName || "bienvenue"}</span>
           </h2>
           <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-white/80">
@@ -80,7 +89,7 @@ export function GreetingSection() {
           )}
         </div>
 
-        <div className="hidden shrink-0 flex-col items-center rounded-2xl bg-white/10 px-6 py-4 text-center ring-1 ring-white/10 sm:flex">
+        <div className="hidden shrink-0 flex-col items-center rounded-2xl border-t-2 border-lime/60 bg-white/10 px-6 py-4 text-center ring-1 ring-white/15 backdrop-blur sm:flex">
           <span className="text-4xl font-extrabold leading-none text-lime">{dayNumber}</span>
           <span className="mt-1 text-sm font-bold">{monthLabel}</span>
           <span className="text-xs text-white/70">{weekdayLabel}</span>
