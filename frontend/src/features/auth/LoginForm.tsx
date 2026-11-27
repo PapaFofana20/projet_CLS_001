@@ -46,7 +46,7 @@ export function LoginForm() {
 
   return (
     <>
-      <form onSubmit={submit} noValidate className="space-y-4" aria-label="Formulaire de connexion">
+      <form onSubmit={submit} noValidate className="space-y-4 lg:space-y-2" aria-label="Formulaire de connexion">
         {error && (
           <div role="alert" className="flex items-start gap-2 rounded-2xl bg-red-50 p-4 text-sm font-medium text-danger">
             <Icon name="error" className="text-[20px]" />
@@ -74,7 +74,7 @@ export function LoginForm() {
           </button>
         </div>
         <div className="flex justify-end">
-          <Link to="/mot-de-passe-oublie" className="inline-flex min-h-11 items-center text-sm font-semibold text-forest underline-offset-4 hover:underline">
+          <Link to="/mot-de-passe-oublie" className="inline-flex min-h-11 items-center text-sm font-semibold text-forest underline-offset-4 hover:underline lg:min-h-9">
             Mot de passe oublié ?
           </Link>
         </div>

@@ -15,10 +15,12 @@ interface Props {
   showVisual?: boolean;
   backgroundImage?: boolean;
   wide?: boolean;
+  /** Sur grand écran, resserre les espacements pour que le formulaire tienne sans scroll. */
+  compact?: boolean;
 }
 
 /** Formulaire à gauche, visuel vert foncé à droite (si showVisual), ou image de fond (backgroundImage). */
-export function AuthLayout({ title, subtitle, children, visualTitle, visualText, showVisual = true, backgroundImage = false, wide = false }: Props) {
+export function AuthLayout({ title, subtitle, children, visualTitle, visualText, showVisual = true, backgroundImage = false, wide = false, compact = false }: Props) {
   const hasImageBackground = !showVisual && backgroundImage;
   const floatingDots = [...Array(8)].map((_, i) => (
     <div
@@ -98,8 +100,8 @@ export function AuthLayout({ title, subtitle, children, visualTitle, visualText,
         </div>
       )}
 
-      <div className={showVisual ? "grid min-h-screen bg-white lg:grid-cols-2 relative z-10" : hasImageBackground ? "min-h-screen relative z-10 flex justify-center items-center px-3 py-4 sm:px-6 sm:py-8" : "min-h-screen relative z-10 flex justify-center"}>
-        <div className={showVisual ? "flex flex-col px-5 py-6 sm:px-10 lg:px-16" : hasImageBackground ? `flex w-full ${wide ? "max-w-7xl" : "max-w-3xl"} flex-col self-center rounded-[28px] border border-forest/10 bg-white/95 px-5 py-6 shadow-soft backdrop-blur-sm sm:px-8 sm:py-8 lg:px-10` : `flex flex-col px-5 py-6 sm:px-10 lg:px-16 w-full ${wide ? "max-w-7xl" : "max-w-3xl"} pt-10`}>
+      <div className={showVisual ? "grid min-h-screen bg-white lg:grid-cols-2 relative z-10" : hasImageBackground ? `min-h-screen relative z-10 flex justify-center items-center px-3 py-4 sm:px-6 sm:py-8${compact ? " lg:py-3" : ""}` : "min-h-screen relative z-10 flex justify-center"}>
+        <div className={showVisual ? "flex flex-col px-5 py-6 sm:px-10 lg:px-16" : hasImageBackground ? `flex w-full ${wide ? "max-w-7xl" : "max-w-3xl"} flex-col self-center rounded-[28px] border border-forest/10 bg-white/95 px-5 py-6 shadow-soft backdrop-blur-sm sm:px-8 sm:py-8 lg:px-10${compact ? " lg:py-4" : ""}` : `flex flex-col px-5 py-6 sm:px-10 lg:px-16 w-full ${wide ? "max-w-7xl" : "max-w-3xl"} pt-10`}>
           <div className="flex items-center justify-between">
             <Logo />
             <Link to="/" className="inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-forest">
@@ -112,12 +114,12 @@ export function AuthLayout({ title, subtitle, children, visualTitle, visualText,
               le contenu (children) occupe toute la largeur du conteneur, sinon
               la section tarifs resterait bloquée à max-w-3xl sur les pages
               « wide » (inscription directeur). */}
-          <div className="mt-8 w-full">
+          <div className={compact ? "mt-8 w-full lg:mt-4" : "mt-8 w-full"}>
             <h1 className="max-w-3xl text-3xl font-extrabold tracking-tight text-ink sm:text-4xl">{title}</h1>
             {/* mt-1 : le sous-titre reste détaché du titre, mais l'espace est
                 resserré (8px -> 4px) pour ne pas ressembler à deux blocs. */}
             {subtitle && <p className="mt-1 max-w-3xl text-sm text-neutral-600">{subtitle}</p>}
-            <div className="mt-8">{children}</div>
+            <div className={compact ? "mt-8 lg:mt-4" : "mt-8"}>{children}</div>
           </div>
         </div>
         {showVisual && (
