@@ -37,10 +37,10 @@ export default function SchoolsPage() {
               </h2>
               <div className="mx-auto mt-8 max-w-3xl space-y-4 text-lg leading-relaxed text-neutral-700 sm:mt-10">
                 <p>
-                  Classora accompagne les établissements scolaires du Sénégal dans leur transformation numérique, en leur proposant un environnement de gestion moderne, structuré et adapté à leurs réalités. De Dakar à Thiès, en passant par Mbour, Saint-Louis, Rufisque et Kaolack, nous développons progressivement notre présence dans plusieurs villes du pays.
+                  Rejoindre Classora, c'est doter son établissement d'une infrastructure numérique pensée pour la réalité des écoles privées sénégalaises. Nous accompagnons chaque direction dans la mise en place d'un espace de travail unique — inscriptions, classes, notes, bulletins, présences et paiements — accessible à tous les acteurs de la communauté éducative, du bureau de la direction au téléphone d'un parent.
                 </p>
                 <p>
-                  À chaque établissement, de l'enseignement élémentaire au secondaire, Classora s'adapte à son organisation et à ses exigences pédagogiques : gestion des instituteurs titulaires, suivi des professeurs spécialisés, coefficients propres aux différentes séries et spécificités de chaque niveau d'enseignement. <em className="font-semibold">Notre ambition est de simplifier durablement le quotidien de toute la communauté éducative :</em> en centralisant les informations et en fluidifiant les processus administratifs et pédagogiques, nous aidons les directions à mieux piloter leurs établissements, les enseignants à se concentrer sur l'essentiel et les familles à suivre plus facilement la scolarité de leurs enfants.
+                  Ce partenariat dépasse la simple mise à disposition d'un outil : il repose sur une compréhension fine de l'organisation de chaque école. Classora respecte les spécificités de chaque cycle, des instituteurs titulaires de l'élémentaire aux professeurs spécialisés du secondaire, avec des coefficients adaptés aux séries et des données strictement isolées par établissement. <em className="font-semibold">Notre vision est de rendre la gestion scolaire assez transparente et fluide pour que chaque école puisse concentrer son énergie sur l'essentiel : la qualité de l'enseignement et la réussite de ses élèves.</em>
                 </p>
               </div>
             </div>

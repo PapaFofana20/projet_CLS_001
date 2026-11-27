@@ -34,13 +34,10 @@ export default function AboutPage() {
               </h2>
               <div className="mt-8 max-w-3xl mx-auto space-y-4 text-lg leading-relaxed text-neutral-700 text-center sm:mt-10 md:mt-12">
                 <p>
-                  <strong className="text-ink">Tout est parti d'un constat simple :</strong> dans de nombreuses écoles privées sénégalaises, la gestion scolaire repose encore sur des piles de cahiers, des reçus papier et des bulletins laborieusement préparés à la main. Un fonctionnement chronophage qui complique le quotidien des équipes et freine l'efficacité des établissements.
+                  <strong className="text-ink">Classora est né d'un constat simple :</strong> dans trop d'écoles privées sénégalaises, la gestion repose encore sur des cahiers, des reçus papier et des bulletins préparés à la main. Nous y répondons par une plateforme unique — inscriptions, notes, bulletins, présences et paiements — accessible du bureau de la direction au téléphone d'un parent.
                 </p>
                 <p>
-                  <strong className="text-ink">Nous avons imaginé Classora pour changer cela.</strong> Une solution conçue autour de la réalité de nos écoles : un instituteur titulaire pour une classe à l'élémentaire, plusieurs professeurs au moyen et au secondaire, des coefficients adaptés à chaque série et un suivi des échéances de scolarité en temps réel.
-                </p>
-                <p>
-                  Parce que gérer une école ne devrait pas être une succession de tâches administratives, mais un moyen de mieux accompagner chaque élève et de faire grandir son établissement.
+                  <strong className="text-ink">Cet outil a été pensé avec nos écoles :</strong> instituteurs titulaires à l'élémentaire, professeurs spécialisés au secondaire, coefficients adaptés à chaque série et échéances de scolarité suivies en temps réel. Les données restent isolées par établissement et chaque rôle ne voit que ce qui le concerne : la direction pilote, l'enseignant enseigne, la famille accompagne.
                 </p>
               </div>
             </div>
