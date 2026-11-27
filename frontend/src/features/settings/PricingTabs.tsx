@@ -12,7 +12,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useSchool } from "@/context/SchoolContext";
 import { HeroBar, HeroCard, HeroLegend, KpiTile, PanelHeading } from "@/features/admin/adminUi";
 import { setClassSubject, updateSettings, type SchoolOverview } from "@/services/schoolService";
-import type { LevelFees } from "@/types";
+import type { Cycle, LevelFees } from "@/types";
 import { formatCurrency } from "@/utils/format";
 import { CYCLES, CYCLE_LABELS } from "@/data/school";
 
@@ -91,10 +91,10 @@ export function CoefficientsTab({ overview, onSaved }: TabProps) {
               />
             </HeroCard>
             <div className="grid gap-3 sm:grid-cols-2">
-              <KpiTile tone="lime" icon="meeting_room" label="Classes" value={eligibleClasses.length} note="Cycles autorisés" />
-              <KpiTile tone="sky" icon="menu_book" label="Matières" value={overview.subjects.length} note="École" />
-              <KpiTile tone={pct < 100 ? "amber" : "neutral"} icon="balance" label="Couverture" value={`${pct} %`} note={selectedClass?.name ?? "—"} />
-              <KpiTile tone="violet" icon="stairs" label="Cycle" value={cycleLabel || "—"} note={isFreePlan ? "Limité (gratuit)" : "Tous cycles"} valueClassName="text-lg" />
+              <KpiTile tone="lime" icon="meeting_room" label="Classes" value={eligibleClasses.length} />
+              <KpiTile tone="sky" icon="menu_book" label="Matières" value={overview.subjects.length} />
+              <KpiTile tone={pct < 100 ? "amber" : "neutral"} icon="balance" label="Couverture" value={`${pct} %`} />
+              <KpiTile tone="violet" icon="stairs" label="Cycle" value={cycleLabel || "—"} valueClassName="text-lg" />
             </div>
           </div>
         );
@@ -156,14 +156,27 @@ export function CoefficientsTab({ overview, onSaved }: TabProps) {
 export function FeesTab({ overview, onSaved }: TabProps) {
   const { toast } = useToast();
   const { schoolId } = useAuth();
+  const school = useSchool();
   const s = overview.settings;
   const [fees, setFees] = useState<Record<string, { inscription: string; mensualite: string }>>(() => Object.fromEntries(Object.entries(s.fees).map(([k, v]) => [k, { inscription: String(v.inscription), mensualite: String(v.mensualite) }])));
   const [annex, setAnnex] = useState({ cantine: String(s.annexFees.cantine), transport: String(s.annexFees.transport), tenue: String(s.annexFees.tenue) });
   const [discount, setDiscount] = useState(String(s.siblingDiscount));
   const [busy, setBusy] = useState(false);
 
+  /** Cycles couverts par l'abonnement : un seul sur le plan gratuit (Découverte). */
+  const isFreePlan = school.plan?.id === "essentiel";
+  const freeCycle = isFreePlan ? (school.school?.cycles?.[0] ?? s.cycles?.[0]) : undefined;
+  const allowedCycles: Cycle[] = isFreePlan && freeCycle
+    ? [freeCycle]
+    : (s.cycles?.length ? s.cycles : (school.school?.cycles?.length ? school.school.cycles : CYCLES));
+  /** Niveaux tarifables : uniquement les classes des cycles de l'abonnement. */
+  const eligibleLevels = overview.levels.filter((l) => allowedCycles.includes(l.cycle));
+
   const bad = (v: string) => !(Number(v) >= 0) || v === "" || Number(v) > 1_000_000;
-  const invalid = Object.values(fees).some((f) => bad(f.inscription) || bad(f.mensualite)) || Object.values(annex).some(bad) || bad(discount) || Number(discount) > 50;
+  const invalid = eligibleLevels.some((l) => {
+    const f = fees[l.id];
+    return f && (bad(f.inscription) || bad(f.mensualite));
+  }) || Object.values(annex).some(bad) || bad(discount) || Number(discount) > 50;
 
   const save = async () => {
     setBusy(true);
@@ -182,14 +195,17 @@ export function FeesTab({ overview, onSaved }: TabProps) {
   return (
     <div className="space-y-4">
       {(() => {
-        const levelCount = overview.levels.length;
-        const totals = overview.levels.map((l) => {
+        const levelCount = eligibleLevels.length;
+        const totals = eligibleLevels.map((l) => {
           const f = fees[l.id];
           return f ? Number(f.inscription) + Number(f.mensualite) * 10 : 0;
         });
         const avg = levelCount ? Math.round(totals.reduce((a, b) => a + b, 0) / levelCount) : 0;
         const min = totals.length ? Math.min(...totals) : 0;
         const max = totals.length ? Math.max(...totals) : 0;
+        const cycleNote = isFreePlan
+          ? `cycle ${freeCycle ? CYCLE_LABELS[freeCycle] : "—"} seul (offre gratuite)`
+          : `${allowedCycles.length} cycle${allowedCycles.length > 1 ? "s" : ""} · ${allowedCycles.map((c) => CYCLE_LABELS[c]).join(", ")}`;
         return (
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
             <HeroCard
@@ -197,18 +213,18 @@ export function FeesTab({ overview, onSaved }: TabProps) {
               icon="sell"
               value={formatCurrency(avg)}
               label={`coût annuel moyen · ${levelCount} niveau${levelCount > 1 ? "x" : ""} tarifé${levelCount > 1 ? "s" : ""}`}
-              footnote={`De ${formatCurrency(min)} à ${formatCurrency(max)} par an · réduction fratrie ${discount || 0} %`}
+              footnote={`De ${formatCurrency(min)} à ${formatCurrency(max)} par an · ${cycleNote} · réduction fratrie ${discount || 0} %`}
               valueClassName="text-2xl sm:text-3xl"
             >
               <HeroBar
-                segments={overview.levels.map((l, index) => {
+                segments={eligibleLevels.map((l, index) => {
                   const f = fees[l.id];
                   const t = f ? Number(f.inscription) + Number(f.mensualite) * 10 : 0;
                   return { pct: max > 0 ? Math.round((t / max) * 100) : 0, className: index % 3 === 0 ? "bg-lime" : index % 3 === 1 ? "bg-emerald-300/90" : "bg-amber-300/90" };
                 })}
               />
               <HeroLegend
-                items={overview.levels.slice(0, 4).map((l, index) => {
+                items={eligibleLevels.slice(0, 4).map((l, index) => {
                   const f = fees[l.id];
                   const t = f ? Number(f.inscription) + Number(f.mensualite) * 10 : 0;
                   return { dot: index % 3 === 0 ? "bg-lime" : index % 3 === 1 ? "bg-emerald-300" : "bg-amber-300", label: `${l.label} · ${formatCurrency(t)}` };
@@ -233,27 +249,40 @@ export function FeesTab({ overview, onSaved }: TabProps) {
 
       <Card padded={false} className="overflow-hidden px-2 pb-2">
         <div className="px-3 pt-4 sm:px-4">
-          <PanelHeading icon="receipt_long" title="Tarifs par niveau" subtitle="Inscription (une fois) et mensualité sur 10 mois (octobre à juillet), en FCFA." />
+          <PanelHeading
+            icon="receipt_long"
+            title="Tarifs par niveau"
+            subtitle={
+              isFreePlan
+                ? `Inscription et mensualité sur 10 mois, en FCFA. Offre gratuite : cycle ${freeCycle ? CYCLE_LABELS[freeCycle] : "—"} uniquement.`
+                : "Inscription (une fois) et mensualité sur 10 mois (octobre à juillet), en FCFA."
+            }
+          />
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[560px] text-sm">
-            <caption className="sr-only">Tarifs par niveau</caption>
-            <thead><tr className="text-left text-xs uppercase tracking-wide text-neutral-500"><th className="px-4 py-3">Niveau</th><th className="px-2 py-3">Inscription</th><th className="px-2 py-3">Mensualité</th><th className="px-2 py-3 text-right">Total annuel</th></tr></thead>
-            <tbody>
-              {overview.levels.map((l) => {
-                const f = fees[l.id] ?? { inscription: "0", mensualite: "0" };
-                return (
-                  <tr key={l.id} className="border-t border-neutral-100">
-                    <th scope="row" className="px-4 py-2 text-left font-bold">{l.label}</th>
-                    <td className="px-2 py-2"><input aria-label={`Inscription ${l.label}`} type="number" min={0} step={500} value={f.inscription} onChange={(e) => setFees({ ...fees, [l.id]: { ...f, inscription: e.target.value } })} className="min-h-11 w-32 rounded-xl border border-neutral-300 px-3" /></td>
-                    <td className="px-2 py-2"><input aria-label={`Mensualité ${l.label}`} type="number" min={0} step={500} value={f.mensualite} onChange={(e) => setFees({ ...fees, [l.id]: { ...f, mensualite: e.target.value } })} className="min-h-11 w-32 rounded-xl border border-neutral-300 px-3" /></td>
-                    <td className="px-2 py-2 text-right font-semibold">{formatCurrency(Number(f.inscription) + Number(f.mensualite) * 10)}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        {eligibleLevels.length === 0 && (
+          <p className="px-4 pb-4 text-sm text-neutral-500">Aucun niveau dans les cycles de votre abonnement.</p>
+        )}
+        {eligibleLevels.length > 0 && (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[560px] text-sm">
+              <caption className="sr-only">Tarifs par niveau des cycles de l'abonnement</caption>
+              <thead><tr className="text-left text-xs uppercase tracking-wide text-neutral-500"><th className="px-4 py-3">Niveau</th><th className="px-2 py-3">Inscription</th><th className="px-2 py-3">Mensualité</th><th className="px-2 py-3 text-right">Total annuel</th></tr></thead>
+              <tbody>
+                {eligibleLevels.map((l) => {
+                  const f = fees[l.id] ?? { inscription: "0", mensualite: "0" };
+                  return (
+                    <tr key={l.id} className="border-t border-neutral-100">
+                      <th scope="row" className="px-4 py-2 text-left font-bold">{l.label}</th>
+                      <td className="px-2 py-2"><input aria-label={`Inscription ${l.label}`} type="number" min={0} step={500} value={f.inscription} onChange={(e) => setFees({ ...fees, [l.id]: { ...f, inscription: e.target.value } })} className="min-h-11 w-32 rounded-xl border border-neutral-300 px-3" /></td>
+                      <td className="px-2 py-2"><input aria-label={`Mensualité ${l.label}`} type="number" min={0} step={500} value={f.mensualite} onChange={(e) => setFees({ ...fees, [l.id]: { ...f, mensualite: e.target.value } })} className="min-h-11 w-32 rounded-xl border border-neutral-300 px-3" /></td>
+                      <td className="px-2 py-2 text-right font-semibold">{formatCurrency(Number(f.inscription) + Number(f.mensualite) * 10)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </Card>
       <Card>
         <PanelHeading icon="add_card" title="Frais annexes et réduction fratrie" subtitle="Services optionnels facturés en complément de la scolarité" />

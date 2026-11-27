@@ -9,7 +9,7 @@ import { todayIso } from "@/data/school";
 import type { SessionUser } from "@/types";
 import { formatLongDate } from "@/utils/format";
 import { ROLE_LABELS } from "@/utils/permissions";
-import { Avatar, SchoolMark } from "@/components/ui/Brand";
+import { Avatar } from "@/components/ui/Brand";
 import { ContextSwitcher } from "@/components/ui/ContextSwitcher";
 import { Icon } from "@/components/ui/Icon";
 import { ConfirmDialog } from "@/components/ui/Modal";
@@ -47,7 +47,10 @@ export function Topbar({ user, onMenu }: { user: SessionUser; onMenu: () => void
           <Icon name="menu" />
         </button>
         <div className="min-w-0">
-          <SchoolMark name={school.schoolName || "Mon école"} matricule={school.school?.matricule || undefined} size={40} />
+          <span className="block truncate text-sm font-bold leading-tight text-ink sm:text-base">{school.schoolName || "Mon école"}</span>
+          {school.school?.matricule && (
+            <span className="block text-[11px] font-semibold tracking-wider text-forest-500">{school.school.matricule}</span>
+          )}
           <p className="mt-1 hidden text-sm font-semibold text-neutral-600 sm:block sm:text-base">{formatLongDate(todayIso())}</p>
         </div>
         <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
