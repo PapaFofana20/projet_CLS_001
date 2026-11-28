@@ -97,6 +97,10 @@ function SettingsForm({
           : current,
       );
       await refresh();
+      // Notifie les autres onglets de cet appareil (l'admin en a souvent
+      // plusieurs ouverts) ; les autres appareils sont couverts par le
+      // polling / visibilitychange du PlatformProvider.
+      window.dispatchEvent(new Event("platform:status-changed"));
       setNotice(
         draft.maintenanceMode
           ? "Paramètres enregistrés. Le bandeau de maintenance est désormais visible par les établissements."

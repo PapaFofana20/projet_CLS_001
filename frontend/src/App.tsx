@@ -12,7 +12,7 @@ import { SchoolProvider } from "@/context/SchoolContext";
 import { ToastProvider } from "@/context/ToastContext";
 import { MustChangePasswordGuard, ProtectedRoute, PublicOnlyRoute, RoleRoute, ScrollToTop, SubscriptionGuard } from "@/routes/guards";
 import { AdminProtectedRoute, adminGuard } from "@/routes/adminGuards";
-import { MaintenanceGuard } from "@/routes/MaintenanceGuard";
+import { MaintenanceGuard, MaintenanceWatcher } from "@/routes/MaintenanceGuard";
 import { ROUTE_ROLES } from "@/routes/navigation";
 
 const HomePage = lazy(() => import("@/pages/public/HomePage"));
@@ -95,6 +95,9 @@ export default function App() {
         <AuthProvider>
           <PlatformProvider>
             <ScrollToTop />
+            {/* Réagit en direct aux changements de maintenance (activation
+                comme désactivation), y compris sur les routes hors garde. */}
+            <MaintenanceWatcher />
             {/* Pas de Suspense global autour de <Routes> : il remplaçait
                 toute l'application (layouts compris) par des skeletons
                 pendant le chargement du chunk d'une page. Chaque layout

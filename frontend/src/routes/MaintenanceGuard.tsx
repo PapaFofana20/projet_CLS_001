@@ -2,11 +2,15 @@
 // dans /admin/parametres, tous les utilisateurs non-admin sont redirigés vers
 // la page de maintenance (/maintenance). Les pages de connexion, d'inscription
 // et la console admin restent accessibles.
+// Symétrie indispensable : quand la maintenance est DÉSACTIVÉE, un visiteur
+// resté sur /maintenance est ramené à l'accueil (sinon un simple F5 sur cette
+// URL réaffiche l'écran de maintenance même après désactivation).
 import { useEffect } from "react";
-import { Navigate, Outlet, useLocation } from "react-router-dom";
+import { Navigate, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { usePlatformStatus } from "@/context/PlatformContext";
 
-// Chemins qui restent accessibles même en maintenance.
+// Chemins qui restent accessibles même en maintenance (hors /maintenance,
+// géré explicitement ci-dessous dans les deux sens).
 const ALLOWED_PATHS = [
   "/connexion",
   "/inscription",
@@ -14,43 +18,51 @@ const ALLOWED_PATHS = [
   "/inscription-envoyee",
   "/mot-de-passe-oublie",
   "/reinitialiser-mot-de-passe",
-  "/maintenance",
 ];
 
 export function MaintenanceGuard() {
-  const { status } = usePlatformStatus();
+  const { status, loading } = usePlatformStatus();
   const { pathname } = useLocation();
 
-  // Si la maintenance n'est pas activée, on laisse passer normalement.
-  if (!status.maintenanceMode) return <Outlet />;
+  // Le défaut est maintenanceMode=false : on attend la réponse réelle avant
+  // de rediriger, sinon on provoquerait un aller-retour /maintenance ↔ /.
+  if (loading) return <Outlet />;
+
+  if (!status.maintenanceMode) {
+    // Sortie du piège : l'URL /maintenance seule ne doit jamais afficher
+    // l'écran de maintenance quand le mode est désactivé.
+    if (pathname === "/maintenance") return <Navigate to="/" replace />;
+    return <Outlet />;
+  }
 
   // La console admin est toujours accessible (c'est depuis là qu'on active/désactive).
   if (pathname.startsWith("/admin")) return <Outlet />;
 
-  // Les pages d'auth et la page de maintenance elle-même restent accessibles.
-  if (ALLOWED_PATHS.includes(pathname)) return <Outlet />;
+  // Les pages d'auth restent accessibles ; /maintenance est la cible.
+  if (ALLOWED_PATHS.includes(pathname) || pathname === "/maintenance") return <Outlet />;
 
-  // Redirection vers la page de maintenance.
   return <Navigate to="/maintenance" replace />;
 }
 
 /**
- * Effet de surveillance : si le statut de la plateforme change après le
- * premier rendu (chargement asynchrone de PlatformContext) et que le mode
- * maintenance devient actif, on redirige immédiatement vers /maintenance.
- * Cela évite de rester sur une page alors que la maintenance vient d'être
- * activée par l'admin.
+ * Surveille les changements de statut survenus APRÈS le premier rendu.
+ * Monté globalement dans App.tsx (il était défini mais jamais branché).
+ * Gère les deux directions : activation ET désactivation.
  */
 export function MaintenanceWatcher() {
-  const { status } = usePlatformStatus();
+  const { status, loading } = usePlatformStatus();
   const { pathname } = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
-    if (!status.maintenanceMode) return;
-    if (pathname.startsWith("/admin")) return;
-    if (ALLOWED_PATHS.includes(pathname)) return;
-    window.location.replace("/maintenance");
-  }, [status.maintenanceMode, pathname]);
+    if (loading) return;
+    if (status.maintenanceMode) {
+      if (pathname.startsWith("/admin") || ALLOWED_PATHS.includes(pathname) || pathname === "/maintenance") return;
+      navigate("/maintenance", { replace: true });
+      return;
+    }
+    if (pathname === "/maintenance") navigate("/", { replace: true });
+  }, [loading, status.maintenanceMode, pathname, navigate]);
 
   return null;
 }

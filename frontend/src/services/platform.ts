@@ -19,9 +19,11 @@ export const DEFAULT_PLATFORM_STATUS: PlatformStatus = {
 };
 
 // Récupère l'état public de la plateforme (avec valeur par défaut si l'API tombe).
+// Le paramètre horodaté empêche tout cache intermédiaire de renvoyer un statut
+// de maintenance périmé après une désactivation côté admin.
 export async function getPlatformStatus(): Promise<PlatformStatus> {
   try {
-    return await callFunction<PlatformStatus>("platform-status", undefined, "GET");
+    return await callFunction<PlatformStatus>(`platform-status?_=${Date.now()}`, undefined, "GET");
   } catch {
     return { ...DEFAULT_PLATFORM_STATUS };
   }

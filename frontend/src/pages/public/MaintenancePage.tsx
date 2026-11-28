@@ -1,12 +1,13 @@
 // Page de maintenance affichée quand l'administrateur active le mode
 // maintenance depuis /admin/parametres. Écran complet, professionnel et
 // rassurant pour les visiteurs et les écoles. Sans header ni footer.
+import { Link, Navigate } from "react-router-dom";
 import { usePlatformStatus } from "@/context/PlatformContext";
 import { Logo } from "@/components/ui/Brand";
 import { usePageMeta } from "@/hooks/usePageMeta";
 
 export default function MaintenancePage() {
-  const { status } = usePlatformStatus();
+  const { status, loading, refresh } = usePlatformStatus();
 
   usePageMeta({
     title: "Maintenance — Classora",
@@ -15,6 +16,11 @@ export default function MaintenancePage() {
       status.maintenanceMessage ||
       "La plateforme Classora est temporairement en maintenance. Revenez bientôt.",
   });
+
+  // Défense en profondeur : si la maintenance a été désactivée alors que le
+  // visiteur était sur cette URL, on le ramène à l'accueil dès que l'état réel
+  // est connu (favori, BFCache ou garde non remonté).
+  if (!loading && !status.maintenanceMode) return <Navigate to="/" replace />;
 
   return (
     <div className="min-h-screen bg-white flex flex-col items-center justify-center text-center p-6 sm:p-12 lg:p-20 relative overflow-hidden">
@@ -60,6 +66,22 @@ export default function MaintenancePage() {
           📧 {status.supportEmail || "support@classora.sn"}
           {status.supportPhone ? ` · 📞 ${status.supportPhone}` : ""}
         </p>
+      </div>
+
+      {/* Issues possibles sans passer par le bouton « retour » du navigateur :
+          re-vérifie le statut, ou tente l'accueil (qui redirigera ici si la
+          maintenance est toujours active). */}
+      <div className="relative z-10 mt-8 flex flex-wrap items-center justify-center gap-5 text-sm">
+        <button
+          type="button"
+          onClick={() => void refresh()}
+          className="font-semibold text-forest underline underline-offset-4"
+        >
+          Réessayer
+        </button>
+        <Link to="/" className="font-semibold text-forest underline underline-offset-4">
+          Retour à l'accueil
+        </Link>
       </div>
     </div>
   );

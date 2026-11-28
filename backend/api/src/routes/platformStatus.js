@@ -8,19 +8,17 @@ import { ok, route, RATE_LIMIT_RE } from "../lib/http.js";
 import { DEFAULT_PLATFORM_SETTINGS, publicPlatformStatus, readPlatformSettings } from "../lib/platformSettings.js";
 import { clientIp, enforceRateLimit } from "../lib/rateLimit.js";
 
-// Cache mémoire partagé par les requêtes de ce processus (TTL 5 s).
-// Un TTL court limite le risque de servir des valeurs périmées après un
-// changement de maintenance ou d'inscription côté base.
-const CACHE_TTL_MS = 5_000;
-let cache = null;
-
+// PAS de cache sur cet endpoint : le statut de maintenance doit être frais
+// dès que l'admin le désactive (un simple F5 doit suffire sur mobile).
+// La protection contre l'amplification est assurée par le rate limit par IP
+// ci-dessous, pas par un cache qui servirait des valeurs périmées.
 // Handler principal : GET /platform-status — état public de la plateforme (maintenance, inscriptions).
 export default route(async (req, res) => {
   if (req.method !== "GET") return ok(res, { error: "Méthode non autorisée." }, 405);
 
   const svc = serviceClient();
-  // Rate limiting AVANT le cache : un cache-hit ne doit pas contourner la
-  // borne (sinon l'endpoint public est illimité en cache). Attrapé ici :
+  // Rate limiting avant toute lecture SQL : l'endpoint est public, la borne
+  // par IP est la seule protection contre l'amplification. Attrapé ici :
   // « Trop de tentatives » doit sortir en 429 et non en 500 (le repli
   // fail-closed ci-dessous est réservé aux erreurs de lecture SQL).
   try {
@@ -32,22 +30,14 @@ export default route(async (req, res) => {
     throw e;
   }
 
-  // Cache mémoire (TTL 30 s) : /platform-status est public et non borné — sans
-  // cache, chaque requête scriptee coûte 1 lecture SQL (amplification DoS).
-  const now = Date.now();
-  if (cache && now - cache.at < CACHE_TTL_MS) {
-    res.setHeader("Cache-Control", "public, max-age=30");
-    return ok(res, cache.body);
-  }
-  const respond = (body) => {
-    cache = { at: now, body };
-    res.setHeader("Cache-Control", "public, max-age=30");
-    return ok(res, body);
-  };
+  // Réponse jamais mise en cache : navigateurs, proxys et BFCache doivent
+  // toujours recharger l'état réel. Le rate limit ci-dessus borne le coût SQL.
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+  res.setHeader("Pragma", "no-cache");
 
   try {
     const { settings, migrationApplied } = await readPlatformSettings(svc);
-    return respond({ ...publicPlatformStatus(settings), migrationApplied });
+    return ok(res, { ...publicPlatformStatus(settings), migrationApplied });
   } catch (e) {
     // Fail-closed SANS cache : en cas d'erreur SQL on ne renvoie PAS les
     // valeurs par défaut (registrationOpen: true) — ce serait annoncer

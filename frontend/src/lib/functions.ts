@@ -29,8 +29,13 @@ export async function callFunction<T>(
     // timetableService) afin qu'un '/' ou '?' dans un id ne change pas la route.
     res = await fetch(`${base}/${name}`, {
       method,
+      // Les réponses de l'API sont dynamiques (statut de maintenance, rôles,
+      // données métier) : jamais de cache navigateur, sinon un F5 renverrait
+      // un état périmé après une modification côté admin.
+      cache: "no-store",
       headers: {
         "Content-Type": "application/json",
+        "Cache-Control": "no-cache",
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body: body !== undefined ? JSON.stringify(body) : undefined,

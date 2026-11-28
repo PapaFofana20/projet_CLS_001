@@ -1,5 +1,5 @@
 // Réglages globaux de la plateforme : maintenance, support, nom affiché.
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { DEFAULT_PLATFORM_STATUS, getPlatformStatus } from "@/services/platform";
 import type { PlatformStatus } from "@/types";
 
@@ -12,43 +12,62 @@ interface PlatformContextValue {
 
 const PlatformContext = createContext<PlatformContextValue | null>(null);
 
-// Charge les réglages une fois au démarrage, rechargeables à la demande.
+// Charge le statut au démarrage, puis le resynchronise régulièrement et à
+// chaque retour sur l'onglet (visibilitychange / pageshow / focus). Sur mobile,
+// un simple F5 doit refléter immédiatement une désactivation de la maintenance.
 export function PlatformProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<PlatformStatus>(DEFAULT_PLATFORM_STATUS);
   const [loading, setLoading] = useState(true);
+  const mounted = useRef(true);
+  const inFlight = useRef(false);
 
   const refresh = useCallback(async () => {
-    const next = await getPlatformStatus();
-    setStatus(next);
-    setLoading(false);
+    // Évite deux requêtes concurrentes (polling + visibilitychange + admin).
+    if (inFlight.current) return;
+    inFlight.current = true;
+    try {
+      const next = await getPlatformStatus();
+      if (mounted.current) setStatus(next);
+    } finally {
+      inFlight.current = false;
+      if (mounted.current) setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
-    let cancelled = false;
-    const load = () => {
-      getPlatformStatus().then((next) => {
-        if (!cancelled) {
-          setStatus(next);
-          setLoading(false);
-        }
-      });
+    mounted.current = true;
+    // Plus de requestIdleCallback différé : l'état de maintenance doit être
+    // connu avant que l'utilisateur n'ait un comportement « en deux temps ».
+    void refresh();
+
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void refresh();
     };
-    // Chargé après le premier rendu : cet appel réseau (API Render) ne doit pas
-    // concurrencer les ressources critiques de la page. Le statut par défaut
-    // (aucune maintenance) s'applique en attendant.
-    if (typeof window.requestIdleCallback === "function") {
-      const idleId = window.requestIdleCallback(load, { timeout: 2000 });
-      return () => {
-        cancelled = true;
-        window.cancelIdleCallback(idleId);
-      };
-    }
-    const timeoutId = window.setTimeout(load, 1200);
+    const onFocus = () => void refresh();
+    const onPlatformChanged = () => void refresh();
+    document.addEventListener("visibilitychange", onVisible);
+    // pageshow couvre le retour depuis le BFCache sur iOS/Android : le JS n'est
+    // pas rechargé, seule la page est restaurée.
+    window.addEventListener("pageshow", onVisible);
+    window.addEventListener("focus", onFocus);
+    window.addEventListener("platform:status-changed", onPlatformChanged);
+
+    // Filet de sécurité pour les onglets restés ouverts. 60 s et uniquement
+    // quand l'onglet est visible : même avec plusieurs onglets, on reste très
+    // en dessous de la limite de 60 req / 5 min du rate limit de l'endpoint.
+    const pollId = window.setInterval(() => {
+      if (document.visibilityState === "visible") void refresh();
+    }, 60_000);
+
     return () => {
-      cancelled = true;
-      window.clearTimeout(timeoutId);
+      mounted.current = false;
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("pageshow", onVisible);
+      window.removeEventListener("focus", onFocus);
+      window.removeEventListener("platform:status-changed", onPlatformChanged);
+      window.clearInterval(pollId);
     };
-  }, []);
+  }, [refresh]);
 
   const value = useMemo(() => ({ status, loading, refresh }), [status, loading, refresh]);
   return <PlatformContext.Provider value={value}>{children}</PlatformContext.Provider>;

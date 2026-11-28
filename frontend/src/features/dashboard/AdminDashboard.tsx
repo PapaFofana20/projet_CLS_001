@@ -105,7 +105,7 @@ export function AdminDashboard({ finance = false }: { finance?: boolean }) {
               Gérer les paiements
             </LinkButton>
           ) : (
-            <LinkButton to="/app/inscription-eleve">
+            <LinkButton to="/app/inscription-eleve" icon="person_add">
               Inscrire un élève
             </LinkButton>
           )
