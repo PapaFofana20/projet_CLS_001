@@ -67,7 +67,10 @@ export function Modal({ open, onClose, title, children, footer, size = "md", pri
 
   if (!open) return null;
   return createPortal(
-    <div className={`${printable ? "modal-printable" : "no-print"} fixed inset-0 z-modal flex items-end justify-center p-0 sm:items-center sm:p-4`} role="presentation">
+    // Centrage sur TOUS les écrans : l'ancien `items-end p-0 sm:items-center`
+    // transformait la modale en feuille collée au bas sur mobile (coins
+    // arrondis uniquement en haut). Confirmation de déconnexion comprise.
+    <div className={`${printable ? "modal-printable" : "no-print"} fixed inset-0 z-modal flex items-center justify-center p-4`} role="presentation">
       <div className="no-print absolute inset-0 bg-forest/50 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
       <div
         ref={ref}
@@ -75,7 +78,7 @@ export function Modal({ open, onClose, title, children, footer, size = "md", pri
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className={`relative flex max-h-[92vh] w-full ${widths[size]} modal-enter flex-col rounded-t-3xl bg-white shadow-soft focus:outline-none sm:rounded-3xl${printable ? " modal-printable-dialog" : ""}`}
+        className={`relative flex max-h-[90svh] w-full ${widths[size]} modal-enter flex-col rounded-3xl bg-white shadow-soft focus:outline-none${printable ? " modal-printable-dialog" : ""}`}
       >
         <div className={`${printable ? "no-print " : ""}flex items-center justify-between gap-4 border-b border-neutral-100 px-6 py-4`}>
           <h2 className="text-lg font-bold text-forest">{title}</h2>
