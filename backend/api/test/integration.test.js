@@ -100,12 +100,15 @@ test("CORS : préflight OPTIONS autorisé avec PATCH/DELETE dans Allow-Methods",
     headers: {
       Origin: "https://ecole.test",
       "Access-Control-Request-Method": "PATCH",
+      "Access-Control-Request-Headers": "content-type, authorization, cache-control",
     },
   });
   assert.strictEqual(res.status, 204);
   const methods = res.headers.get("access-control-allow-methods") ?? "";
   assert.ok(methods.includes("PATCH"));
   assert.ok(methods.includes("DELETE"));
+  const headers = res.headers.get("access-control-allow-headers") ?? "";
+  assert.ok(headers.includes("cache-control"));
 });
 
 test("CORS : aucune origine joker (même hors production)", async () => {

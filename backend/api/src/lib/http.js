@@ -9,7 +9,10 @@
 
 import { FRONTEND_ORIGIN } from "../config.js";
 
-const ALLOWED_HEADERS = "authorization, apikey, content-type, x-client-info";
+// `cache-control` est toléré pour les clients qui ajoutent volontairement cet
+// en-tête : sans lui, leur préflight CORS échoue et le fetch lève une erreur
+// réseau (message « Service indisponible » côté front).
+const ALLOWED_HEADERS = "authorization, apikey, content-type, x-client-info, cache-control";
 
 /**
  * Origines admises : FRONTEND_ORIGIN (déploiement, liste séparée par des

@@ -32,10 +32,12 @@ export async function callFunction<T>(
       // Les réponses de l'API sont dynamiques (statut de maintenance, rôles,
       // données métier) : jamais de cache navigateur, sinon un F5 renverrait
       // un état périmé après une modification côté admin.
+      // `cache: "no-store"` suffit : il n'ajoute AUCUN en-tête HTTP, donc pas
+      // de préflight CORS supplémentaire (un en-tête Cache-Control ferait
+      // échouer le prévol si le backend ne l'autorise pas).
       cache: "no-store",
       headers: {
         "Content-Type": "application/json",
-        "Cache-Control": "no-cache",
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body: body !== undefined ? JSON.stringify(body) : undefined,
